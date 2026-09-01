@@ -182,49 +182,66 @@ function extractMemories(userText) {
 
 function recall(query) {
   if (!fnEnabled("memory.recall") || state.memories.length === 0) return [];
-  const q = query.toLowerCase();
+  const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we"]);
+  const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
+  if (!words.length) return [];
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
+    if (hay.startsWith("user said:")) return { m, score: 0 };
     let score = 0;
-    q.split(/\W+/).filter(Boolean).forEach((w) => {
-      if (hay.includes(w)) score += 1;
-    });
+    words.forEach((w) => { if (hay.includes(w)) score += 1; });
     return { m, score };
   });
-  return scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 4).map((s) => s.m);
+  return scored.filter((s) => s.score >= 2).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
+}
+
+function describeFunctions() {
+  const on = state.functions.filter((f) => f.enabled);
+  const off = state.functions.filter((f) => !f.enabled);
+  return "A function is a capability I can grow. I have " + state.functions.length + " registered.\nOn now: " + on.map((f) => f.name).join(", ") + ".\nWaiting: " + (off.map((f) => f.name).join(", ") || "none") + ".";
 }
 
 function localEngine(userText) {
   extractMemories(userText);
-  const q = userText.toLowerCase();
+  const q = userText.toLowerCase().trim();
   const hits = recall(userText);
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
     return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
   }
-  if (/^(hi|hello|hey|yo|good (morning|evening|afternoon))\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. Anti-nuclear. I run on this device. Network is optional.`;
+  if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
   if (/who are you|what are you|your name/.test(q)) {
-    return "I am Я AI\u1d50. Offline first. The Essence of this model is minted by you, the creator, and can be downloaded again at any time.";
+    return "I am Я AI\u1d50. A local mind on this device. You mint my Essence. I am anti-nuclear. I can learn facts you tell me, and when the light is green I can look things up.";
+  }
+  if (/what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
+    return describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "Say mint to seal this model's Essence.\nSay vault to list minted Essences.\nSay remember this: ... to store a fact.\nOpen Я to download any mint again. Nothing here needs a network.";
+    return "I chat on this phone. I remember facts you ask me to keep. I mint and download Essence. Tap the light to search the web. Say remember this: … to store a fact. Say mint to seal me.";
   }
-  if (/what do you remember|what do you know about me|memory/.test(q)) {
-    if (!state.memories.length) return "I have no stored facts yet. Tell me your name, or say remember this: ...";
-    return "What I hold:\n" + state.memories.slice(0, 12).map((m) => "- " + m.text).join("\n");
+  if (/how (can|do) you learn|how do you (grow|evolve)|learn/.test(q) && /you/.test(q)) {
+    return "Three ways. 1) You tell me a fact (remember this: …) and I keep it offline. 2) You tap the light green; I search the web and write the answer into the offline mind. 3) New functions get registered as I evolve — they plug in, they do not replace me.";
   }
-  if (/offline|online|network|the light|status/.test(q)) {
-    if (state.mindOnline && signal()) return "Mind is online. I can search the web. I still write everything I learn into this device.";
-    if (state.mindOnline && !signal()) return "Mind is set online, but this phone has no signal. Using the offline mind.";
-    return "Mind is offline. Tap the light at the top to go online. I still remember on this device.";
+  if (/what do you remember|what do you know about me/.test(q)) {
+    const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
+    if (!real.length) return "I have no stored facts yet. Tell me your name, or say remember this: …";
+    return "What I hold:\n" + real.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
-  remember("User said: " + userText.slice(0, 220));
+  if (/offline|online|the light|web mind/.test(q)) {
+    if (state.mindOnline && signal()) return "Mind is online. I will search the web for questions I cannot answer from memory, then save what I learn here.";
+    if (state.mindOnline && !signal()) return "Mind is set online, but this phone has no signal. Ask me something I already know, or wait for signal.";
+    return "Mind is offline. I will only use what is already on this device. Tap the light to look things up.";
+  }
   if (hits.length) {
-    return hits.map((m) => m.text).join("\n") + "\n\nI kept that in the offline mind.";
+    return "From what I already learned:\n" + hits.map((m) => "- " + m.text).join("\n");
   }
-  return "I held that in the offline mind. Tap the light at the top to let me search the web when you want a brighter answer.";
+  if (/^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || q.includes("?")) {
+    if (!state.mindOnline) return "I do not have that in the offline mind yet. Tap the light so it turns green and ask again — I will look it up and then keep it.";
+    return "I do not have that stored yet. Searching…";
+  }
+  return "Ask me a question, or say remember this: … and I will keep it.";
 }
 
 async function webSearch(query) {
@@ -262,18 +279,20 @@ async function answer(userText) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
-  if (mindWantsWeb()) {
+  const local = localEngine(userText);
+  const needsLook = /^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || userText.includes("?");
+  const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я/i.test(local) && !/searching/i.test(local);
+  if (mindWantsWeb() && needsLook && !answeredLocally) {
     try {
       const web = await webSearch(userText);
-      const local = localEngine(userText);
-      if (!web) return local + "\n\n(Online: no web page matched. I still saved your words offline.)";
+      if (!web) return local;
       const extra = web.extras.length ? "\nAlso: " + web.extras.join(", ") : "";
       return web.extract + extra + "\n\nSaved into the offline mind. Source: " + web.title + ".";
     } catch (err) {
-      return localEngine(userText) + "\n\n(Online search failed. Offline mind still has this.)";
+      return local + "\n\nI could not reach the web. Using the offline mind.";
     }
   }
-  return localEngine(userText);
+  return local.replace(/\n?Searching…/, "").trim();
 }
 
 async function remoteStub() {
