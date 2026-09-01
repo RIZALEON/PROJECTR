@@ -726,13 +726,11 @@ async function fetchLinkRaw(url) {
   throw lastErr || new Error("link fetch failed");
 }
 
-function rememberLinkFull(url, title, clean) {
-  const chunk = 1600;
-  const n = Math.min(clean.length, 24000);
-  remember("Link " + title + " (" + url + ") · " + n + " chars read");
-  for (let i = 0, part = 1; i < n; i += chunk, part += 1) {
-    remember("Link " + title + " [" + part + "]: " + clean.slice(i, i + chunk));
-  }
+function linkNote(d) {
+  const bits = [d.url, d.title || ""];
+  if (d.outline && d.outline.length) bits.push(d.outline.slice(0, 8).join("; "));
+  bits.push((d.body || "").slice(0, 900));
+  return bits.filter(Boolean).join("\n");
 }
 
 async function describeLink(url) {
@@ -742,10 +740,10 @@ async function describeLink(url) {
   const title = (titleMatch ? titleMatch[1].trim() : url).slice(0, 180);
   const clean = raw.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
   const outline = outlineFromText(raw);
-  rememberLinkFull(url, title, clean.replace(/\s+/g, " "));
   const preview = clean.slice(0, 3500);
-  const more = clean.length > 3500;
-  return { title, body: preview, url, outline, chars: clean.length, more: more };
+  const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500 };
+  remember("Link note:\n" + linkNote(d));
+  return d;
 }
 
 function formatLinkRead(d) {
@@ -756,8 +754,7 @@ function formatLinkRead(d) {
     bits.push("");
   }
   bits.push(d.body);
-  if (d.more) bits.push("\n…full page (" + d.chars + " chars) saved into the offline mind.");
-  else bits.push("\nSaved into the offline mind (" + d.chars + " chars).");
+  bits.push("\nNotes keep this link and this summary.");
   return bits.join("\n");
 }
 
@@ -967,8 +964,21 @@ function formatMindDump() {
     lines.push("  do: " + (s.action || ""));
   });
   lines.push("");
+  lines.push("=== Links (URL + chat summary only) ===");
+  const linkNotes = (state.memories || []).filter((m) => m && /^Link note:/i.test(m.text));
+  if (!linkNotes.length) lines.push("(none yet)");
+  linkNotes.forEach((m) => {
+    lines.push(m.text.replace(/^Link note:\s*/i, "").trim());
+    lines.push("");
+  });
   lines.push("=== Learned (offline mind) ===");
-  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+  const mem = (state.memories || []).filter((m) => {
+    if (!m || !m.text || /^user said:/i.test(m.text)) return false;
+    if (/^Link note:/i.test(m.text)) return false;
+    if (/^Link .+ \[\d+\]:/i.test(m.text)) return false;
+    if (/chars read$/i.test(m.text)) return false;
+    return true;
+  });
   if (!mem.length) lines.push("(none yet)");
   mem.forEach((m) => {
     const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
