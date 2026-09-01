@@ -32,7 +32,7 @@
       <span id="net-label">local engine</span>
     </div>
     <div class="actions">
-      <button class="icon" id="open-panel" title="Я"><img src="./favicon-32.png" alt="Я" width="32" height="32" /></button>
+      <button class="icon" id="open-mind" title="Machine mind"><img src="./brain.svg" alt="Machine mind" width="32" height="32" /></button>
     </div>
   </header>
   <main id="log"></main>
@@ -40,6 +40,23 @@
     <input id="input" autocomplete="off" placeholder="Speak to Я" />
     <button type="submit">Send</button>
   </form>
+  <aside class="panel" id="mind">
+    <div class="sheet">
+      <h2>Machine mind</h2>
+      <p class="lead">Version grows 0.1 for every 1 GB this mind holds on the device.</p>
+      <div class="mind-stat">
+        <div class="mind-label">Version</div>
+        <div class="mind-value" id="mind-version">0.0</div>
+      </div>
+      <div class="mind-stat">
+        <div class="mind-label">Mind size</div>
+        <div class="mind-value" id="mind-size">0 B</div>
+      </div>
+      <div class="downloads">
+        <button id="open-panel">Functions &amp; Essence</button>
+      </div>
+    </div>
+  </aside>
   <aside class="panel" id="panel">
     <div class="sheet">
       <h2>Я</h2>

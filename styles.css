@@ -53,3 +53,7 @@ aside.panel.open { display: block; }
 .off { color: var(--warn); }
 label.field { display: block; margin: 14px 0; font-size: 13px; color: var(--muted); }
 label.field input { width: 100%; margin-top: 6px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+
+.mind-stat { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.mind-label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mind-value { font-family: var(--font); font-size: 36px; margin-top: 4px; }

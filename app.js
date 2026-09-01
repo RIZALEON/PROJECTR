@@ -473,6 +473,40 @@ function toggleFn(id) {
   renderPanel();
 }
 
+function mindBytes() {
+  let n = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k) || "";
+      n += (k ? k.length : 0) + v.length;
+    }
+  } catch (e) {}
+  return n * 2;
+}
+
+function formatBytes(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(2) + " MB";
+  return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+}
+
+function mindVersion(bytes) {
+  const steps = Math.floor(bytes / (1024 * 1024 * 1024));
+  return (steps / 10).toFixed(1);
+}
+
+function renderMind() {
+  const bytes = mindBytes();
+  const ver = mindVersion(bytes);
+  const vEl = document.getElementById("mind-version");
+  const sEl = document.getElementById("mind-size");
+  if (vEl) vEl.textContent = ver;
+  if (sEl) sEl.textContent = formatBytes(bytes);
+}
+
+const mindEl = document.getElementById("mind");
 const logEl = document.getElementById("log");
 const form = document.getElementById("composer");
 const input = document.getElementById("input");
@@ -552,7 +586,15 @@ form.addEventListener("submit", (e) => {
   send(v);
 });
 
+document.getElementById("open-mind").addEventListener("click", () => {
+  renderMind();
+  mindEl.classList.add("open");
+});
+mindEl.addEventListener("click", (e) => {
+  if (e.target === mindEl) mindEl.classList.remove("open");
+});
 document.getElementById("open-panel").addEventListener("click", () => {
+  mindEl.classList.remove("open");
   panel.classList.add("open");
   renderPanel();
 });
@@ -590,5 +632,7 @@ if ("serviceWorker" in navigator) {
 ensureCreator().then(() => {
   render();
   renderPanel();
+  renderMind();
 });
 render();
+renderMind();
