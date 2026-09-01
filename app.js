@@ -4,6 +4,8 @@ const VAULT_KEY = "ya-aim-vault";
 const GH_KEY = "ya-aim-github";
 const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
+const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
+const PING_KEY = "ya-aim-last-ping";
 
 const defaultState = () => ({
   profile: { name: "You", yaName: "Я" },
@@ -499,27 +501,38 @@ function reconnectPack() {
   };
 }
 
+function pingSignature(pack) {
+  return JSON.stringify({
+    learned: (pack.learned || []).map((m) => m.text),
+    evolved: (pack.evolved || []).map((s) => s.id),
+    pending: pack.pendingLearn || [],
+    fn: (pack.functions || []).map((f) => f.id + ":" + f.version)
+  });
+}
+
 async function pingChief() {
-  const url = (github.hookUrl || "").trim();
-  if (!url) return { ok: false, reason: "hook" };
+  if (!signal()) return { ok: false, reason: "offline" };
   const pack = reconnectPack();
-  const headers = { "Content-Type": "application/json" };
-  const key = (github.hookKey || "").trim();
-  if (key) {
-    headers.Authorization = "Bearer " + key;
-    headers["X-Webhook-Key"] = key;
-  }
+  const sig = pingSignature(pack);
+  if (localStorage.getItem(PING_KEY) === sig) return { ok: true, skipped: true };
+  const body = JSON.stringify(pack);
   try {
-    const res = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(pack) });
-    if (res.ok || res.type === "opaque") return { ok: true };
-    return { ok: false, reason: "http " + res.status };
-  } catch (e) {
-    try {
-      await fetch(url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pack) });
-      return { ok: true, opaque: true };
-    } catch (e2) {
-      return { ok: false, reason: "net" };
+    const res = await fetch(CHIEF_INBOX, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Title: "Ya reconnect", Tags: "brain" },
+      body: body
+    });
+    if (res.ok) {
+      localStorage.setItem(PING_KEY, sig);
+      return { ok: true };
     }
+  } catch (e) {}
+  try {
+    await fetch(CHIEF_INBOX, { method: "POST", mode: "no-cors", body: body });
+    localStorage.setItem(PING_KEY, sig);
+    return { ok: true, opaque: true };
+  } catch (e2) {
+    return { ok: false, reason: "net" };
   }
 }
 
@@ -573,9 +586,7 @@ async function onCommsBack() {
   if (pulled) bits.push("pulled " + pulled + " evolution(s) from GitHub");
   if (up && up.ok) bits.push("uploaded evolutions to " + up.repo);
   if (inbox && inbox.ok) bits.push("left a reconnect note on GitHub");
-  if (chief && chief.ok) bits.push("messaged Chief of Staff");
-  else if (chief && chief.reason === "hook") bits.push("paste the Chief of Staff webhook from Routines into Functions so I can message them next time");
-  else if (up && up.reason === "token") bits.push("add a GitHub token in Functions to auto-upload");
+  if (chief && chief.ok && !chief.skipped) bits.push("messaged Chief of Staff");
   if (bits.length) push("ya", "Comms back. " + bits.join(". ") + ".");
 }
 
@@ -987,10 +998,6 @@ function renderPanel() {
   const tokEl = document.getElementById("gh-token");
   if (repoEl && repoEl !== document.activeElement) repoEl.value = github.repo || GH_REPO_DEFAULT;
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
-  const hookUrlEl = document.getElementById("hook-url");
-  const hookKeyEl = document.getElementById("hook-key");
-  if (hookUrlEl && hookUrlEl !== document.activeElement) hookUrlEl.value = github.hookUrl || "";
-  if (hookKeyEl && hookKeyEl !== document.activeElement) hookKeyEl.value = github.hookKey || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
     const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
@@ -1101,16 +1108,6 @@ if (ghTokEl) ghTokEl.addEventListener("change", () => {
   github.token = ghTokEl.value.trim();
   saveGithub();
 });
-const hookUrlEl2 = document.getElementById("hook-url");
-const hookKeyEl2 = document.getElementById("hook-key");
-if (hookUrlEl2) hookUrlEl2.addEventListener("change", () => {
-  github.hookUrl = hookUrlEl2.value.trim();
-  saveGithub();
-});
-if (hookKeyEl2) hookKeyEl2.addEventListener("change", () => {
-  github.hookKey = hookKeyEl2.value.trim();
-  saveGithub();
-});
 
 
 const statusEl = document.querySelector(".status");
@@ -1130,6 +1127,7 @@ ensureCreator().then(() => {
   render();
   renderPanel();
   renderMind();
+  if (signal()) setTimeout(() => { onCommsBack(); }, 800);
 });
 render();
 renderMind();
