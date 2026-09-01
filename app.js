@@ -310,6 +310,7 @@ function describeFunctions() {
 function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
+  if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
   const hits = recall(userText);
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
@@ -600,13 +601,25 @@ function utahNow() {
 
 function isDateAsk(q) {
   const s = foldQ(q);
-  if (/\bdating\b/.test(s)) return false;
+  if (/\bdating\b/.test(s) && !/\b(time|clock)\b/.test(s)) return false;
+  if (/\b(what time|whats the time|what is the time|time is it|time now|current time|the time|phone clock)\b/.test(s)) return true;
+  if (/\b(time|date)\b/.test(s) && /\bnow\b/.test(s)) return true;
   if (/\b(time and date|date and time)\b/.test(s)) return true;
-  if (/\b(what time|current time|the time|phone clock)\b/.test(s)) return true;
   if (/\b(today'?s date|date today|current date|what day|what'?s the date|whats the date|what is the date|the date)\b/.test(s)) return true;
   if (/^\s*(the )?(date|time)\s*\??\s*$/.test(s)) return true;
   if (/check online for.{0,20}date/.test(s)) return true;
   return false;
+}
+
+function sayUtahNow() {
+  const phone = utahNow();
+  remember("Utah time when asked: " + phone);
+  if (mindWantsWeb()) {
+    fetchWorldDate().then((world) => {
+      if (world) remember("Utah clock (online): " + world.text);
+    }).catch(() => {});
+  }
+  return "It is " + phone + " Utah time.";
 }
 
 async function answer(userText) {
@@ -615,6 +628,7 @@ async function answer(userText) {
     remember("Refused a nuclear-weapons request.");
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
   }
+  if (isDateAsk(userText)) return sayUtahNow();
   const evolvedTalk = tryEvolveCommand(userText);
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
@@ -645,20 +659,6 @@ async function answer(userText) {
   if (/^(vault|essences|my mints)\b/.test(q)) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
-  }
-  if (isDateAsk(q)) {
-    const phone = utahNow();
-    if (mindWantsWeb()) {
-      const world = await fetchWorldDate();
-      if (world) {
-        remember("Today (Utah clock): " + world.text);
-        return "It is " + world.text + " (Utah).\nChecked online (" + world.source + ") and saved in the offline mind.";
-      }
-      remember("Device clock (Utah): " + phone);
-      return "Online clock did not answer. It is " + phone + " on this device (Utah).";
-    }
-    remember("Device clock (Utah): " + phone);
-    return "It is " + phone + " (Utah, this device).";
   }
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
