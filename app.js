@@ -709,11 +709,30 @@ form.addEventListener("submit", (e) => {
   send(v);
 });
 
+function standaloneApp() {
+  return window.navigator.standalone === true
+    || window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches;
+}
+
+function guessPhoneInset() {
+  const long = Math.max(screen.width || 0, screen.height || 0);
+  if (long >= 852) return 59;
+  if (long >= 812) return 47;
+  return 20;
+}
+
 function layoutHeader() {
+  const probe = document.getElementById("sa-top");
+  let inset = probe ? Math.round(probe.getBoundingClientRect().height) : 0;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (ios && standaloneApp() && inset < 28) inset = guessPhoneInset();
+  if (!ios && inset < 8) inset = 8;
+  document.documentElement.style.setProperty("--safe-top", inset + "px");
   const h = document.querySelector("header");
   if (!h) return;
   const bottom = Math.ceil(h.getBoundingClientRect().bottom);
-  document.documentElement.style.setProperty("--header-h", Math.max(bottom, 120) + "px");
+  document.documentElement.style.setProperty("--header-h", Math.max(bottom, 88) + "px");
 }
 
 document.getElementById("open-mind").addEventListener("click", (e) => {
@@ -728,7 +747,10 @@ document.getElementById("open-mind").addEventListener("click", (e) => {
 });
 window.addEventListener("resize", layoutHeader);
 window.addEventListener("orientationchange", layoutHeader);
+if (window.visualViewport) window.visualViewport.addEventListener("resize", layoutHeader);
 layoutHeader();
+setTimeout(layoutHeader, 50);
+setTimeout(layoutHeader, 300);
 mindEl.addEventListener("click", (e) => {
   if (e.target === mindEl) mindEl.classList.remove("open");
 });
