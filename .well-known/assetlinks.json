@@ -1,0 +1,1 @@
+[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "android_app", "package_name": "io.github.rizaleon.twa", "sha256_cert_fingerprints": ["23:88:CE:1D:5D:A2:E4:AB:32:7B:85:20:5B:B0:0B:FC:2C:5F:99:69:B7:0A:1E:B3:51:6C:DF:9D:C6:30:CB:FA"] } }]
