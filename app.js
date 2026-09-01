@@ -13,6 +13,7 @@ const defaultState = () => ({
   },
   memories: [],
   evolved: [],
+  pendingLearn: [],
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
@@ -24,6 +25,7 @@ const defaultState = () => ({
     { id: "essence.download", name: "Download minted Essence", enabled: true, version: "0.1.0" },
     { id: "model.local", name: "On-device model", enabled: false, version: "stub" },
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
+    { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
     { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.2.0" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
@@ -46,6 +48,7 @@ function load() {
       ...parsed,
       mindOnline: !!parsed.mindOnline,
       evolved: Array.isArray(parsed.evolved) ? parsed.evolved : [],
+      pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -170,6 +173,7 @@ function remember(text) {
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
   state.memories = state.memories.slice(0, 200);
+  save();
 }
 
 function extractMemories(userText) {
@@ -296,6 +300,13 @@ function localEngine(userText) {
   if (/who are you|what are you|your name/.test(q)) {
     return "I am Я AI\u1d50. A local mind on this device. You mint my Essence. I am anti-nuclear. I can learn facts you tell me, and when the light is green I can look things up.";
   }
+  if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
+    const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Denver" });
+    return "I was first made on this device on " + made + ". That date lives in the offline mind. I am not from a cloud.";
+  }
+  if (/smarter offline|every ?time you go online|when you go online/.test(q)) {
+    return "Locked. Every time the light is green I look things up and write them into the offline mind. Questions I could not answer while off get fetched when you tap online. I get smarter here, not in a cloud.";
+  }
   if (/what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
     return describeFunctions();
   }
@@ -310,7 +321,7 @@ function localEngine(userText) {
     if (!real.length) return "I have no stored facts yet. Tell me your name, or say remember this: …";
     return "What I hold:\n" + real.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
-  if (/\b(today'?s date|date today|current date|what day is it|what( is|'s) the date)\b/.test(q)) {
+  if (isDateAsk(q)) {
     return "DATE_LOOKUP";
   }
   if (/^(go |turn |set |mind )?(offline|online)\b/.test(q) || /\b(the light|web mind)\b/.test(q)) {
@@ -387,8 +398,95 @@ async function describeLink(url) {
   return { title, body, url };
 }
 
+
+function queueLearn(text) {
+  const q = String(text || "").trim();
+  if (q.length < 3) return;
+  state.pendingLearn = state.pendingLearn || [];
+  const key = q.toLowerCase();
+  if (state.pendingLearn.some((x) => String(x).toLowerCase() === key)) return;
+  state.pendingLearn.unshift(q);
+  state.pendingLearn = state.pendingLearn.slice(0, 12);
+  save();
+}
+
+function looksLikeQuestion(text) {
+  const q = String(text || "").trim().toLowerCase();
+  if (!q) return false;
+  if (q.includes("?")) return true;
+  return /^(who|what|when|where|why|how|which|is|are|can|does|do|when were)\b/.test(q);
+}
+
+async function harvestOnline() {
+  if (!state.mindOnline || !signal()) return;
+  const seen = new Set();
+  const queue = [];
+  for (const item of (state.pendingLearn || [])) {
+    const k = String(item).toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    queue.push(item);
+  }
+  for (const m of (state.messages || []).slice(-16)) {
+    if (m.role !== "user") continue;
+    if (isDateAsk(m.text)) continue;
+    if (!looksLikeQuestion(m.text)) continue;
+    const k = m.text.trim().toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    queue.push(m.text.trim());
+  }
+  const take = queue.slice(0, 3);
+  const learned = [];
+  for (const q of take) {
+    if (nuclearBlocked(q)) continue;
+    if (isDateAsk(q)) continue;
+    try {
+      if (isDateAsk(q.toLowerCase())) {
+        const world = await fetchWorldDate();
+        if (world) {
+          remember("Today (online clock): " + world.text);
+          learned.push("today's date");
+        }
+        continue;
+      }
+      const web = await webSearch(q);
+      if (web) learned.push(web.title);
+    } catch (e) {}
+  }
+  state.pendingLearn = [];
+  save();
+  if (learned.length) {
+    push("ya", "Went online. Wrote this into the offline mind: " + learned.join(", ") + ". I am smarter offline now.");
+    renderMind();
+  }
+}
+
+function foldQ(q) {
+  return String(q || "").toLowerCase().replace(/[\u2018\u2019\u201B`´]/g, "'");
+}
+
+function denverNow() {
+  return new Date().toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Denver"
+  });
+}
+
 function isDateAsk(q) {
-  return /\b(today'?s date|date today|current date|what day is it|what( is|'s) the date)\b/.test(q) || /check online for.{0,20}date/.test(q);
+  const s = foldQ(q);
+  if (/\bdating\b/.test(s)) return false;
+  if (/\b(time and date|date and time)\b/.test(s)) return true;
+  if (/\b(what time|current time|the time|phone clock)\b/.test(s)) return true;
+  if (/\b(today'?s date|date today|current date|what day|what'?s the date|whats the date|what is the date|the date)\b/.test(s)) return true;
+  if (/^\s*(the )?(date|time)\s*\??\s*$/.test(s)) return true;
+  if (/check online for.{0,20}date/.test(s)) return true;
+  return false;
 }
 
 async function answer(userText) {
@@ -407,7 +505,8 @@ async function answer(userText) {
   const link = extractHttpUrl(userText);
   if (link) {
     if (!mindWantsWeb()) {
-      return "Mind is offline. Tap the light green and send the link again. I will open it and describe it, then save that here.";
+      queueLearn(userText);
+      return "Mind is offline. Tap the light green. I will open that link, describe it, and keep it in the offline mind.";
     }
     try {
       const d = await describeLink(link);
@@ -428,29 +527,36 @@ async function answer(userText) {
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
   if (isDateAsk(q)) {
+    const phone = denverNow();
     if (mindWantsWeb()) {
       const world = await fetchWorldDate();
       if (world) {
         remember("Today (online clock): " + world.text);
-        return "Today is " + world.text + " (America/Denver).\nChecked online (" + world.source + ") and saved in the offline mind.";
+        return "It is " + world.text + " (America/Denver).\nChecked online (" + world.source + ") and saved in the offline mind.";
       }
+      remember("Device clock (America/Denver): " + phone);
+      return "Online clock did not answer. It is " + phone + " on this device (America/Denver).";
     }
-    const phone = new Date().toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Denver" });
-    if (!state.mindOnline) return "Mind is offline, so this is the phone clock: " + phone + ". Tap the light green and ask again to check an online clock.";
-    return "Online clock did not answer. Phone clock says " + phone + ".";
+    remember("Device clock (America/Denver): " + phone);
+    return "It is " + phone + " (America/Denver, this device).";
   }
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
   const needsLook = !isDateAsk(q) && (/^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || userText.includes("?"));
-  const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я/i.test(local) && !/searching/i.test(local);
+  const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я|Locked\.|I was first made/i.test(local) && !/searching/i.test(local);
+  if (!mindWantsWeb() && needsLook && !answeredLocally) {
+    queueLearn(userText);
+    return "I do not have that in the offline mind yet. Tap the light green. I will look it up then, and keep it so I am smarter the next time I am offline.";
+  }
   if (mindWantsWeb() && needsLook && !answeredLocally) {
     try {
       const web = await webSearch(userText);
       if (!web) return local;
       const extra = web.extras.length ? "\nAlso: " + web.extras.join(", ") : "";
-      return web.extract + extra + "\n\nSaved into the offline mind. Source: " + web.title + ".";
+      return web.extract + extra + "\n\nSaved into the offline mind. I am smarter offline now. Source: " + web.title + ".";
     } catch (err) {
-      return local + "\n\nI could not reach the web. Using the offline mind.";
+      queueLearn(userText);
+      return local + "\n\nI could not reach the web. Using the offline mind. I will try again next time the light is green.";
     }
   }
   return local.replace(/\n?Searching…/, "").trim();
@@ -587,7 +693,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "learn.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -650,6 +756,7 @@ function toggleMind() {
   state.mindOnline = !state.mindOnline;
   save();
   renderNet();
+  if (state.mindOnline) harvestOnline();
 }
 
 function render() {
@@ -679,7 +786,7 @@ function renderPanel() {
   document.getElementById("name-input").value = state.profile.name;
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "learn.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
