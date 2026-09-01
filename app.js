@@ -92,15 +92,22 @@ function loadGithub() {
     const parsed = JSON.parse(localStorage.getItem(GH_KEY) || "{}");
     return {
       repo: (parsed.repo || GH_REPO_DEFAULT).trim() || GH_REPO_DEFAULT,
-      token: typeof parsed.token === "string" ? parsed.token : ""
+      token: typeof parsed.token === "string" ? parsed.token : "",
+      hookUrl: typeof parsed.hookUrl === "string" ? parsed.hookUrl : "",
+      hookKey: typeof parsed.hookKey === "string" ? parsed.hookKey : ""
     };
   } catch {
-    return { repo: GH_REPO_DEFAULT, token: "" };
+    return { repo: GH_REPO_DEFAULT, token: "", hookUrl: "", hookKey: "" };
   }
 }
 
 function saveGithub() {
-  localStorage.setItem(GH_KEY, JSON.stringify({ repo: github.repo, token: github.token }));
+  localStorage.setItem(GH_KEY, JSON.stringify({
+    repo: github.repo,
+    token: github.token,
+    hookUrl: github.hookUrl,
+    hookKey: github.hookKey
+  }));
 }
 
 function signal() {
@@ -478,6 +485,71 @@ async function pushEvolutions() {
   return { ok: true, repo: repo };
 }
 
+
+function reconnectPack() {
+  return {
+    kind: "ya-reconnect",
+    tz: "Utah",
+    at: Date.now(),
+    utah: utahNow(),
+    learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
+    evolved: state.evolved || [],
+    functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: !!f.enabled, version: f.version })),
+    pendingLearn: state.pendingLearn || []
+  };
+}
+
+async function pingChief() {
+  const url = (github.hookUrl || "").trim();
+  if (!url) return { ok: false, reason: "hook" };
+  const pack = reconnectPack();
+  const headers = { "Content-Type": "application/json" };
+  const key = (github.hookKey || "").trim();
+  if (key) {
+    headers.Authorization = "Bearer " + key;
+    headers["X-Webhook-Key"] = key;
+  }
+  try {
+    const res = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(pack) });
+    if (res.ok || res.type === "opaque") return { ok: true };
+    return { ok: false, reason: "http " + res.status };
+  } catch (e) {
+    try {
+      await fetch(url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pack) });
+      return { ok: true, opaque: true };
+    } catch (e2) {
+      return { ok: false, reason: "net" };
+    }
+  }
+}
+
+async function pushInbox() {
+  if (!(github.token || "").trim()) return { ok: false, reason: "token" };
+  const repo = (github.repo || GH_REPO_DEFAULT).replace(/^https:\/\/github.com\//, "");
+  const path = "reconnect-inbox.json";
+  const api = "https://api.github.com/repos/" + repo + "/contents/" + path;
+  const body = JSON.stringify(reconnectPack(), null, 2);
+  let sha;
+  try {
+    const get = await fetch(api, { headers: { Authorization: "Bearer " + github.token, Accept: "application/vnd.github+json" } });
+    if (get.ok) sha = (await get.json()).sha;
+  } catch (e) {}
+  const put = await fetch(api, {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer " + github.token,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(Object.assign(
+      { message: "Ya reconnect inbox (Utah) " + new Date().toISOString(), content: utf8ToB64(body) },
+      sha ? { sha: sha } : {}
+    ))
+  });
+  if (!put.ok) return { ok: false, reason: "http " + put.status };
+  return { ok: true };
+}
+
 async function onCommsBack() {
   renderNet();
   try {
@@ -493,10 +565,17 @@ async function onCommsBack() {
   try { pulled = await pullRemoteEvolutions(); } catch (e) {}
   let up = { ok: false };
   try { up = await pushEvolutions(); } catch (e) { up = { ok: false, reason: "error" }; }
+  let inbox = { ok: false };
+  try { inbox = await pushInbox(); } catch (e) {}
+  let chief = { ok: false };
+  try { chief = await pingChief(); } catch (e) {}
   const bits = [];
   if (pulled) bits.push("pulled " + pulled + " evolution(s) from GitHub");
-  if (up && up.ok) bits.push("uploaded mine to " + up.repo);
-  else if (up && up.reason === "token") bits.push("evolutions are on this phone; add a GitHub token in Functions to auto-upload");
+  if (up && up.ok) bits.push("uploaded evolutions to " + up.repo);
+  if (inbox && inbox.ok) bits.push("left a reconnect note on GitHub");
+  if (chief && chief.ok) bits.push("messaged Chief of Staff");
+  else if (chief && chief.reason === "hook") bits.push("paste the Chief of Staff webhook from Routines into Functions so I can message them next time");
+  else if (up && up.reason === "token") bits.push("add a GitHub token in Functions to auto-upload");
   if (bits.length) push("ya", "Comms back. " + bits.join(". ") + ".");
 }
 
@@ -908,6 +987,10 @@ function renderPanel() {
   const tokEl = document.getElementById("gh-token");
   if (repoEl && repoEl !== document.activeElement) repoEl.value = github.repo || GH_REPO_DEFAULT;
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
+  const hookUrlEl = document.getElementById("hook-url");
+  const hookKeyEl = document.getElementById("hook-key");
+  if (hookUrlEl && hookUrlEl !== document.activeElement) hookUrlEl.value = github.hookUrl || "";
+  if (hookKeyEl && hookKeyEl !== document.activeElement) hookKeyEl.value = github.hookKey || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
     const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
@@ -1016,6 +1099,16 @@ if (ghRepoEl) ghRepoEl.addEventListener("change", () => {
 });
 if (ghTokEl) ghTokEl.addEventListener("change", () => {
   github.token = ghTokEl.value.trim();
+  saveGithub();
+});
+const hookUrlEl2 = document.getElementById("hook-url");
+const hookKeyEl2 = document.getElementById("hook-key");
+if (hookUrlEl2) hookUrlEl2.addEventListener("change", () => {
+  github.hookUrl = hookUrlEl2.value.trim();
+  saveGithub();
+});
+if (hookKeyEl2) hookKeyEl2.addEventListener("change", () => {
+  github.hookKey = hookKeyEl2.value.trim();
   saveGithub();
 });
 

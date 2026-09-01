@@ -19,7 +19,7 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=10" />
+  <link rel="stylesheet" href="./styles.css?v=11" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -73,6 +73,12 @@
       <label class="field">GitHub token (stays on this phone; needed to upload evolutions)
         <input id="gh-token" type="password" autocomplete="off" />
       </label>
+      <label class="field">Chief of Staff webhook URL (paste from Routines; stays on this phone)
+        <input id="hook-url" autocomplete="off" />
+      </label>
+      <label class="field">Webhook sender key
+        <input id="hook-key" type="password" autocomplete="off" />
+      </label>
       <div class="downloads">
         <button id="mint-now">Mint Essence</button>
         <button id="dl-txt">Log .txt</button>
@@ -89,6 +95,6 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js?v=10"></script>
+  <script src="./app.js?v=11"></script>
 </body>
 </html>
