@@ -19,7 +19,7 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=15" />
+  <link rel="stylesheet" href="./styles.css?v=18" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -45,6 +45,19 @@
     <div class="sheet">
       <h2>Machine mind</h2>
       <p class="lead">Version grows 0.1 for every 1 GB this mind holds on the device.</p>
+      <div class="mind-stat">
+        <div class="mind-label">This Я</div>
+        <div class="mind-value mind-id" id="account-label">Guest</div>
+        <p class="lead" style="margin: 10px 0 0;">The brain stays on this phone. Login only names it.</p>
+        <p class="lead" id="account-booth" style="margin: 6px 0 0;"></p>
+        <div class="downloads" style="margin-bottom: 0;">
+          <button type="button" id="link-google">Google</button>
+          <button type="button" id="link-apple">Apple</button>
+          <button type="button" id="link-x">X</button>
+          <button type="button" id="unlink-account" hidden>Unlink</button>
+        </div>
+        <div id="google-btn-host" hidden></div>
+      </div>
       <div class="mind-stat">
         <div class="mind-label">Version</div>
         <div class="mind-value" id="mind-version">0.0</div>
@@ -94,6 +107,6 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js?v=17"></script>
+  <script src="./app.js?v=18"></script>
 </body>
 </html>
