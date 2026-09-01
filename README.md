@@ -2,13 +2,19 @@
 
 Public name: **PROJECT Я**  
 App: **Я AIᵐ**  
-Logo: **Я**
+Logo: backwards **R** (Я)
 
-Repo: https://github.com/Tamangkapa-cpu/PROJECTR  
-Paste: `Tamangkapa-cpu/PROJECTR`
+Repo: https://github.com/Tamangkapa-cpu/PROJECTR
 
-Normal GitHub repo. No Origin. No monthly fee.
+Offline from the first launch. The creator mints the Essence of the model. Download any mint again from the vault. No Origin fee. No required network.
 
-Offline from the first launch. The creator mints the Essence. Download it again anytime from the vault.
+## Run
 
-Working v0 also lives at https://github.com/Tamangkapa-cpu/ya-aim
+```bash
+cd web
+python3 -m http.server 8080
+```
+
+Open http://localhost:8080 — or open `web/index.html`.
+
+Say `mint` or tap **Mint Essence**. Say `vault` to list sealed copies.
