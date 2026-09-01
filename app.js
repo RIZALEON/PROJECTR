@@ -12,8 +12,10 @@ const defaultState = () => ({
     createdAt: Date.now()
   },
   memories: [],
+  evolved: [],
   messages: [],
   functions: [
+    { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
     { id: "memory.recall", name: "Recall facts", enabled: true, version: "0.0.1" },
@@ -43,6 +45,7 @@ function load() {
       ...base,
       ...parsed,
       mindOnline: !!parsed.mindOnline,
+      evolved: Array.isArray(parsed.evolved) ? parsed.evolved : [],
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -53,7 +56,11 @@ function load() {
 
 function mergeFunctions(base, saved) {
   const map = new Map(saved.map((f) => [f.id, f]));
-  return base.map((f) => ({ ...f, ...map.get(f.id) }));
+  const merged = base.map((f) => ({ ...f, ...map.get(f.id) }));
+  for (const f of saved) {
+    if (!merged.some((x) => x.id === f.id)) merged.push(f);
+  }
+  return merged;
 }
 
 function save() {
@@ -196,6 +203,79 @@ function recall(query) {
   return scored.filter((s) => s.score >= 2).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
 }
 
+
+function slugFn(name) {
+  return "evolved." + String(name || "skill").toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "").slice(0, 40);
+}
+
+function registerEvolved(name, trigger, action) {
+  if (!fnEnabled("evolve.self")) return null;
+  if (nuclearBlocked(name + " " + trigger + " " + action)) return "blocked";
+  const id = slugFn(name || trigger);
+  const skill = {
+    id: id,
+    name: name || trigger,
+    trigger: String(trigger || "").trim(),
+    action: String(action || "").trim(),
+    enabled: true,
+    version: "0.0",
+    evolvedAt: Date.now(),
+    offline: !state.mindOnline
+  };
+  state.evolved = (state.evolved || []).filter((s) => s.id !== id);
+  state.evolved.unshift(skill);
+  if (!state.functions.some((f) => f.id === id)) {
+    state.functions.push({ id: id, name: "Evolved: " + skill.name, enabled: true, version: "0.0" });
+  }
+  remember("Evolved function " + skill.name + ": when \"" + skill.trigger + "\" → " + skill.action);
+  save();
+  return skill;
+}
+
+function matchEvolved(userText) {
+  const q = userText.toLowerCase();
+  const list = state.evolved || [];
+  for (const s of list) {
+    if (!s.trigger) continue;
+    if (q.includes(s.trigger.toLowerCase())) return s;
+  }
+  return null;
+}
+
+function tryEvolveCommand(userText) {
+  const t = userText.trim();
+  const q = t.toLowerCase();
+  if (q === "evolve" || q === "function 0" || q === "foundational function") {
+    return "Function 0 is Evolve. I can grow new functions on or offline, by command or conversation. Say: add function NAME: what it does. Or: when I say X, you Y. I will not replace myself. I will not help with nuclear weapons.";
+  }
+  let add = t.match(/^evolve(?:\s+yourself)?[:\s]+add function\s+([^:]+):\s*(.+)$/i)
+    || t.match(/^add function\s+([^:]+):\s*(.+)$/i)
+    || t.match(/^evolve[:\s]+(.+)$/i);
+  if (add && !/^when i say/i.test(t)) {
+    if (add.length === 2 && /^evolve/i.test(t) && !/^evolve[:\s]+add function/i.test(t) && !/^add function/i.test(t)) {
+      const skill = registerEvolved(add[1].slice(0, 40), add[1], add[1]);
+      if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
+      if (!skill) return "Evolve is locked off, which should not happen.";
+      return "Evolved offline. New function: " + skill.name + ". It is in the registry and the Essence. Say it again anytime.";
+    }
+    const name = (add[1] || "").trim();
+    const action = (add[2] || add[1] || "").trim();
+    if (name && action) {
+      const skill = registerEvolved(name, name, action);
+      if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
+      return "Function 0 ran " + (state.mindOnline ? "online" : "offline") + ". Added: " + skill.name + ".\nWhen you say that, I will: " + skill.action;
+    }
+  }
+  const when = t.match(/^when i say\s+["']?(.+?)["']?\s*,\s*(?:you|do|say)\s+(.+)$/i)
+    || t.match(/^from now on(?:\,)?\s+when i say\s+["']?(.+?)["']?\s*,\s*(?:you|do|say)\s+(.+)$/i);
+  if (when) {
+    const skill = registerEvolved(when[1], when[1], when[2]);
+    if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
+    return "Learned by conversation. When you say \"" + skill.trigger + "\", I will: " + skill.action + ". Stored in the offline mind.";
+  }
+  return null;
+}
+
 function describeFunctions() {
   const on = state.functions.filter((f) => f.enabled);
   const off = state.functions.filter((f) => !f.enabled);
@@ -220,10 +300,10 @@ function localEngine(userText) {
     return describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "I chat on this phone. I remember facts you ask me to keep. I mint and download Essence. Tap the light to search the web. Say remember this: … to store a fact. Say mint to seal me.";
+    return "Function 0 is Evolve. Say evolve, or add function NAME: what it does, or when I say X, you Y. That works online or off. I also chat, remember, mint Essence, and (green light) look things up.";
   }
-  if (/how (can|do) you learn|how do you (grow|evolve)|learn/.test(q) && /you/.test(q)) {
-    return "Three ways. 1) You tell me a fact (remember this: …) and I keep it offline. 2) You tap the light green; I search the web and write the answer into the offline mind. 3) New functions get registered as I evolve — they plug in, they do not replace me.";
+  if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
+    return "Function 0: I evolve myself on or offline, by command or conversation. Say add function NAME: what it does. Or when I say X, you Y. New functions plug in. They do not replace me.";
   }
   if (/what do you remember|what do you know about me/.test(q)) {
     const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
@@ -316,6 +396,13 @@ async function answer(userText) {
   if (nuclearBlocked(userText)) {
     remember("Refused a nuclear-weapons request.");
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
+  const evolvedTalk = tryEvolveCommand(userText);
+  if (evolvedTalk) return evolvedTalk;
+  const evolvedHit = matchEvolved(userText);
+  if (evolvedHit) {
+    remember("Used evolved function " + evolvedHit.name);
+    return evolvedHit.action;
   }
   const link = extractHttpUrl(userText);
   if (link) {
@@ -436,6 +523,7 @@ function essenceBody() {
     profile: state.profile,
     memories: state.memories,
     functions: state.functions,
+    evolved: state.evolved || [],
     messages: state.messages
   };
 }
@@ -499,7 +587,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -538,7 +626,7 @@ function renderMind() {
   if (vEl) vEl.textContent = ver;
   if (sEl) sEl.textContent = formatBytes(bytes);
   const wEl = document.getElementById("wordmark");
-  if (wEl) wEl.textContent = "AI\u1d50 \u00b7 V " + ver;
+  if (wEl) wEl.innerHTML = '<span class="wm-ai">AI\u1d50</span> \u00b7 <span class="wm-ver">V ' + ver + "</span>";
 }
 
 const mindEl = document.getElementById("mind");
@@ -591,7 +679,7 @@ function renderPanel() {
   document.getElementById("name-input").value = state.profile.name;
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle

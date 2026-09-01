@@ -18,11 +18,12 @@
 html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--ui); -webkit-font-smoothing: antialiased; }
 body { display: flex; flex-direction: column; max-width: 720px; margin: 0 auto; min-height: 100dvh; min-height: -webkit-fill-available; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: calc(6px + max(env(safe-area-inset-top, 0px), 36px)) 10px 8px; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
-.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 148px; overflow: visible; }
 .logo { font-family: var(--font); font-size: 22px; line-height: 1; letter-spacing: -0.04em; display: flex; align-items: center; }
 .logo img { width: 28px; height: 28px; border-radius: 8px; display: block; }
-.wordmark { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
-.status { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; padding: 10px 12px; min-height: 44px; border-radius: 999px; flex: 1; }
+.wm-ver { letter-spacing: 0.06em; font-weight: 600; color: var(--ink); }
+.wordmark { font-size: 12px; letter-spacing: 0.02em; text-transform: none; color: var(--muted); white-space: nowrap; overflow: visible; font-variant-numeric: tabular-nums; }
+.status { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; padding: 10px 8px; min-height: 44px; border-radius: 999px; flex: 0 1 auto; }
 .status:active { background: var(--bg-2); }
 .dot.online { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
