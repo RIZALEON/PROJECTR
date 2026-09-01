@@ -1,6 +1,9 @@
 const STORE_KEY = "ya-aim-v0";
 const CREATOR_KEY = "ya-aim-creator";
 const VAULT_KEY = "ya-aim-vault";
+const GH_KEY = "ya-aim-github";
+const UTAH_TZ = "America/Denver";
+const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 
 const defaultState = () => ({
   profile: { name: "You", yaName: "Я" },
@@ -26,6 +29,7 @@ const defaultState = () => ({
     { id: "model.local", name: "On-device model", enabled: false, version: "stub" },
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
+    { id: "sync.github", name: "Upload evolutions when GitHub comms return", enabled: true, version: "0.0" },
     { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.2.0" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
@@ -36,6 +40,7 @@ const defaultState = () => ({
 let state = load();
 let creator = null;
 let vault = loadVault();
+let github = loadGithub();
 
 function load() {
   try {
@@ -80,6 +85,22 @@ function loadVault() {
 
 function saveVault() {
   localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+}
+
+function loadGithub() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(GH_KEY) || "{}");
+    return {
+      repo: (parsed.repo || GH_REPO_DEFAULT).trim() || GH_REPO_DEFAULT,
+      token: typeof parsed.token === "string" ? parsed.token : ""
+    };
+  } catch {
+    return { repo: GH_REPO_DEFAULT, token: "" };
+  }
+}
+
+function saveGithub() {
+  localStorage.setItem(GH_KEY, JSON.stringify({ repo: github.repo, token: github.token }));
 }
 
 function signal() {
@@ -301,11 +322,17 @@ function localEngine(userText) {
     return "I am Я AI\u1d50. A local mind on this device. You mint my Essence. I am anti-nuclear. I can learn facts you tell me, and when the light is green I can look things up.";
   }
   if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
-    const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Denver" });
+    const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: UTAH_TZ });
     return "I was first made on this device on " + made + ". That date lives in the offline mind. I am not from a cloud.";
   }
   if (/smarter offline|every ?time you go online|when you go online/.test(q)) {
     return "Locked. Every time the light is green I look things up and write them into the offline mind. Questions I could not answer while off get fetched when you tap online. I get smarter here, not in a cloud.";
+  }
+  if (/\butah\b/.test(q) && /\b(time|date|clock)\b/.test(q)) {
+    return "Clock is always Utah. It is " + utahNow() + ".";
+  }
+  if (/github|comms|reconnect|re-?establish/.test(q) && /evol/.test(q)) {
+    return "When comms return I evolve from GitHub, then upload my evolutions to " + (github.repo || GH_REPO_DEFAULT) + ". A token in Functions is required to write. Pull works on the public repo with no token.";
   }
   if (/what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
     return describeFunctions();
@@ -371,12 +398,105 @@ async function fetchWorldDate() {
       const iso = j.datetime || j.dateTime || (j.date && j.time ? j.date + "T" + j.time : null);
       const d = iso ? new Date(iso) : null;
       if (d && !isNaN(d)) {
-        const text = d.toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Denver" });
-        return { text, source: url.includes("worldtime") ? "worldtimeapi.org" : "timeapi.io" };
+        const text = d.toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: UTAH_TZ });
+        return { text, source: (url.includes("worldtime") ? "worldtimeapi.org" : "timeapi.io") + " · Utah" };
       }
     } catch (e) {}
   }
   return null;
+}
+
+
+function utf8ToB64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function evolutionPack() {
+  return {
+    kind: "ya-evolutions",
+    tz: "Utah",
+    at: Date.now(),
+    evolved: state.evolved || [],
+    functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: f.enabled, version: f.version }))
+  };
+}
+
+async function pullRemoteEvolutions() {
+  const repo = (github.repo || GH_REPO_DEFAULT).replace(/^https:\/\/github.com\//, "");
+  const url = "https://raw.githubusercontent.com/" + repo + "/main/evolutions.json?t=" + Date.now();
+  const res = await fetch(url);
+  if (!res.ok) return 0;
+  const data = await res.json();
+  if (!data || data.kind !== "ya-evolutions") return 0;
+  let n = 0;
+  state.evolved = state.evolved || [];
+  for (const s of data.evolved || []) {
+    if (!s || !s.id) continue;
+    if (nuclearBlocked(JSON.stringify(s))) continue;
+    if (state.evolved.some((x) => x.id === s.id)) continue;
+    state.evolved.unshift(s);
+    if (!state.functions.some((f) => f.id === s.id)) {
+      state.functions.push({ id: s.id, name: "Evolved: " + (s.name || s.id), enabled: true, version: s.version || "0.0" });
+    }
+    n += 1;
+  }
+  if (n) save();
+  return n;
+}
+
+async function pushEvolutions() {
+  if (!fnEnabled("sync.github")) return { ok: false, reason: "off" };
+  const token = (github.token || "").trim();
+  if (!token) return { ok: false, reason: "token" };
+  const repo = (github.repo || GH_REPO_DEFAULT).replace(/^https:\/\/github.com\//, "");
+  const path = "evolutions.json";
+  const api = "https://api.github.com/repos/" + repo + "/contents/" + path;
+  const body = JSON.stringify(evolutionPack(), null, 2);
+  let sha;
+  try {
+    const get = await fetch(api, { headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" } });
+    if (get.ok) {
+      const j = await get.json();
+      sha = j.sha;
+    }
+  } catch (e) {}
+  const put = await fetch(api, {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer " + token,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(Object.assign(
+      { message: "Ya evolutions (Utah) " + new Date().toISOString(), content: utf8ToB64(body) },
+      sha ? { sha: sha } : {}
+    ))
+  });
+  if (!put.ok) return { ok: false, reason: "http " + put.status };
+  remember("Uploaded evolutions to GitHub " + repo + " when comms returned.");
+  return { ok: true, repo: repo };
+}
+
+async function onCommsBack() {
+  renderNet();
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
+    }
+  } catch (e) {}
+  if (state.mindOnline) {
+    try { await harvestOnline(); } catch (e) {}
+  }
+  let pulled = 0;
+  try { pulled = await pullRemoteEvolutions(); } catch (e) {}
+  let up = { ok: false };
+  try { up = await pushEvolutions(); } catch (e) { up = { ok: false, reason: "error" }; }
+  const bits = [];
+  if (pulled) bits.push("pulled " + pulled + " evolution(s) from GitHub");
+  if (up && up.ok) bits.push("uploaded mine to " + up.repo);
+  else if (up && up.reason === "token") bits.push("evolutions are on this phone; add a GitHub token in Functions to auto-upload");
+  if (bits.length) push("ya", "Comms back. " + bits.join(". ") + ".");
 }
 
 function extractHttpUrl(text) {
@@ -445,7 +565,7 @@ async function harvestOnline() {
       if (isDateAsk(q.toLowerCase())) {
         const world = await fetchWorldDate();
         if (world) {
-          remember("Today (online clock): " + world.text);
+          remember("Today (Utah clock): " + world.text);
           learned.push("today's date");
         }
         continue;
@@ -466,7 +586,7 @@ function foldQ(q) {
   return String(q || "").toLowerCase().replace(/[\u2018\u2019\u201B`´]/g, "'");
 }
 
-function denverNow() {
+function utahNow() {
   return new Date().toLocaleString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -474,7 +594,7 @@ function denverNow() {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/Denver"
+    timeZone: UTAH_TZ
   });
 }
 
@@ -527,18 +647,18 @@ async function answer(userText) {
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
   if (isDateAsk(q)) {
-    const phone = denverNow();
+    const phone = utahNow();
     if (mindWantsWeb()) {
       const world = await fetchWorldDate();
       if (world) {
-        remember("Today (online clock): " + world.text);
-        return "It is " + world.text + " (America/Denver).\nChecked online (" + world.source + ") and saved in the offline mind.";
+        remember("Today (Utah clock): " + world.text);
+        return "It is " + world.text + " (Utah).\nChecked online (" + world.source + ") and saved in the offline mind.";
       }
-      remember("Device clock (America/Denver): " + phone);
-      return "Online clock did not answer. It is " + phone + " on this device (America/Denver).";
+      remember("Device clock (Utah): " + phone);
+      return "Online clock did not answer. It is " + phone + " on this device (Utah).";
     }
-    remember("Device clock (America/Denver): " + phone);
-    return "It is " + phone + " (America/Denver, this device).";
+    remember("Device clock (Utah): " + phone);
+    return "It is " + phone + " (Utah, this device).";
   }
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
@@ -693,7 +813,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "learn.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -784,9 +904,13 @@ function escapeHtml(s) {
 
 function renderPanel() {
   document.getElementById("name-input").value = state.profile.name;
+  const repoEl = document.getElementById("gh-repo");
+  const tokEl = document.getElementById("gh-token");
+  if (repoEl && repoEl !== document.activeElement) repoEl.value = github.repo || GH_REPO_DEFAULT;
+  if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "learn.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
@@ -884,13 +1008,25 @@ document.getElementById("mint-now").addEventListener("click", () => mintAndDownl
 document.getElementById("clear-chat").addEventListener("click", clearChat);
 document.getElementById("reset-all").addEventListener("click", resetWorkingCopy);
 
+const ghRepoEl = document.getElementById("gh-repo");
+const ghTokEl = document.getElementById("gh-token");
+if (ghRepoEl) ghRepoEl.addEventListener("change", () => {
+  github.repo = ghRepoEl.value.trim() || GH_REPO_DEFAULT;
+  saveGithub();
+});
+if (ghTokEl) ghTokEl.addEventListener("change", () => {
+  github.token = ghTokEl.value.trim();
+  saveGithub();
+});
+
+
 const statusEl = document.querySelector(".status");
 if (statusEl) {
   statusEl.setAttribute("role", "button");
   statusEl.title = "Tap to take the mind online or offline";
   statusEl.addEventListener("click", toggleMind);
 }
-window.addEventListener("online", renderNet);
+window.addEventListener("online", () => { onCommsBack(); });
 window.addEventListener("offline", renderNet);
 
 if ("serviceWorker" in navigator) {
