@@ -377,6 +377,7 @@ function localEngine(userText) {
 }
 
 async function webSearch(query) {
+  if (!worthLearning(query)) return null;
   const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(query);
   const res = await fetch(api);
   if (!res.ok) throw new Error("search failed");
@@ -628,41 +629,32 @@ function looksLikeQuestion(text) {
   return /^(who|what|when|where|why|how|which|is|are|can|does|do|when were)\b/.test(q);
 }
 
+function worthLearning(text) {
+  const s = foldQ(text).replace(/[?!.]+/g, " ").trim();
+  if (s.length < 12) return false;
+  if (/^(who|what|when|where|why|how|which|is|are|can|does|do)(\s+is\s+it)?$/.test(s)) return false;
+  if (isDateAsk(s)) return false;
+  return true;
+}
+
 async function harvestOnline() {
   if (!state.mindOnline || !signal()) return;
   const seen = new Set();
   const queue = [];
   for (const item of (state.pendingLearn || [])) {
+    if (!worthLearning(item)) continue;
     const k = String(item).toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
     queue.push(item);
   }
-  for (const m of (state.messages || []).slice(-16)) {
-    if (m.role !== "user") continue;
-    if (isDateAsk(m.text)) continue;
-    if (!looksLikeQuestion(m.text)) continue;
-    const k = m.text.trim().toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    queue.push(m.text.trim());
-  }
   const take = queue.slice(0, 3);
   const learned = [];
   for (const q of take) {
     if (nuclearBlocked(q)) continue;
-    if (isDateAsk(q)) continue;
     try {
-      if (isDateAsk(q.toLowerCase())) {
-        const world = await fetchWorldDate();
-        if (world) {
-          remember("Today (Utah clock): " + world.text);
-          learned.push("today's date");
-        }
-        continue;
-      }
       const web = await webSearch(q);
-      if (web) learned.push(web.title);
+      if (web && web.title && !/^(why|dating)$/i.test(web.title)) learned.push(web.title);
     } catch (e) {}
   }
   state.pendingLearn = [];
