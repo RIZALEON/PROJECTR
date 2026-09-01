@@ -504,6 +504,8 @@ function renderMind() {
   const sEl = document.getElementById("mind-size");
   if (vEl) vEl.textContent = ver;
   if (sEl) sEl.textContent = formatBytes(bytes);
+  const wEl = document.getElementById("wordmark");
+  if (wEl) wEl.textContent = "AI\u1d50 \u00b7 V " + ver;
 }
 
 const mindEl = document.getElementById("mind");
