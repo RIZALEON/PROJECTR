@@ -187,8 +187,11 @@ function localEngine(userText) {
   const q = userText.toLowerCase();
   const hits = recall(userText);
 
+  if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
+    return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
+  }
   if (/^(hi|hello|hey|yo|good (morning|evening|afternoon))\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. I run on this device. Network is optional.`;
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. Anti-nuclear. I run on this device. Network is optional.`;
   }
   if (/who are you|what are you|your name/.test(q)) {
     return "I am Я AI\u1d50. Offline first. The Essence of this model is minted by you, the creator, and can be downloaded again at any time.";
@@ -400,7 +403,13 @@ function render() {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&", "<": "<", ">": ">", '"': """, "'": "&#39;" }[c]));
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
 }
 
 function renderPanel() {
