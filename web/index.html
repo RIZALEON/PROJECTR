@@ -4,26 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Я" />
   <meta name="theme-color" content="#0b0b0c" />
   <title>Я AIᵐ</title>
   <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="./icon.svg" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180" />
+  <meta property="og:title" content="Я AIᵐ" />
+  <meta property="og:description" content="Offline-first conversational AI. Memory. Downloadable logs. Evolves." />
+  <meta property="og:image" content="./logo.jpeg" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:image" content="./logo.jpeg" />
+  <link rel="stylesheet" href="./styles.css?v=15" />
 </head>
 <body>
+  <div id="sa-top" class="sa-top" aria-hidden="true"></div>
   <header>
     <div class="brand">
-      <div class="logo">Я</div>
-      <div class="wordmark">AIᵐ · v0</div>
+      <div class="logo"><img src="./icon-192.png" alt="Я" width="40" height="40" /></div>
+      <div class="wordmark" id="wordmark"><span class="wm-ai">AIᵐ</span> · <span class="wm-ver">V 0.0</span></div>
     </div>
     <div class="status">
       <span class="dot" id="net-dot"></span>
       <span id="net-label">local engine</span>
     </div>
     <div class="actions">
-      <button class="icon" id="open-panel" title="Я">Я</button>
+      <button class="icon" id="open-mind" title="Machine mind"><img src="./brain.svg" alt="Machine mind" width="32" height="32" /></button>
     </div>
   </header>
   <main id="log"></main>
@@ -31,6 +41,28 @@
     <input id="input" autocomplete="off" placeholder="Speak to Я" />
     <button type="submit">Send</button>
   </form>
+  <aside class="panel" id="mind">
+    <div class="sheet">
+      <h2>Machine mind</h2>
+      <p class="lead">Version grows 0.1 for every 1 GB this mind holds on the device.</p>
+      <div class="mind-stat">
+        <div class="mind-label">Version</div>
+        <div class="mind-value" id="mind-version">0.0</div>
+      </div>
+      <div class="mind-stat">
+        <div class="mind-label">Mind size</div>
+        <div class="mind-size-row">
+          <div class="mind-value" id="mind-size">0 B</div>
+          <button type="button" class="mind-dl" id="dl-mind" title="Download this mind as text">
+            <img src="./mind-dl.svg" alt="Download mind" width="40" height="40" />
+          </button>
+        </div>
+      </div>
+      <div class="downloads">
+        <button id="open-panel">Functions &amp; Essence</button>
+      </div>
+    </div>
+  </aside>
   <aside class="panel" id="panel">
     <div class="sheet">
       <h2>Я</h2>
@@ -39,6 +71,13 @@
         <input id="name-input" />
       </label>
       <p class="lead">Creator key <span id="creator-id">…</span> — generated on this device, never sent.</p>
+      <p class="lead">Clock is always Utah. When comms return I message Chief of Staff automatically with what I learned and functions to add or update.</p>
+      <label class="field">GitHub repo
+        <input id="gh-repo" autocomplete="off" />
+      </label>
+      <label class="field">GitHub token (optional; only to write evolutions into the repo)
+        <input id="gh-token" type="password" autocomplete="off" />
+      </label>
       <div class="downloads">
         <button id="mint-now">Mint Essence</button>
         <button id="dl-txt">Log .txt</button>
@@ -55,6 +94,6 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=17"></script>
 </body>
 </html>
