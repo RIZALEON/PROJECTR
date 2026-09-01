@@ -65,3 +65,6 @@ label.field input { width: 100%; margin-top: 6px; background: var(--bg); border:
 .mind-dl { background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; width: 44px; height: 44px; min-width: 44px; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .mind-dl img { width: 40px; height: 40px; display: block; }
 .mind-dl:active { background: var(--bg); }
+
+.mind-id { font-size: 22px; line-height: 1.25; }
+#google-btn-host { margin-top: 10px; }

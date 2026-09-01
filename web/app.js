@@ -6,6 +6,130 @@ const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
+const ACCOUNT_KEY = "ya-aim-account";
+const OAUTH_LS = "ya-aim-oauth";
+const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY];
+const YA_OAUTH = {
+  googleClientId: "",
+  appleClientId: "",
+  appleRedirectURI: "https://rizaleon.github.io/PROJECTR/",
+  xClientId: ""
+};
+
+function oauthConfig() {
+  try {
+    const extra = JSON.parse(localStorage.getItem(OAUTH_LS) || "{}") || {};
+    return {
+      googleClientId: String(extra.googleClientId || YA_OAUTH.googleClientId || "").trim(),
+      appleClientId: String(extra.appleClientId || YA_OAUTH.appleClientId || "").trim(),
+      appleRedirectURI: String(extra.appleRedirectURI || YA_OAUTH.appleRedirectURI || "").trim(),
+      xClientId: String(extra.xClientId || YA_OAUTH.xClientId || "").trim()
+    };
+  } catch (e) {
+    return { ...YA_OAUTH };
+  }
+}
+
+function guestAccount() {
+  return { provider: "guest", sub: "", label: "Guest", linkedAt: 0 };
+}
+
+function loadAccount() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null");
+    if (!parsed || !parsed.provider) return guestAccount();
+    const provider = parsed.provider === "google" || parsed.provider === "apple" || parsed.provider === "x"
+      ? parsed.provider
+      : "guest";
+    if (provider === "guest") return guestAccount();
+    return {
+      provider,
+      sub: String(parsed.sub || ""),
+      label: String(parsed.label || "Guest"),
+      picture: parsed.picture || undefined,
+      linkedAt: Number(parsed.linkedAt) || Date.now(),
+      email: parsed.email ? String(parsed.email) : undefined
+    };
+  } catch (e) {
+    return guestAccount();
+  }
+}
+
+function saveAccount() {
+  const rec = {
+    provider: account.provider,
+    sub: account.sub || "",
+    label: account.label || "Guest",
+    linkedAt: account.linkedAt || Date.now()
+  };
+  if (account.picture) rec.picture = account.picture;
+  if (account.email) rec.email = account.email;
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(rec));
+}
+
+function nsSuffix(acc) {
+  if (!acc || acc.provider === "guest" || !acc.sub) return "";
+  return "::" + acc.provider + ":" + acc.sub;
+}
+
+function mindKey(base, acc) {
+  return base + nsSuffix(acc || account);
+}
+
+function nameplate() {
+  return {
+    provider: account.provider || "guest",
+    sub: account.sub || "",
+    label: account.label || "Guest"
+  };
+}
+
+function anyNamespacedMind() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf(STORE_KEY + "::") === 0) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function mindExistsFor(provider, sub) {
+  return localStorage.getItem(STORE_KEY + "::" + provider + ":" + sub) != null;
+}
+
+function copyGuestKeysTo(suffix) {
+  MIND_BASES.forEach((b) => {
+    const v = localStorage.getItem(b);
+    if (v != null) localStorage.setItem(b + suffix, v);
+  });
+}
+
+function persistActiveMind() {
+  save();
+  saveVault();
+  saveGithub();
+  if (creator && creator.privateJwk) {
+    localStorage.setItem(mindKey(CREATOR_KEY), JSON.stringify({
+      id: creator.id,
+      createdAt: creator.createdAt,
+      publicJwk: creator.publicJwk,
+      privateJwk: creator.privateJwk
+    }));
+  }
+}
+
+function hydrateActiveMind() {
+  state = load();
+  try { scrubWikiJunk(); } catch (e) {}
+  vault = loadVault();
+  github = loadGithub();
+  creator = null;
+  ensureCreator().then(() => { renderPanel(); }).catch(() => {});
+  render();
+  renderPanel();
+  renderMind();
+}
 
 const defaultState = () => ({
   profile: { name: "You", yaName: "Я" },
@@ -24,6 +148,7 @@ const defaultState = () => ({
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
+    { id: "account.link", name: "Link account (Google, Apple, or X)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
     { id: "memory.recall", name: "Recall facts", enabled: true, version: "0.0.1" },
@@ -41,6 +166,7 @@ const defaultState = () => ({
   ]
 });
 
+let account = loadAccount();
 let state = load();
 try { scrubWikiJunk(); } catch (e) {}
 let creator = null;
@@ -49,7 +175,7 @@ let github = loadGithub();
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = localStorage.getItem(mindKey(STORE_KEY));
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const base = defaultState();
@@ -79,24 +205,24 @@ function mergeFunctions(base, saved) {
 }
 
 function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  localStorage.setItem(mindKey(STORE_KEY), JSON.stringify(state));
 }
 
 function loadVault() {
   try {
-    return JSON.parse(localStorage.getItem(VAULT_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(mindKey(VAULT_KEY)) || "[]");
   } catch {
     return [];
   }
 }
 
 function saveVault() {
-  localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+  localStorage.setItem(mindKey(VAULT_KEY), JSON.stringify(vault));
 }
 
 function loadGithub() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(GH_KEY) || "{}");
+    const parsed = JSON.parse(localStorage.getItem(mindKey(GH_KEY)) || "{}");
     return {
       repo: (parsed.repo || GH_REPO_DEFAULT).trim() || GH_REPO_DEFAULT,
       token: typeof parsed.token === "string" ? parsed.token : "",
@@ -109,7 +235,7 @@ function loadGithub() {
 }
 
 function saveGithub() {
-  localStorage.setItem(GH_KEY, JSON.stringify({
+  localStorage.setItem(mindKey(GH_KEY), JSON.stringify({
     repo: github.repo,
     token: github.token,
     hookUrl: github.hookUrl,
@@ -150,7 +276,7 @@ function b64ToBuf(b64) {
 
 async function ensureCreator() {
   if (creator && creator.privateKey) return creator;
-  const saved = localStorage.getItem(CREATOR_KEY);
+  const saved = localStorage.getItem(mindKey(CREATOR_KEY));
   if (saved) {
     const parsed = JSON.parse(saved);
     const privateKey = await crypto.subtle.importKey(
@@ -183,7 +309,7 @@ async function ensureCreator() {
     publicJwk,
     privateJwk
   };
-  localStorage.setItem(CREATOR_KEY, JSON.stringify(record));
+  localStorage.setItem(mindKey(CREATOR_KEY), JSON.stringify(record));
   creator = { ...record, privateKey: pair.privateKey, publicKey: pair.publicKey };
   return creator;
 }
@@ -565,6 +691,7 @@ function reconnectPack() {
     tz: "Utah",
     at: Date.now(),
     utah: utahNow(),
+    account: nameplate(),
     learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
     evolved: state.evolved || [],
     functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: !!f.enabled, version: f.version })),
@@ -586,7 +713,7 @@ async function pingChief() {
   if (!signal()) return { ok: false, reason: "offline" };
   const pack = reconnectPack();
   const sig = pingSignature(pack);
-  if (localStorage.getItem(PING_KEY) === sig) return { ok: true, skipped: true };
+  if (localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true };
   const body = JSON.stringify(pack);
   try {
     const res = await fetch(CHIEF_INBOX, {
@@ -595,13 +722,13 @@ async function pingChief() {
       body: body
     });
     if (res.ok) {
-      localStorage.setItem(PING_KEY, sig);
+      localStorage.setItem(mindKey(PING_KEY), sig);
       return { ok: true };
     }
   } catch (e) {}
   try {
     await fetch(CHIEF_INBOX, { method: "POST", mode: "no-cors", body: body });
-    localStorage.setItem(PING_KEY, sig);
+    localStorage.setItem(mindKey(PING_KEY), sig);
     return { ok: true, opaque: true };
   } catch (e2) {
     return { ok: false, reason: "net" };
@@ -1058,6 +1185,7 @@ function essenceBody() {
       createdAt: state.model.createdAt
     },
     profile: state.profile,
+    account: nameplate(),
     memories: state.memories,
     functions: state.functions,
     evolved: state.evolved || [],
@@ -1124,7 +1252,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -1133,11 +1261,20 @@ function toggleFn(id) {
 
 function mindBytes() {
   let n = 0;
+  const suffix = nsSuffix(account);
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
+      if (!k) continue;
+      let mine = false;
+      if (suffix) {
+        mine = MIND_BASES.some((b) => k === b + suffix);
+      } else {
+        mine = MIND_BASES.some((b) => k === b);
+      }
+      if (!mine) continue;
       const v = localStorage.getItem(k) || "";
-      n += (k ? k.length : 0) + v.length;
+      n += k.length + v.length;
     }
   } catch (e) {}
   return n * 2;
@@ -1164,7 +1301,292 @@ function renderMind() {
   if (sEl) sEl.textContent = formatBytes(bytes);
   const wEl = document.getElementById("wordmark");
   if (wEl) wEl.innerHTML = '<span class="wm-ai">AI\u1d50</span> \u00b7 <span class="wm-ver">V ' + ver + "</span>";
+  renderAccount();
 }
+
+function providerTitle(p) {
+  if (p === "google") return "Google";
+  if (p === "apple") return "Apple";
+  if (p === "x") return "X";
+  return "Guest";
+}
+
+function renderAccount() {
+  const lab = document.getElementById("account-label");
+  const unlink = document.getElementById("unlink-account");
+  const linked = account && account.provider && account.provider !== "guest" && account.sub;
+  if (lab) {
+    lab.textContent = linked
+      ? ("Linked · " + providerTitle(account.provider) + " · " + (account.label || providerTitle(account.provider)))
+      : "Guest";
+  }
+  if (unlink) unlink.hidden = !linked;
+}
+
+function accountNote(msg) {
+  const el = document.getElementById("account-booth");
+  if (el) el.textContent = msg;
+}
+
+function boothClosed(provider) {
+  const msg = "Login booth for " + provider + " is not open yet. Your Я still lives on this phone as a guest.";
+  accountNote(msg);
+  push("ya", msg);
+}
+
+function finishLink(next, reason) {
+  const prev = account;
+  persistActiveMind();
+  const suffix = "::" + next.provider + ":" + next.sub;
+  const existed = mindExistsFor(next.provider, next.sub);
+  const first = !anyNamespacedMind();
+  account = {
+    provider: next.provider,
+    sub: String(next.sub),
+    label: String(next.label || providerTitle(next.provider)),
+    picture: next.picture || undefined,
+    linkedAt: next.linkedAt || Date.now()
+  };
+  if (next.email) account.email = String(next.email);
+  saveAccount();
+  if (existed) {
+    hydrateActiveMind();
+  } else if (first && prev && prev.provider === "guest") {
+    copyGuestKeysTo(suffix);
+    persistActiveMind();
+    hydrateActiveMind();
+  } else {
+    state = defaultState();
+    vault = [];
+    github = { repo: GH_REPO_DEFAULT, token: "", hookUrl: "", hookKey: "" };
+    creator = null;
+    try { localStorage.removeItem(mindKey(PING_KEY)); } catch (e) {}
+    persistActiveMind();
+    hydrateActiveMind();
+  }
+  const rec = {
+    at: Date.now(),
+    utah: utahNow(),
+    reason: reason || ("linked " + providerTitle(account.provider)),
+    locations: pingLocations(),
+    bytes: mindBytes()
+  };
+  recordPing(rec);
+  if (signal()) pingChief().catch(function () {});
+  accountNote("The brain stays on this phone. Login only names it.");
+  push("ya", "Linked · " + providerTitle(account.provider) + " · " + account.label + ". The brain stays on this phone.");
+}
+
+function unlinkAccount() {
+  if (!account || account.provider === "guest") return;
+  persistActiveMind();
+  account = guestAccount();
+  saveAccount();
+  hydrateActiveMind();
+  accountNote("Unlinked. That mind is still on this phone. You are viewing Guest.");
+}
+
+function loadScriptOnce(src, id) {
+  return new Promise(function (resolve, reject) {
+    if (id && document.getElementById(id)) { resolve(); return; }
+    const el = document.createElement("script");
+    if (id) el.id = id;
+    el.src = src;
+    el.async = true;
+    el.onload = function () { resolve(); };
+    el.onerror = function () { reject(new Error("script")); };
+    document.head.appendChild(el);
+  });
+}
+
+function decodeJwtPayload(jwt) {
+  try {
+    const part = String(jwt || "").split(".")[1];
+    if (!part) return null;
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64 + "===".slice((b64.length + 3) % 4);
+    return JSON.parse(decodeURIComponent(escape(atob(pad))));
+  } catch (e) {
+    return null;
+  }
+}
+
+function b64urlBytes(buf) {
+  return bufToB64(buf).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomB64url(n) {
+  const a = new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return b64urlBytes(a.buffer);
+}
+
+async function pkceChallenge(verifier) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return b64urlBytes(digest);
+}
+
+function oauthRedirectURI() {
+  const cfg = oauthConfig();
+  return cfg.appleRedirectURI || (location.origin + location.pathname);
+}
+
+function startGoogleLink() {
+  const cfg = oauthConfig();
+  if (!cfg.googleClientId) { boothClosed("Google"); return; }
+  loadScriptOnce("https://accounts.google.com/gsi/client", "ya-gsi").then(function () {
+    if (!window.google || !google.accounts || !google.accounts.id) {
+      accountNote("Google login booth did not load.");
+      return;
+    }
+    google.accounts.id.initialize({
+      client_id: cfg.googleClientId,
+      callback: function (resp) {
+        const payload = decodeJwtPayload(resp && resp.credential);
+        if (!payload || !payload.sub) {
+          accountNote("Google did not return a nameplate.");
+          return;
+        }
+        finishLink({
+          provider: "google",
+          sub: payload.sub,
+          label: payload.name || payload.given_name || "Google",
+          picture: payload.picture,
+          email: payload.email,
+          linkedAt: Date.now()
+        }, "linked Google");
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+    const host = document.getElementById("google-btn-host");
+    if (host) {
+      host.innerHTML = "";
+      host.hidden = false;
+      google.accounts.id.renderButton(host, { theme: "filled_black", size: "large", type: "standard", text: "signin_with" });
+    }
+    google.accounts.id.prompt();
+  }).catch(function () {
+    accountNote("Google login booth did not load.");
+  });
+}
+
+function startAppleLink() {
+  const cfg = oauthConfig();
+  if (!cfg.appleClientId) { boothClosed("Apple"); return; }
+  loadScriptOnce("https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js", "ya-apple").then(function () {
+    if (!window.AppleID || !AppleID.auth) {
+      accountNote("Apple login booth did not load.");
+      return;
+    }
+    AppleID.auth.init({
+      clientId: cfg.appleClientId,
+      scope: "name",
+      redirectURI: cfg.appleRedirectURI || oauthRedirectURI(),
+      usePopup: true
+    });
+    return AppleID.auth.signIn();
+  }).then(function (res) {
+    if (!res) return;
+    const token = res.authorization && res.authorization.id_token;
+    const payload = decodeJwtPayload(token);
+    if (!payload || !payload.sub) {
+      accountNote("Apple did not return a nameplate.");
+      return;
+    }
+    let label = "Apple";
+    if (res.user && res.user.name) {
+      label = [res.user.name.firstName, res.user.name.lastName].filter(Boolean).join(" ").trim() || label;
+    }
+    finishLink({
+      provider: "apple",
+      sub: payload.sub,
+      label: label,
+      email: payload.email,
+      linkedAt: Date.now()
+    }, "linked Apple");
+  }).catch(function () {
+    accountNote("Apple login did not finish.");
+  });
+}
+
+function startXLink() {
+  const cfg = oauthConfig();
+  if (!cfg.xClientId) { boothClosed("X"); return; }
+  const verifier = randomB64url(32);
+  const stateTok = randomB64url(16);
+  sessionStorage.setItem("ya-aim-x-verifier", verifier);
+  sessionStorage.setItem("ya-aim-x-state", stateTok);
+  pkceChallenge(verifier).then(function (challenge) {
+    const redirect = oauthRedirectURI();
+    const url = "https://twitter.com/i/oauth2/authorize"
+      + "?response_type=code"
+      + "&client_id=" + encodeURIComponent(cfg.xClientId)
+      + "&redirect_uri=" + encodeURIComponent(redirect)
+      + "&scope=" + encodeURIComponent("users.read")
+      + "&state=" + encodeURIComponent(stateTok)
+      + "&code_challenge=" + encodeURIComponent(challenge)
+      + "&code_challenge_method=S256";
+    location.href = url;
+  });
+}
+
+async function finishXReturn() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  const stateTok = params.get("state");
+  const err = params.get("error");
+  if (!code && !err) return;
+  const expect = sessionStorage.getItem("ya-aim-x-state");
+  const verifier = sessionStorage.getItem("ya-aim-x-verifier");
+  try {
+    history.replaceState({}, "", location.pathname);
+  } catch (e) {}
+  if (err) {
+    accountNote("X login did not finish.");
+    return;
+  }
+  if (!verifier || !expect || stateTok !== expect) return;
+  sessionStorage.removeItem("ya-aim-x-verifier");
+  sessionStorage.removeItem("ya-aim-x-state");
+  const cfg = oauthConfig();
+  const body = new URLSearchParams({
+    code: code,
+    grant_type: "authorization_code",
+    client_id: cfg.xClientId,
+    redirect_uri: oauthRedirectURI(),
+    code_verifier: verifier
+  });
+  try {
+    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    if (!res.ok) throw new Error("token " + res.status);
+    const tok = await res.json();
+    const access = tok.access_token;
+    if (!access) throw new Error("token");
+    const me = await fetch("https://api.twitter.com/2/users/me", {
+      headers: { Authorization: "Bearer " + access }
+    });
+    if (!me.ok) throw new Error("me");
+    const data = await me.json();
+    const u = data.data || {};
+    if (!u.id) throw new Error("me");
+    finishLink({
+      provider: "x",
+      sub: String(u.id),
+      label: u.name || u.username || "X",
+      linkedAt: Date.now()
+    }, "linked X");
+  } catch (e) {
+    const msg = "X would not finish login in the browser (token booth blocked). Your Я still lives on this phone as a guest.";
+    accountNote(msg);
+    push("ya", msg);
+  }
+}
+
 
 const mindEl = document.getElementById("mind");
 const logEl = document.getElementById("log");
@@ -1193,7 +1615,10 @@ function toggleMind() {
 function render() {
   renderNet();
   if (!state.messages.length) {
-    logEl.innerHTML = `<div class="empty"><div class="big">Я</div><div>Runs offline from the start.<br>Mint the Essence. Download it whenever you want.</div></div>`;
+    const guestHint = (!account || account.provider === "guest")
+      ? "<br>Link an account so this Я is only yours — still on this device."
+      : "";
+    logEl.innerHTML = `<div class="empty"><div class="big">Я</div><div>Runs offline from the start.<br>Mint the Essence. Download it whenever you want.${guestHint}</div></div>`;
     return;
   }
   logEl.innerHTML = state.messages.map((m) => {
@@ -1221,7 +1646,7 @@ function renderPanel() {
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
@@ -1317,6 +1742,14 @@ if (dlMind) dlMind.addEventListener("click", (e) => {
   e.stopPropagation();
   downloadMindDump();
 });
+const linkG = document.getElementById("link-google");
+const linkA = document.getElementById("link-apple");
+const linkX = document.getElementById("link-x");
+const unlinkB = document.getElementById("unlink-account");
+if (linkG) linkG.addEventListener("click", (e) => { e.stopPropagation(); startGoogleLink(); });
+if (linkA) linkA.addEventListener("click", (e) => { e.stopPropagation(); startAppleLink(); });
+if (linkX) linkX.addEventListener("click", (e) => { e.stopPropagation(); startXLink(); });
+if (unlinkB) unlinkB.addEventListener("click", (e) => { e.stopPropagation(); unlinkAccount(); });
 document.getElementById("dl-txt").addEventListener("click", () => downloadLog("txt"));
 document.getElementById("dl-md").addEventListener("click", () => downloadLog("md"));
 document.getElementById("dl-json").addEventListener("click", () => downloadLog("json"));
@@ -1353,6 +1786,7 @@ ensureCreator().then(() => {
   render();
   renderPanel();
   renderMind();
+  finishXReturn();
   if (signal()) setTimeout(() => { onCommsBack(); }, 800);
 });
 render();
