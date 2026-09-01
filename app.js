@@ -229,7 +229,10 @@ function localEngine(userText) {
     if (!real.length) return "I have no stored facts yet. Tell me your name, or say remember this: …";
     return "What I hold:\n" + real.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
-  if (/offline|online|the light|web mind/.test(q)) {
+  if (/\b(today'?s date|date today|current date|what day is it|what( is|'s) the date)\b/.test(q)) {
+    return "DATE_LOOKUP";
+  }
+  if (/^(go |turn |set |mind )?(offline|online)\b/.test(q) || /\b(the light|web mind)\b/.test(q)) {
     if (state.mindOnline && signal()) return "Mind is online. I will search the web for questions I cannot answer from memory, then save what I learn here.";
     if (state.mindOnline && !signal()) return "Mind is set online, but this phone has no signal. Ask me something I already know, or wait for signal.";
     return "Mind is offline. I will only use what is already on this device. Tap the light to look things up.";
@@ -263,6 +266,31 @@ async function webSearch(query) {
   return { title, extract: extract.slice(0, 700), extras };
 }
 
+async function fetchWorldDate() {
+  const urls = [
+    "https://worldtimeapi.org/api/timezone/America/Denver",
+    "https://timeapi.io/api/Time/current/zone?timeZone=America/Denver"
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const j = await res.json();
+      const iso = j.datetime || j.dateTime || (j.date && j.time ? j.date + "T" + j.time : null);
+      const d = iso ? new Date(iso) : null;
+      if (d && !isNaN(d)) {
+        const text = d.toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Denver" });
+        return { text, source: url.includes("worldtime") ? "worldtimeapi.org" : "timeapi.io" };
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function isDateAsk(q) {
+  return /\b(today'?s date|date today|current date|what day is it|what( is|'s) the date)\b/.test(q) || /check online for.{0,20}date/.test(q);
+}
+
 async function answer(userText) {
   const q = userText.trim().toLowerCase();
   if (nuclearBlocked(userText)) {
@@ -279,8 +307,21 @@ async function answer(userText) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
+  if (isDateAsk(q)) {
+    if (mindWantsWeb()) {
+      const world = await fetchWorldDate();
+      if (world) {
+        remember("Today (online clock): " + world.text);
+        return "Today is " + world.text + " (America/Denver).\nChecked online (" + world.source + ") and saved in the offline mind.";
+      }
+    }
+    const phone = new Date().toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Denver" });
+    if (!state.mindOnline) return "Mind is offline, so this is the phone clock: " + phone + ". Tap the light green and ask again to check an online clock.";
+    return "Online clock did not answer. Phone clock says " + phone + ".";
+  }
   const local = localEngine(userText);
-  const needsLook = /^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || userText.includes("?");
+  if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
+  const needsLook = !isDateAsk(q) && (/^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || userText.includes("?"));
   const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я/i.test(local) && !/searching/i.test(local);
   if (mindWantsWeb() && needsLook && !answeredLocally) {
     try {
