@@ -7,23 +7,20 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ACCOUNT_KEY = "ya-aim-account";
+const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
 const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY];
 const YA_OAUTH = {
-  googleClientId: "",
-  appleClientId: "",
-  appleRedirectURI: "https://rizaleon.github.io/PROJECTR/",
-  xClientId: ""
+  xClientId: "",
+  githubClientId: ""
 };
 
 function oauthConfig() {
   try {
     const extra = JSON.parse(localStorage.getItem(OAUTH_LS) || "{}") || {};
     return {
-      googleClientId: String(extra.googleClientId || YA_OAUTH.googleClientId || "").trim(),
-      appleClientId: String(extra.appleClientId || YA_OAUTH.appleClientId || "").trim(),
-      appleRedirectURI: String(extra.appleRedirectURI || YA_OAUTH.appleRedirectURI || "").trim(),
-      xClientId: String(extra.xClientId || YA_OAUTH.xClientId || "").trim()
+      xClientId: String(extra.xClientId || YA_OAUTH.xClientId || "").trim(),
+      githubClientId: String(extra.githubClientId || YA_OAUTH.githubClientId || "").trim()
     };
   } catch (e) {
     return { ...YA_OAUTH };
@@ -38,17 +35,15 @@ function loadAccount() {
   try {
     const parsed = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || "null");
     if (!parsed || !parsed.provider) return guestAccount();
-    const provider = parsed.provider === "google" || parsed.provider === "apple" || parsed.provider === "x"
-      ? parsed.provider
-      : "guest";
+    const known = { guest: 1, x: 1, github: 1, yatech: 1, google: 1, apple: 1 };
+    const provider = known[parsed.provider] ? parsed.provider : "guest";
     if (provider === "guest") return guestAccount();
     return {
       provider,
       sub: String(parsed.sub || ""),
       label: String(parsed.label || "Guest"),
       picture: parsed.picture || undefined,
-      linkedAt: Number(parsed.linkedAt) || Date.now(),
-      email: parsed.email ? String(parsed.email) : undefined
+      linkedAt: Number(parsed.linkedAt) || Date.now()
     };
   } catch (e) {
     return guestAccount();
@@ -63,7 +58,6 @@ function saveAccount() {
     linkedAt: account.linkedAt || Date.now()
   };
   if (account.picture) rec.picture = account.picture;
-  if (account.email) rec.email = account.email;
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(rec));
 }
 
@@ -148,7 +142,7 @@ const defaultState = () => ({
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
-    { id: "account.link", name: "Link account (Google, Apple, or X)", enabled: true, version: "0.0" },
+    { id: "account.link", name: "Link account (X, GitHub, or Я Technologies)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
     { id: "memory.recall", name: "Recall facts", enabled: true, version: "0.0.1" },
@@ -197,7 +191,13 @@ function load() {
 
 function mergeFunctions(base, saved) {
   const map = new Map(saved.map((f) => [f.id, f]));
-  const merged = base.map((f) => ({ ...f, ...map.get(f.id) }));
+  const merged = base.map((f) => {
+    const s = map.get(f.id);
+    if (!s) return { ...f };
+    const out = { ...f, ...s };
+    if (f.id === "account.link") out.name = f.name;
+    return out;
+  });
   for (const f of saved) {
     if (!merged.some((x) => x.id === f.id)) merged.push(f);
   }
@@ -1305,9 +1305,11 @@ function renderMind() {
 }
 
 function providerTitle(p) {
+  if (p === "x") return "X";
+  if (p === "github") return "GitHub";
+  if (p === "yatech") return "Я Technologies";
   if (p === "google") return "Google";
   if (p === "apple") return "Apple";
-  if (p === "x") return "X";
   return "Guest";
 }
 
@@ -1347,7 +1349,6 @@ function finishLink(next, reason) {
     picture: next.picture || undefined,
     linkedAt: next.linkedAt || Date.now()
   };
-  if (next.email) account.email = String(next.email);
   saveAccount();
   if (existed) {
     hydrateActiveMind();
@@ -1386,29 +1387,108 @@ function unlinkAccount() {
   accountNote("Unlinked. That mind is still on this phone. You are viewing Guest.");
 }
 
-function loadScriptOnce(src, id) {
-  return new Promise(function (resolve, reject) {
-    if (id && document.getElementById(id)) { resolve(); return; }
-    const el = document.createElement("script");
-    if (id) el.id = id;
-    el.src = src;
-    el.async = true;
-    el.onload = function () { resolve(); };
-    el.onerror = function () { reject(new Error("script")); };
-    document.head.appendChild(el);
-  });
+function bufToHex(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += bytes[i].toString(16).padStart(2, "0");
+  return s;
 }
 
-function decodeJwtPayload(jwt) {
+function yatechNormalize(name) {
+  return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function loadYatechDir() {
   try {
-    const part = String(jwt || "").split(".")[1];
-    if (!part) return null;
-    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const pad = b64 + "===".slice((b64.length + 3) % 4);
-    return JSON.parse(decodeURIComponent(escape(atob(pad))));
+    const parsed = JSON.parse(localStorage.getItem(YATECH_DIR_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch (e) {
-    return null;
+    return {};
   }
+}
+
+function saveYatechDir(dir) {
+  localStorage.setItem(YATECH_DIR_KEY, JSON.stringify(dir));
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return bufToHex(digest);
+}
+
+async function yatechHash(pass, saltB64) {
+  const salt = new Uint8Array(b64ToBuf(saltB64));
+  try {
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt: salt, iterations: 100000 },
+      key,
+      256
+    );
+    return bufToHex(bits);
+  } catch (e) {
+    const mixed = new Uint8Array(salt.length + new TextEncoder().encode(pass).length);
+    mixed.set(salt, 0);
+    mixed.set(new TextEncoder().encode(pass), salt.length);
+    const digest = await crypto.subtle.digest("SHA-256", mixed);
+    return bufToHex(digest);
+  }
+}
+
+function hashesMatch(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (x.length !== y.length) return false;
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return d === 0;
+}
+
+async function startYatechLink() {
+  const nameEl = document.getElementById("yatech-name");
+  const passEl = document.getElementById("yatech-pass");
+  const label = nameEl ? String(nameEl.value || "").trim() : "";
+  const pass = passEl ? String(passEl.value || "") : "";
+  if (!label || !pass) {
+    const msg = "Name and passphrase are required. Nothing left this phone.";
+    accountNote(msg);
+    return;
+  }
+  const key = yatechNormalize(label);
+  if (!key) {
+    accountNote("Name and passphrase are required. Nothing left this phone.");
+    return;
+  }
+  const dir = loadYatechDir();
+  const existing = dir[key];
+  if (existing && existing.hash && existing.salt) {
+    const got = await yatechHash(pass, existing.salt);
+    if (!hashesMatch(got, existing.hash)) {
+      accountNote("Wrong passphrase. Still Guest. The brain stays on this phone.");
+      if (passEl) passEl.value = "";
+      return;
+    }
+    if (passEl) passEl.value = "";
+    finishLink({
+      provider: "yatech",
+      sub: String(existing.sub),
+      label: label
+    }, "linked Я Technologies");
+    return;
+  }
+  const saltBytes = new Uint8Array(16);
+  crypto.getRandomValues(saltBytes);
+  const salt = bufToB64(saltBytes.buffer);
+  const hash = await yatechHash(pass, salt);
+  const sub = await sha256Hex(key);
+  dir[key] = { sub: sub, salt: salt, hash: hash };
+  saveYatechDir(dir);
+  if (passEl) passEl.value = "";
+  finishLink({
+    provider: "yatech",
+    sub: sub,
+    label: label
+  }, "created Я Technologies");
 }
 
 function b64urlBytes(buf) {
@@ -1427,87 +1507,119 @@ async function pkceChallenge(verifier) {
 }
 
 function oauthRedirectURI() {
-  const cfg = oauthConfig();
-  return cfg.appleRedirectURI || (location.origin + location.pathname);
+  return location.origin + location.pathname;
 }
 
-function startGoogleLink() {
+let ghDevicePoll = 0;
+
+function startGitHubLink() {
   const cfg = oauthConfig();
-  if (!cfg.googleClientId) { boothClosed("Google"); return; }
-  loadScriptOnce("https://accounts.google.com/gsi/client", "ya-gsi").then(function () {
-    if (!window.google || !google.accounts || !google.accounts.id) {
-      accountNote("Google login booth did not load.");
-      return;
-    }
-    google.accounts.id.initialize({
-      client_id: cfg.googleClientId,
-      callback: function (resp) {
-        const payload = decodeJwtPayload(resp && resp.credential);
-        if (!payload || !payload.sub) {
-          accountNote("Google did not return a nameplate.");
-          return;
-        }
-        finishLink({
-          provider: "google",
-          sub: payload.sub,
-          label: payload.name || payload.given_name || "Google",
-          picture: payload.picture,
-          email: payload.email,
-          linkedAt: Date.now()
-        }, "linked Google");
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    const host = document.getElementById("google-btn-host");
-    if (host) {
-      host.innerHTML = "";
-      host.hidden = false;
-      google.accounts.id.renderButton(host, { theme: "filled_black", size: "large", type: "standard", text: "signin_with" });
-    }
-    google.accounts.id.prompt();
-  }).catch(function () {
-    accountNote("Google login booth did not load.");
+  if (!cfg.githubClientId) { boothClosed("GitHub"); return; }
+  ghDevicePoll += 1;
+  accountNote("Opening GitHub booth…");
+  const body = new URLSearchParams({
+    client_id: cfg.githubClientId,
+    scope: "read:user"
   });
-}
-
-function startAppleLink() {
-  const cfg = oauthConfig();
-  if (!cfg.appleClientId) { boothClosed("Apple"); return; }
-  loadScriptOnce("https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js", "ya-apple").then(function () {
-    if (!window.AppleID || !AppleID.auth) {
-      accountNote("Apple login booth did not load.");
-      return;
-    }
-    AppleID.auth.init({
-      clientId: cfg.appleClientId,
-      scope: "name",
-      redirectURI: cfg.appleRedirectURI || oauthRedirectURI(),
-      usePopup: true
-    });
-    return AppleID.auth.signIn();
+  fetch("https://github.com/login/device/code", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: body.toString()
   }).then(function (res) {
-    if (!res) return;
-    const token = res.authorization && res.authorization.id_token;
-    const payload = decodeJwtPayload(token);
-    if (!payload || !payload.sub) {
-      accountNote("Apple did not return a nameplate.");
+    if (!res.ok) throw new Error("device " + res.status);
+    return res.json();
+  }).then(function (dev) {
+    if (!dev || !dev.device_code || !dev.user_code) throw new Error("device");
+    const uri = dev.verification_uri || "https://github.com/login/device";
+    accountNote("GitHub · go to " + uri + "\nCode " + dev.user_code);
+    pollGitHubDevice(cfg.githubClientId, dev);
+  }).catch(function () {
+    const msg = "GitHub would not open the device booth in the browser. Your Я still lives on this phone as a guest.";
+    accountNote(msg);
+    push("ya", msg);
+  });
+}
+
+function pollGitHubDevice(clientId, dev) {
+  const started = Date.now();
+  const expires = (Number(dev.expires_in) || 900) * 1000;
+  let interval = Math.max(5, Number(dev.interval) || 5) * 1000;
+  const deviceCode = dev.device_code;
+  const tick = ++ghDevicePoll;
+  function once() {
+    if (tick !== ghDevicePoll) return;
+    if (Date.now() - started > expires) {
+      accountNote("GitHub code expired. Your Я still lives on this phone as a guest.");
       return;
     }
-    let label = "Apple";
-    if (res.user && res.user.name) {
-      label = [res.user.name.firstName, res.user.name.lastName].filter(Boolean).join(" ").trim() || label;
-    }
-    finishLink({
-      provider: "apple",
-      sub: payload.sub,
-      label: label,
-      email: payload.email,
-      linkedAt: Date.now()
-    }, "linked Apple");
-  }).catch(function () {
-    accountNote("Apple login did not finish.");
-  });
+    const body = new URLSearchParams({
+      client_id: clientId,
+      device_code: deviceCode,
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code"
+    });
+    fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: body.toString()
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) { return j; });
+    }).then(function (j) {
+      if (tick !== ghDevicePoll) return;
+      j = j || {};
+      const err = j.error;
+      if (err === "authorization_pending") {
+        setTimeout(once, interval);
+        return;
+      }
+      if (err === "slow_down") {
+        interval += 5000;
+        setTimeout(once, interval);
+        return;
+      }
+      if (err === "expired_token" || err === "access_denied") {
+        accountNote("GitHub login did not finish. Your Я still lives on this phone as a guest.");
+        return;
+      }
+      if (err) {
+        accountNote("GitHub login did not finish. Your Я still lives on this phone as a guest.");
+        return;
+      }
+      const token = j.access_token;
+      if (!token) {
+        setTimeout(once, interval);
+        return;
+      }
+      return fetch("https://api.github.com/user", {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token
+        }
+      }).then(function (res) {
+        if (!res.ok) throw new Error("user");
+        return res.json();
+      }).then(function (u) {
+        if (!u || u.id == null) throw new Error("user");
+        finishLink({
+          provider: "github",
+          sub: String(u.id),
+          label: String(u.login || "GitHub"),
+          linkedAt: Date.now()
+        }, "linked GitHub");
+      });
+    }).catch(function () {
+      if (tick !== ghDevicePoll) return;
+      const msg = "GitHub would not finish login in the browser. Your Я still lives on this phone as a guest.";
+      accountNote(msg);
+      push("ya", msg);
+    });
+  }
+  setTimeout(once, interval);
 }
 
 function startXLink() {
@@ -1616,7 +1728,7 @@ function render() {
   renderNet();
   if (!state.messages.length) {
     const guestHint = (!account || account.provider === "guest")
-      ? "<br>Link an account so this Я is only yours — still on this device."
+      ? "<br>Name this Я with X, GitHub, or a Я Technologies Account — still on this device."
       : "";
     logEl.innerHTML = `<div class="empty"><div class="big">Я</div><div>Runs offline from the start.<br>Mint the Essence. Download it whenever you want.${guestHint}</div></div>`;
     return;
@@ -1742,13 +1854,13 @@ if (dlMind) dlMind.addEventListener("click", (e) => {
   e.stopPropagation();
   downloadMindDump();
 });
-const linkG = document.getElementById("link-google");
-const linkA = document.getElementById("link-apple");
 const linkX = document.getElementById("link-x");
+const linkGh = document.getElementById("link-github");
+const linkYa = document.getElementById("link-yatech");
 const unlinkB = document.getElementById("unlink-account");
-if (linkG) linkG.addEventListener("click", (e) => { e.stopPropagation(); startGoogleLink(); });
-if (linkA) linkA.addEventListener("click", (e) => { e.stopPropagation(); startAppleLink(); });
 if (linkX) linkX.addEventListener("click", (e) => { e.stopPropagation(); startXLink(); });
+if (linkGh) linkGh.addEventListener("click", (e) => { e.stopPropagation(); startGitHubLink(); });
+if (linkYa) linkYa.addEventListener("click", (e) => { e.stopPropagation(); startYatechLink(); });
 if (unlinkB) unlinkB.addEventListener("click", (e) => { e.stopPropagation(); unlinkAccount(); });
 document.getElementById("dl-txt").addEventListener("click", () => downloadLog("txt"));
 document.getElementById("dl-md").addEventListener("click", () => downloadLog("md"));
