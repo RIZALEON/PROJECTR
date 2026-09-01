@@ -34,7 +34,7 @@ const defaultState = () => ({
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
     { id: "sync.github", name: "Upload evolutions when GitHub comms return", enabled: true, version: "0.0" },
-    { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.2.0" },
+    { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.3.0" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
     { id: "voice.speak", name: "Voice out", enabled: false, version: "stub" }
@@ -683,23 +683,82 @@ async function onCommsBack() {
   renderMind();
 }
 
+function extractHttpUrls(text) {
+  const found = String(text).match(/https?:\/\/[^\s<>"']+/gi) || [];
+  const out = [];
+  found.forEach((raw) => {
+    const u = raw.replace(/[),.;]+$/, "");
+    if (out.indexOf(u) < 0) out.push(u);
+  });
+  return out.slice(0, 3);
+}
+
 function extractHttpUrl(text) {
-  const m = String(text).match(/https?:\/\/[^\s<>"']+/i);
-  return m ? m[0].replace(/[),.;]+$/, "") : null;
+  const all = extractHttpUrls(text);
+  return all.length ? all[0] : null;
+}
+
+function outlineFromText(raw) {
+  const heads = [];
+  String(raw).split(/\n/).forEach((line) => {
+    const h = line.match(/^#{1,3}\s+(.+)/) || line.match(/^[A-Z][A-Za-z0-9 ,:'\-]{12,80}$/);
+    if (h) heads.push(String(h[1] || h[0]).trim());
+  });
+  const uniq = [];
+  heads.forEach((h) => { if (uniq.indexOf(h) < 0) uniq.push(h); });
+  return uniq.slice(0, 14);
+}
+
+async function fetchLinkRaw(url) {
+  const tries = [
+    "https://r.jina.ai/" + url,
+    "https://r.jina.ai/http://" + url.replace(/^https?:\/\//i, "")
+  ];
+  let lastErr = null;
+  for (const reader of tries) {
+    try {
+      const res = await fetch(reader, { headers: { Accept: "text/plain" } });
+      if (!res.ok) { lastErr = new Error("http " + res.status); continue; }
+      const raw = await res.text();
+      if (raw && raw.trim().length > 40) return raw;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("link fetch failed");
+}
+
+function rememberLinkFull(url, title, clean) {
+  const chunk = 1600;
+  const n = Math.min(clean.length, 24000);
+  remember("Link " + title + " (" + url + ") · " + n + " chars read");
+  for (let i = 0, part = 1; i < n; i += chunk, part += 1) {
+    remember("Link " + title + " [" + part + "]: " + clean.slice(i, i + chunk));
+  }
 }
 
 async function describeLink(url) {
   if (nuclearBlocked(url)) return null;
-  const reader = "https://r.jina.ai/" + url;
-  const res = await fetch(reader);
-  if (!res.ok) throw new Error("link fetch failed");
-  const raw = await res.text();
-  const text = raw.replace(/\s+/g, " ").trim();
+  const raw = await fetchLinkRaw(url);
   const titleMatch = raw.match(/^Title:\s*(.+)$/m) || raw.match(/<title>([^<]+)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim() : url;
-  const body = text.slice(0, 900);
-  remember("Link " + url + " — " + title + ": " + body.slice(0, 400));
-  return { title, body, url };
+  const title = (titleMatch ? titleMatch[1].trim() : url).slice(0, 180);
+  const clean = raw.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  const outline = outlineFromText(raw);
+  rememberLinkFull(url, title, clean.replace(/\s+/g, " "));
+  const preview = clean.slice(0, 3500);
+  const more = clean.length > 3500;
+  return { title, body: preview, url, outline, chars: clean.length, more: more };
+}
+
+function formatLinkRead(d) {
+  const bits = [d.title, d.url, ""];
+  if (d.outline && d.outline.length) {
+    bits.push("Contents:");
+    d.outline.forEach((h) => bits.push("- " + h));
+    bits.push("");
+  }
+  bits.push(d.body);
+  if (d.more) bits.push("\n…full page (" + d.chars + " chars) saved into the offline mind.");
+  else bits.push("\nSaved into the offline mind (" + d.chars + " chars).");
+  return bits.join("\n");
 }
 
 
@@ -722,6 +781,7 @@ function looksLikeQuestion(text) {
 }
 
 function worthLearning(text) {
+  if (extractHttpUrl(text)) return true;
   const s = foldQ(text).replace(/[?!.]+/g, " ").trim();
   if (s.length < 12) return false;
   if (/^(who|what|when|where|why|how|which|is|are|can|does|do)(\s+is\s+it)?$/.test(s)) return false;
@@ -745,6 +805,12 @@ async function harvestOnline() {
   for (const q of take) {
     if (nuclearBlocked(q)) continue;
     try {
+      const href = extractHttpUrl(q);
+      if (href) {
+        const d = await describeLink(href);
+        if (d) learned.push(d.title);
+        continue;
+      }
       const web = await webSearch(q);
       if (web && web.title && !wikiJunk(web.title, web.extract)) learned.push(web.title);
     } catch (e) {}
@@ -807,19 +873,26 @@ async function answer(userText) {
     remember("Used evolved function " + evolvedHit.name);
     return evolvedHit.action;
   }
-  const link = extractHttpUrl(userText);
-  if (link) {
+  const links = extractHttpUrls(userText);
+  if (links.length) {
     if (!mindWantsWeb()) {
-      queueLearn(userText);
-      return "Mind is offline. Tap the light green. I will open that link, describe it, and keep it in the offline mind.";
+      links.forEach((u) => queueLearn(u));
+      return "Mind is offline. Tap the light green. I will open " + (links.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
     }
-    try {
-      const d = await describeLink(link);
-      if (!d) return "I will not open that link.";
-      return d.title + "\n\n" + d.body + "\n\nSaved into the offline mind.\n" + d.url;
-    } catch (e) {
-      return "I could not open that link from here. The address was: " + link;
+    const parts = [];
+    for (const link of links) {
+      try {
+        const d = await describeLink(link);
+        if (!d) {
+          parts.push("I will not open " + link + ".");
+          continue;
+        }
+        parts.push(formatLinkRead(d));
+      } catch (e) {
+        parts.push("I could not open that link from here: " + link);
+      }
     }
+    return parts.join("\n\n——\n\n");
   }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
     const e = await mintEssence();
