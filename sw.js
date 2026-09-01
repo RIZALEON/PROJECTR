@@ -1,4 +1,4 @@
-const CACHE = "projectr-v0-12";
+const CACHE = "projectr-v0-13";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,7 +11,8 @@ const ASSETS = [
   "./apple-touch-icon.png",
   "./favicon-32.png",
   "./logo.jpeg",
-  "./brain.svg"
+  "./brain.svg",
+  "./mind-dl.svg"
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

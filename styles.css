@@ -60,3 +60,8 @@ label.field input { width: 100%; margin-top: 6px; background: var(--bg); border:
 .mind-stat { padding: 16px 0; border-bottom: 1px solid var(--line); }
 .mind-label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .mind-value { font-family: var(--font); font-size: 36px; margin-top: 4px; }
+
+.mind-size-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mind-dl { background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; width: 44px; height: 44px; min-width: 44px; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.mind-dl img { width: 40px; height: 40px; display: block; }
+.mind-dl:active { background: var(--bg); }

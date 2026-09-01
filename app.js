@@ -790,6 +790,55 @@ async function send(text) {
   push("ya", reply);
 }
 
+
+function formatMindDump() {
+  const stamp = utahNow();
+  const lines = [];
+  lines.push("Я AIᵐ mind dump");
+  lines.push("Utah time: " + stamp);
+  lines.push("Version: " + mindVersion(mindBytes()) + " · size " + formatBytes(mindBytes()));
+  lines.push("Engine: " + (state.model && state.model.engine ? state.model.engine : "local"));
+  lines.push("");
+  lines.push("=== Functions ===");
+  (state.functions || []).forEach((f) => {
+    lines.push("- " + f.name + " [" + f.id + "] " + (f.enabled ? "on" : "off") + " v" + (f.version || ""));
+  });
+  lines.push("");
+  lines.push("=== Evolved (Function 0) ===");
+  const ev = state.evolved || [];
+  if (!ev.length) lines.push("(none yet)");
+  ev.forEach((s) => {
+    lines.push("- " + (s.name || s.id));
+    lines.push("  when: " + (s.trigger || ""));
+    lines.push("  do: " + (s.action || ""));
+  });
+  lines.push("");
+  lines.push("=== Learned (offline mind) ===");
+  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+  if (!mem.length) lines.push("(none yet)");
+  mem.forEach((m) => {
+    const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
+    lines.push("- " + (when ? when + " · " : "") + m.text);
+  });
+  lines.push("");
+  lines.push("=== Conversations ===");
+  const msgs = state.messages || [];
+  if (!msgs.length) lines.push("(none yet)");
+  msgs.forEach((m) => {
+    const who = m.role === "user" ? (state.profile.name || "You") : "Я";
+    const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
+    lines.push(who + " (" + when + ")");
+    lines.push(m.text);
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function downloadMindDump() {
+  const name = "ya-mind-" + new Date().toISOString().slice(0, 10) + ".txt";
+  saveFile(name, formatMindDump(), "text/plain");
+}
+
 function formatLog(kind) {
   const title = "Я AI\u1d50 chat log";
   const stamp = new Date().toISOString();
@@ -1090,6 +1139,11 @@ panel.addEventListener("click", (e) => {
 document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
   save();
+});
+const dlMind = document.getElementById("dl-mind");
+if (dlMind) dlMind.addEventListener("click", (e) => {
+  e.stopPropagation();
+  downloadMindDump();
 });
 document.getElementById("dl-txt").addEventListener("click", () => downloadLog("txt"));
 document.getElementById("dl-md").addEventListener("click", () => downloadLog("md"));
