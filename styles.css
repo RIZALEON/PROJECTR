@@ -67,4 +67,8 @@ label.field input { width: 100%; margin-top: 6px; background: var(--bg); border:
 .mind-dl:active { background: var(--bg); }
 
 .mind-id { font-size: 22px; line-height: 1.25; }
-#google-btn-host { margin-top: 10px; }
+#account-booth { white-space: pre-wrap; }
+.gh-user-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.14em; font-size: 22px; color: var(--ink); margin-top: 8px; }
+
+#yatech-fields { margin-top: 8px; }
+#yatech-fields label.field { margin: 10px 0 0; }

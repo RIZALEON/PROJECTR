@@ -19,7 +19,7 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=18" />
+  <link rel="stylesheet" href="./styles.css?v=20" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -48,15 +48,22 @@
       <div class="mind-stat">
         <div class="mind-label">This Я</div>
         <div class="mind-value mind-id" id="account-label">Guest</div>
-        <p class="lead" style="margin: 10px 0 0;">The brain stays on this phone. Login only names it.</p>
+        <p class="lead" style="margin: 10px 0 0;">The brain stays on this phone. Name it with X, GitHub, or a Я Technologies Account.</p>
         <p class="lead" id="account-booth" style="margin: 6px 0 0;"></p>
         <div class="downloads" style="margin-bottom: 0;">
-          <button type="button" id="link-google">Google</button>
-          <button type="button" id="link-apple">Apple</button>
           <button type="button" id="link-x">X</button>
+          <button type="button" id="link-github">GitHub</button>
+          <button type="button" id="link-yatech">Я Technologies Account</button>
           <button type="button" id="unlink-account" hidden>Unlink</button>
         </div>
-        <div id="google-btn-host" hidden></div>
+        <div id="yatech-fields">
+          <label class="field">Name
+            <input id="yatech-name" autocomplete="username" />
+          </label>
+          <label class="field">Passphrase
+            <input id="yatech-pass" type="password" autocomplete="off" />
+          </label>
+        </div>
       </div>
       <div class="mind-stat">
         <div class="mind-label">Version</div>
@@ -107,6 +114,6 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js?v=18"></script>
+  <script src="./app.js?v=20"></script>
 </body>
 </html>
