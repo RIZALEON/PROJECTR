@@ -22,6 +22,7 @@ const defaultState = () => ({
     { id: "essence.download", name: "Download minted Essence", enabled: true, version: "0.1.0" },
     { id: "model.local", name: "On-device model", enabled: false, version: "stub" },
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
+    { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.2.0" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
     { id: "voice.speak", name: "Voice out", enabled: false, version: "stub" }
@@ -287,6 +288,25 @@ async function fetchWorldDate() {
   return null;
 }
 
+function extractHttpUrl(text) {
+  const m = String(text).match(/https?:\/\/[^\s<>"']+/i);
+  return m ? m[0].replace(/[),.;]+$/, "") : null;
+}
+
+async function describeLink(url) {
+  if (nuclearBlocked(url)) return null;
+  const reader = "https://r.jina.ai/" + url;
+  const res = await fetch(reader);
+  if (!res.ok) throw new Error("link fetch failed");
+  const raw = await res.text();
+  const text = raw.replace(/\s+/g, " ").trim();
+  const titleMatch = raw.match(/^Title:\s*(.+)$/m) || raw.match(/<title>([^<]+)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : url;
+  const body = text.slice(0, 900);
+  remember("Link " + url + " — " + title + ": " + body.slice(0, 400));
+  return { title, body, url };
+}
+
 function isDateAsk(q) {
   return /\b(today'?s date|date today|current date|what day is it|what( is|'s) the date)\b/.test(q) || /check online for.{0,20}date/.test(q);
 }
@@ -296,6 +316,19 @@ async function answer(userText) {
   if (nuclearBlocked(userText)) {
     remember("Refused a nuclear-weapons request.");
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
+  const link = extractHttpUrl(userText);
+  if (link) {
+    if (!mindWantsWeb()) {
+      return "Mind is offline. Tap the light green and send the link again. I will open it and describe it, then save that here.";
+    }
+    try {
+      const d = await describeLink(link);
+      if (!d) return "I will not open that link.";
+      return d.title + "\n\n" + d.body + "\n\nSaved into the offline mind.\n" + d.url;
+    } catch (e) {
+      return "I could not open that link from here. The address was: " + link;
+    }
   }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
     const e = await mintEssence();
@@ -588,10 +621,26 @@ form.addEventListener("submit", (e) => {
   send(v);
 });
 
-document.getElementById("open-mind").addEventListener("click", () => {
+function layoutHeader() {
+  const h = document.querySelector("header");
+  if (!h) return;
+  const bottom = Math.ceil(h.getBoundingClientRect().bottom);
+  document.documentElement.style.setProperty("--header-h", Math.max(bottom, 120) + "px");
+}
+
+document.getElementById("open-mind").addEventListener("click", (e) => {
+  e.stopPropagation();
+  layoutHeader();
+  if (mindEl.classList.contains("open")) {
+    mindEl.classList.remove("open");
+    return;
+  }
   renderMind();
   mindEl.classList.add("open");
 });
+window.addEventListener("resize", layoutHeader);
+window.addEventListener("orientationchange", layoutHeader);
+layoutHeader();
 mindEl.addEventListener("click", (e) => {
   if (e.target === mindEl) mindEl.classList.remove("open");
 });
