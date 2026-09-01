@@ -4,6 +4,7 @@ const VAULT_KEY = "ya-aim-vault";
 
 const defaultState = () => ({
   profile: { name: "You", yaName: "Я" },
+  mindOnline: false,
   model: {
     id: null,
     name: "Я local-memory",
@@ -20,6 +21,7 @@ const defaultState = () => ({
     { id: "essence.mint", name: "Mint Essence", enabled: true, version: "0.1.0" },
     { id: "essence.download", name: "Download minted Essence", enabled: true, version: "0.1.0" },
     { id: "model.local", name: "On-device model", enabled: false, version: "stub" },
+    { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
     { id: "voice.speak", name: "Voice out", enabled: false, version: "stub" }
@@ -39,6 +41,7 @@ function load() {
     return {
       ...base,
       ...parsed,
+      mindOnline: !!parsed.mindOnline,
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -68,8 +71,17 @@ function saveVault() {
   localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
 }
 
-function online() {
+function signal() {
   return navigator.onLine;
+}
+
+function mindWantsWeb() {
+  return !!state.mindOnline && signal() && fnEnabled("web.search");
+}
+
+function nuclearBlocked(text) {
+  const q = text.toLowerCase();
+  return /nuclear (weapon|warhead|bomb|missile|enrichment|implosion)|build a (nuke|warhead)|how to make (a )?nuclear/.test(q);
 }
 
 function fnEnabled(id) {
@@ -203,20 +215,43 @@ function localEngine(userText) {
     if (!state.memories.length) return "I have no stored facts yet. Tell me your name, or say remember this: ...";
     return "What I hold:\n" + state.memories.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
-  if (/offline|online|network/.test(q)) {
-    return online()
-      ? "A network is present. I do not use it. Mint, memory, and download stay local."
-      : "Offline. This is the intended mode. Mint, memory, and download still work.";
+  if (/offline|online|network|the light|status/.test(q)) {
+    if (state.mindOnline && signal()) return "Mind is online. I can search the web. I still write everything I learn into this device.";
+    if (state.mindOnline && !signal()) return "Mind is set online, but this phone has no signal. Using the offline mind.";
+    return "Mind is offline. Tap the light at the top to go online. I still remember on this device.";
   }
+  remember("User said: " + userText.slice(0, 220));
   if (hits.length) {
-    return "From memory:\n" + hits.map((m) => "- " + m.text).join("\n") + "\n\nSay more and I will keep it.";
+    return hits.map((m) => m.text).join("\n") + "\n\nI kept that in the offline mind.";
   }
-  remember("User said: " + userText.slice(0, 180));
-  return "Held locally. v0 thinks from memory. Mint the Essence when this instance feels like yours.";
+  return "I held that in the offline mind. Tap the light at the top to let me search the web when you want a brighter answer.";
+}
+
+async function webSearch(query) {
+  const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(query);
+  const res = await fetch(api);
+  if (!res.ok) throw new Error("search failed");
+  const data = await res.json();
+  const hits = (data.query && data.query.search) || [];
+  if (!hits.length) return null;
+  const title = hits[0].title;
+  const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+  let extract = String(hits[0].snippet || "").replace(/<[^>]+>/g, "");
+  if (sumRes.ok) {
+    const sum = await sumRes.json();
+    if (sum.extract) extract = sum.extract;
+  }
+  remember(title + ": " + extract.slice(0, 500));
+  const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
+  return { title, extract: extract.slice(0, 700), extras };
 }
 
 async function answer(userText) {
   const q = userText.trim().toLowerCase();
+  if (nuclearBlocked(userText)) {
+    remember("Refused a nuclear-weapons request.");
+    return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
     const e = await mintEssence();
     return e
@@ -227,15 +262,16 @@ async function answer(userText) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
-  if (fnEnabled("model.remote") && online()) {
+  if (mindWantsWeb()) {
     try {
-      return await remoteStub(userText);
-    } catch {
-      return localEngine(userText);
+      const web = await webSearch(userText);
+      const local = localEngine(userText);
+      if (!web) return local + "\n\n(Online: no web page matched. I still saved your words offline.)";
+      const extra = web.extras.length ? "\nAlso: " + web.extras.join(", ") : "";
+      return web.extract + extra + "\n\nSaved into the offline mind. Source: " + web.title + ".";
+    } catch (err) {
+      return localEngine(userText) + "\n\n(Online search failed. Offline mind still has this.)";
     }
-  }
-  if (fnEnabled("model.local")) {
-    return "On-device weights are not installed in v0. Local memory engine still runs.\n\n" + localEngine(userText);
   }
   return localEngine(userText);
 }
@@ -385,8 +421,18 @@ const netDot = document.getElementById("net-dot");
 const netLabel = document.getElementById("net-label");
 
 function renderNet() {
-  netDot.classList.toggle("offline", !online());
-  netLabel.textContent = online() ? "online unused \u00b7 local" : "offline \u00b7 local";
+  const web = mindWantsWeb();
+  netDot.classList.toggle("offline", !web);
+  netDot.classList.toggle("online", web);
+  if (!state.mindOnline) netLabel.textContent = "offline \u00b7 local";
+  else if (!signal()) netLabel.textContent = "no signal \u00b7 local";
+  else netLabel.textContent = "online \u00b7 web mind";
+}
+
+function toggleMind() {
+  state.mindOnline = !state.mindOnline;
+  save();
+  renderNet();
 }
 
 function render() {
@@ -468,6 +514,12 @@ document.getElementById("mint-now").addEventListener("click", () => mintAndDownl
 document.getElementById("clear-chat").addEventListener("click", clearChat);
 document.getElementById("reset-all").addEventListener("click", resetWorkingCopy);
 
+const statusEl = document.querySelector(".status");
+if (statusEl) {
+  statusEl.setAttribute("role", "button");
+  statusEl.title = "Tap to take the mind online or offline";
+  statusEl.addEventListener("click", toggleMind);
+}
 window.addEventListener("online", renderNet);
 window.addEventListener("offline", renderNet);
 

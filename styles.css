@@ -22,7 +22,9 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .logo { font-family: var(--font); font-size: 34px; line-height: 1; letter-spacing: -0.04em; display: flex; align-items: center; }
 .logo img { width: 40px; height: 40px; border-radius: 11px; display: block; }
 .wordmark { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-.status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; padding: 6px 8px; border-radius: 999px; }
+.status:active { background: var(--bg-2); }
+.dot.online { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 .dot.offline { background: var(--warn); }
 .actions { display: flex; gap: 6px; }
