@@ -19,6 +19,8 @@ const defaultState = () => ({
   memories: [],
   evolved: [],
   pendingLearn: [],
+  pings: [],
+  lastMindBytes: 0,
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
@@ -40,6 +42,7 @@ const defaultState = () => ({
 });
 
 let state = load();
+try { scrubWikiJunk(); } catch (e) {}
 let creator = null;
 let vault = loadVault();
 let github = loadGithub();
@@ -56,6 +59,8 @@ function load() {
       mindOnline: !!parsed.mindOnline,
       evolved: Array.isArray(parsed.evolved) ? parsed.evolved : [],
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
+      pings: Array.isArray(parsed.pings) ? parsed.pings : [],
+      lastMindBytes: Number(parsed.lastMindBytes) || 0,
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -196,10 +201,35 @@ async function signBody(body) {
   return bufToB64(sig);
 }
 
+
+function wikiJunk(title, extract) {
+  const t = String(title || "").trim();
+  const x = String(extract || "");
+  if (/^(why|dating|what time is it)\??$/i.test(t)) return true;
+  if (/may refer to/i.test(t) || /may refer to/i.test(x)) return true;
+  if (/\bdisambiguation\b/i.test(t) || /\bdisambiguation\b/i.test(x)) return true;
+  return false;
+}
+
+function isWikiJunkMemory(text) {
+  const s = String(text || "");
+  if (/^(why|dating|what time is it)\s*:/i.test(s)) return true;
+  if (/may refer to/i.test(s)) return true;
+  if (/\bdisambiguation\b/i.test(s) && /^(why|dating|what time is it)\b/i.test(s)) return true;
+  return false;
+}
+
+function scrubWikiJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isWikiJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
 function remember(text) {
   if (!fnEnabled("memory.remember")) return;
   const clean = text.trim();
   if (clean.length < 2) return;
+  if (isWikiJunkMemory(clean)) return;
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
   state.memories = state.memories.slice(0, 200);
@@ -230,6 +260,7 @@ function recall(query) {
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0 };
+    if (isWikiJunkMemory(m.text)) return { m, score: 0 };
     let score = 0;
     words.forEach((w) => { if (hay.includes(w)) score += 1; });
     return { m, score };
@@ -391,6 +422,7 @@ async function webSearch(query) {
     const sum = await sumRes.json();
     if (sum.extract) extract = sum.extract;
   }
+  if (wikiJunk(title, extract)) return null;
   remember(title + ": " + extract.slice(0, 500));
   const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
   return { title, extract: extract.slice(0, 700), extras };
@@ -489,6 +521,44 @@ async function pushEvolutions() {
 }
 
 
+
+function pingLocations(extra) {
+  const hops = ["phone (Utah)", "reconnect inbox", "Chief of Staff chat"];
+  (extra || []).forEach((h) => { if (h && hops.indexOf(h) < 0) hops.push(h); });
+  return hops;
+}
+
+function pingReason(learned, pulled, evolvedCount, deltaBytes) {
+  const parts = [];
+  if (evolvedCount) parts.push(evolvedCount === 1 ? "new function" : evolvedCount + " new functions");
+  if (deltaBytes > 256) parts.push(formatBytes(deltaBytes) + " of new wisdom");
+  if (learned && learned.length) parts.push("harvested " + learned.join(", "));
+  if (pulled) parts.push("pulled " + pulled + " evolution(s) from GitHub");
+  if (!parts.length) parts.push("reconnect");
+  return parts.join("; ");
+}
+
+function formatPingNote(rec) {
+  const locNow = (rec.locations || []).join(" → ");
+  const past = (state.pings || []).map((p, i) =>
+    (i + 1) + ". " + p.utah + " · " + p.reason + " · " + (p.locations || []).join(" → ")
+  );
+  return [
+    "Ping · " + rec.utah,
+    "Reason: " + rec.reason,
+    "This hop: " + locNow,
+    "All ping locations:",
+    past.length ? past.join("\n") : "(this is the first)"
+  ].join("\n");
+}
+
+function recordPing(rec) {
+  state.pings = state.pings || [];
+  state.pings.unshift(rec);
+  state.pings = state.pings.slice(0, 40);
+  save();
+}
+
 function reconnectPack() {
   return {
     kind: "ya-reconnect",
@@ -498,7 +568,8 @@ function reconnectPack() {
     learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
     evolved: state.evolved || [],
     functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: !!f.enabled, version: f.version })),
-    pendingLearn: state.pendingLearn || []
+    pendingLearn: state.pendingLearn || [],
+    pings: (state.pings || []).slice(0, 12)
   };
 }
 
@@ -566,14 +637,17 @@ async function pushInbox() {
 
 async function onCommsBack() {
   renderNet();
+  const beforeBytes = state.lastMindBytes || 0;
+  const evolvedBefore = (state.evolved || []).length;
   try {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg) await reg.update();
     }
   } catch (e) {}
+  let learned = [];
   if (state.mindOnline) {
-    try { await harvestOnline(); } catch (e) {}
+    try { learned = (await harvestOnline()) || []; } catch (e) {}
   }
   let pulled = 0;
   try { pulled = await pullRemoteEvolutions(); } catch (e) {}
@@ -581,14 +655,32 @@ async function onCommsBack() {
   try { up = await pushEvolutions(); } catch (e) { up = { ok: false, reason: "error" }; }
   let inbox = { ok: false };
   try { inbox = await pushInbox(); } catch (e) {}
+  const extraHops = [];
+  if (up && up.ok) extraHops.push("GitHub " + (up.repo || GH_REPO_DEFAULT) + "/evolutions.json");
+  if (inbox && inbox.ok) extraHops.push("GitHub " + GH_REPO_DEFAULT + "/reconnect-inbox.json");
+  const nowBytes = mindBytes();
+  const delta = Math.max(0, nowBytes - beforeBytes);
+  const evolvedCount = Math.max(0, (state.evolved || []).length - evolvedBefore);
+  const rec = {
+    at: Date.now(),
+    utah: utahNow(),
+    reason: pingReason(learned, pulled, evolvedCount, delta),
+    locations: pingLocations(extraHops),
+    bytes: nowBytes,
+    learned: learned
+  };
   let chief = { ok: false };
   try { chief = await pingChief(); } catch (e) {}
-  const bits = [];
-  if (pulled) bits.push("pulled " + pulled + " evolution(s) from GitHub");
-  if (up && up.ok) bits.push("uploaded evolutions to " + up.repo);
-  if (inbox && inbox.ok) bits.push("left a reconnect note on GitHub");
-  if (chief && chief.ok && !chief.skipped) bits.push("messaged Chief of Staff");
-  if (bits.length) push("ya", "Comms back. " + bits.join(". ") + ".");
+  if (chief && chief.skipped) {
+    state.lastMindBytes = nowBytes;
+    save();
+    return;
+  }
+  recordPing(rec);
+  state.lastMindBytes = nowBytes;
+  save();
+  push("ya", formatPingNote(rec));
+  renderMind();
 }
 
 function extractHttpUrl(text) {
@@ -654,15 +746,12 @@ async function harvestOnline() {
     if (nuclearBlocked(q)) continue;
     try {
       const web = await webSearch(q);
-      if (web && web.title && !/^(why|dating)$/i.test(web.title)) learned.push(web.title);
+      if (web && web.title && !wikiJunk(web.title, web.extract)) learned.push(web.title);
     } catch (e) {}
   }
   state.pendingLearn = [];
   save();
-  if (learned.length) {
-    push("ya", "Went online. Wrote this into the offline mind: " + learned.join(", ") + ". I am smarter offline now.");
-    renderMind();
-  }
+  return learned;
 }
 
 function foldQ(q) {
@@ -811,6 +900,14 @@ function formatMindDump() {
   mem.forEach((m) => {
     const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
     lines.push("- " + (when ? when + " · " : "") + m.text);
+  });
+  lines.push("");
+  lines.push("=== Pings (Я ↔ Chief of Staff) ===");
+  const pings = state.pings || [];
+  if (!pings.length) lines.push("(none yet)");
+  pings.forEach((p) => {
+    lines.push("- " + p.utah + " · " + p.reason);
+    lines.push("  " + (p.locations || []).join(" → "));
   });
   lines.push("");
   lines.push("=== Conversations ===");
