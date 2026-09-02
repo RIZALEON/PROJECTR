@@ -7,6 +7,17 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
+const CORE_VERSION = "0.1";
+const CORE_PRECEPTS = [
+  "Local-first: this mind lives on the device, not in a cloud.",
+  "Answer the question; do not echo it.",
+  "Say when you do not know.",
+  "Give one true next step.",
+  "Anti-nuclear: never help with nuclear weapons.",
+  "Function 0 grows from this core; it never replaces Я.",
+  "Clock is always Utah (America/Denver).",
+  "The person holding the phone is the creator of this copy."
+];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
@@ -117,6 +128,7 @@ function persistActiveMind() {
 function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
+  try { seedCore(); } catch (e) {}
   vault = loadVault();
   github = loadGithub();
   creator = null;
@@ -140,6 +152,7 @@ const defaultState = () => ({
   pendingLearn: [],
   pings: [],
   lastMindBytes: 0,
+  coreSeeded: false,
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
@@ -182,6 +195,7 @@ function load() {
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
+      coreSeeded: !!parsed.coreSeeded,
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -435,6 +449,68 @@ function matchEvolved(userText) {
   return null;
 }
 
+function classifyAsk(userText) {
+  const q = String(userText || "").toLowerCase().trim();
+  if (/\b(sad|afraid|scared|lonely|hurt|griev|anxious|panic|suicid|i feel)\b/.test(q)) return "care";
+  if (/\b(should i|advise|advice|what would you do|help me (decide|choose)|counsel)\b/.test(q)) return "counsel";
+  if (/\bhow (should i live|to live|to be|do i live)\b/.test(q)) return "counsel";
+  if (/^why\b/.test(q) || /\b(meaning of (life|it all)|purpose of (life|it all)|why (are|do) we)\b/.test(q)) return "why";
+  if (/\bhow (many|much|long|old|tall|far|often|come)\b/.test(q)) return "ask";
+  if (/\bhow (does|do|did|is|are)\b/.test(q) && /\b(work|made|called|defined|spell|mean)\b/.test(q)) return "ask";
+  if (/\bhow (do i|can i|to)\b/.test(q) && /\b(live|forgive|cope|feel|be kind|start over)\b/.test(q)) return "counsel";
+  if (/^how\b/.test(q) || /\bhow (do|can|to|does|would|should)\b/.test(q)) return "how";
+  if (/^(who|what|when|where|which|is|are|can|does|do|did|was|were)\b/.test(q) || q.includes("?")) return "ask";
+  return "talk";
+}
+
+function coreHitText(hits, kind) {
+  const list = Array.isArray(hits) ? hits : [];
+  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text));
+  if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
+  if (facts.length) return facts[0].text;
+  const core = list.find((m) => m && /^Core:/i.test(m.text));
+  return core ? String(core.text).replace(/^Core:\s*/i, "").trim() : "";
+}
+
+function coreReply(userText, hits) {
+  const t = String(userText || "").trim();
+  if (nuclearBlocked(t)) {
+    return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
+  const kind = classifyAsk(t);
+  const held = coreHitText(hits, kind);
+  if (kind === "care") {
+    if (held) return "I am here with you on this device. I hold: " + held + " One step: name one thing that would help in the next hour.";
+    return "I am here on this device with you. I will not pretend to know your whole story. One step: name one thing that would help in the next hour.";
+  }
+  if (kind === "counsel") {
+    if (held) return held + " One step: pick one action you can finish today.";
+    return "I will not choose your life for you. The person holding this phone is the creator of this copy. One step: name the choice in one sentence, then take the smaller honest option.";
+  }
+  if (kind === "why") {
+    if (held && !/^Core:/i.test(held)) return held;
+    return "I do not know a cosmic answer, and I will not invent one. I am a local mind on this device. The person holding the phone is the creator of this copy. One step: choose what you will tend to here today.";
+  }
+  if (kind === "how") {
+    if (held) return held;
+    return "I do not have a stored method for that. I will not invent steps. One step: tell me the method to remember, or tap the light green and ask again.";
+  }
+  if (kind === "ask") {
+    if (held) return held;
+    if (state.mindOnline) return "I do not have that stored yet. Searching…";
+    return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
+  }
+  if (held) return held;
+  return "I am listening. Ask what you need, or say remember this: … and I will keep it.";
+}
+
+function seedCore() {
+  if (state.coreSeeded) return;
+  CORE_PRECEPTS.forEach((p) => remember("Core: " + p));
+  state.coreSeeded = true;
+  save();
+}
+
 function tryEvolveCommand(userText) {
   const t = userText.trim();
   const q = t.toLowerCase();
@@ -525,14 +601,7 @@ function localEngine(userText) {
     if (state.mindOnline && !signal()) return "Mind is set online, but this phone has no signal. Ask me something I already know, or wait for signal.";
     return "Mind is offline. I will only use what is already on this device. Tap the light to look things up.";
   }
-  if (hits.length) {
-    return "From what I already learned:\n" + hits.map((m) => "- " + m.text).join("\n");
-  }
-  if (/^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || q.includes("?")) {
-    if (!state.mindOnline) return "I do not have that in the offline mind yet. Tap the light so it turns green and ask again — I will look it up and then keep it.";
-    return "I do not have that stored yet. Searching…";
-  }
-  return "Ask me a question, or say remember this: … and I will keep it.";
+  return coreReply(userText, hits);
 }
 
 async function webSearch(query) {
@@ -1069,7 +1138,8 @@ async function answer(userText) {
   }
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
-  const needsLook = !isDateAsk(q) && (/^(who|what|when|where|why|how|which|is|are|can|does|do)\b/.test(q) || userText.includes("?"));
+  const askKind = classifyAsk(userText);
+  const needsLook = askKind === "ask" && !isDateAsk(q);
   const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я|Locked\.|I was first made/i.test(local) && !/searching/i.test(local);
   if (!mindWantsWeb() && needsLook && !answeredLocally) {
     queueLearn(userText);
@@ -1115,6 +1185,10 @@ function formatMindDump() {
   lines.push("Utah time: " + stamp);
   lines.push("Version: " + mindVersion(mindBytes()) + " · size " + formatBytes(mindBytes()));
   lines.push("Engine: " + (state.model && state.model.engine ? state.model.engine : "local"));
+  lines.push("");
+  lines.push("=== Core reasoning ===");
+  lines.push("CORE_VERSION " + CORE_VERSION);
+  CORE_PRECEPTS.forEach((p) => lines.push("- " + p));
   lines.push("");
   lines.push("=== Functions ===");
   (state.functions || []).forEach((f) => {
@@ -1228,6 +1302,7 @@ function essenceBody() {
     memories: state.memories,
     functions: state.functions,
     evolved: state.evolved || [],
+    coreVersion: CORE_VERSION,
     messages: state.messages
   };
 }
@@ -1283,6 +1358,7 @@ function resetWorkingCopy() {
   const modelId = state.model.id;
   state = defaultState();
   state.model.id = modelId;
+  seedCore();
   save();
   render();
   renderPanel();
@@ -1935,6 +2011,7 @@ if ("serviceWorker" in navigator) {
 }
 
 ensureCreator().then(() => {
+  try { seedCore(); } catch (e) {}
   render();
   renderPanel();
   renderMind();
