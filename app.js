@@ -1727,9 +1727,7 @@ function toggleMind() {
 function render() {
   renderNet();
   if (!state.messages.length) {
-    const guestHint = (!account || account.provider === "guest")
-      ? "<br>Name this Я with X, GitHub, or a Я Technologies Account — still on this device."
-      : "";
+    const guestHint = "";
     logEl.innerHTML = `<div class="empty"><div class="big">Я</div><div>Runs offline from the start.<br>Mint the Essence. Download it whenever you want.${guestHint}</div></div>`;
     return;
   }
