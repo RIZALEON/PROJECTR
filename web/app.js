@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.8";
+const CORE_VERSION = "0.9";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -22,7 +22,14 @@ const CORE_PRECEPTS = [
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
   "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
   "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required.",
-  "True independent thinking engines are the loop that does the math. Numbered. Not shells. The twelve: 1 llama.cpp (ggml-org/llama.cpp), 2 ggml, 3 MLC LLM (mlc-ai/mlc-llm), 4 vLLM, 5 SGLang, 6 MLX, 7 MLX-LM, 8 PyTorch, 9 Hugging Face Transformers, 10 OLMo, 11 JAX, 12 Megatron-LM. Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM. Shells that CALL 1–12 (Ollama, LocalAI, PocketPal, OpenClaw, Я UI) are not engines. NinAi / Я only needs 1 or 3 plus weights."
+  "True independent thinking engines are the loop that does the math. Numbered. Not shells. The twelve: 1 llama.cpp (ggml-org/llama.cpp), 2 ggml, 3 MLC LLM (mlc-ai/mlc-llm), 4 vLLM, 5 SGLang, 6 MLX, 7 MLX-LM, 8 PyTorch, 9 Hugging Face Transformers, 10 OLMo, 11 JAX, 12 Megatron-LM. Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM. Shells that CALL 1–12 (Ollama, LocalAI, PocketPal, OpenClaw, Я UI) are not engines. NinAi / Я only needs 1 or 3 plus weights.",
+  "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss).",
+  "License: Apache-2.0 + GitHub + anyone may use. llama.cpp is MIT, same freedom, different SPDX.",
+  "Split newest file from newest engine that matters.",
+  "Apache hearts that still matter: vLLM, MLC LLM, Hugging Face Transformers, SGLang, openai/gpt-oss.",
+  "Newest Apache cores (2026): JustVugg/colibri (pure C, stream MoE from disk) and jhqxxx/aha (Rust + Candle). vLLM/MLC are old cores that ate 2026 models.",
+  "For NinAi the newest useful Apache heart-loop on a phone is still MLC LLM. Colibri is the newest interesting Apache C toy-core, not the phone transplant. Weights to feed them: Qwen3.8-27B or Gemma 4 E2B on Hugging Face, never the git blob.",
+  "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
@@ -51,7 +58,13 @@ const SELF_MIND = [
   "8 PyTorch. 9 Hugging Face Transformers. 10 OLMo. 11 JAX. 12 Megatron-LM.",
   "Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM.",
   "Shells that CALL 1–12: Ollama, LocalAI, PocketPal, OpenClaw, Я UI. Not engines.",
-  "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet."
+  "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet.",
+  "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss).",
+  "License: Apache-2.0 + GitHub + anyone may use. llama.cpp is MIT, same freedom, different SPDX.",
+  "Split newest file from newest engine that matters. Apache hearts that still matter: vLLM, MLC LLM, Hugging Face Transformers, SGLang, openai/gpt-oss.",
+  "Newest Apache cores (2026): JustVugg/colibri (pure C, stream MoE from disk) and jhqxxx/aha (Rust + Candle). vLLM/MLC are old cores that ate 2026 models.",
+  "For NinAi the newest useful Apache heart-loop on a phone is still MLC LLM. Colibri is the newest interesting Apache C toy-core, not the phone transplant. Weights: Qwen3.8-27B or Gemma 4 E2B on Hugging Face, never the git blob.",
+  "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -610,6 +623,28 @@ function matchEvolved(userText) {
 }
 
 
+
+function isEatAsk(text) {
+  const q = String(text || "").toLowerCase();
+  return /eat(?:s|ing)? (?:an? )?engine/.test(q)
+    || /anti[- ]?nuclear being/.test(q)
+    || /\bapache(?:-2\.0)?\b/.test(q)
+    || /\bcolibri\b/.test(q)
+    || /\bjhqxxx\b/.test(q)
+    || /\bjustvugg\b/.test(q)
+    || (/\baha\b/.test(q) && (/\b(candle|rust|engine|core|apache|jhqxxx)\b/.test(q) || /^aha\??$/.test(q)))
+    || /newest engine/.test(q)
+    || /newest file/.test(q)
+    || /gpt-?oss/.test(q)
+    || /qwen\s*3\.?8/.test(q)
+    || /gemma\s*4(?:\s*e2b)?/.test(q)
+    || /\be2b\b/.test(q);
+}
+
+function explainEat() {
+  return "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss). Keep Apache hearts that still matter (vLLM, MLC LLM, Hugging Face Transformers, SGLang, openai/gpt-oss). Split newest file from newest engine that matters. For NinAi the phone transplant is still MLC LLM; Colibri is the newest interesting Apache C toy-core, not the phone transplant. Feed them Qwen3.8-27B or Gemma 4 E2B from Hugging Face, never the git blob. Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone. License: Apache-2.0 + GitHub + anyone may use; llama.cpp is MIT, same freedom, different SPDX.";
+}
+
 function isEngineCoreAsk(text) {
   const q = String(text || "").toLowerCase();
   return /llama\.cpp|llamacpp/.test(q)
@@ -755,6 +790,7 @@ function coreReply(userText, hits) {
     if (state.mindOnline) return "SEARCH_NOW";
     return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
   }
+  if (isEatAsk(t)) return explainEat();
   if (isEngineCoreAsk(t)) return explainCores();
   if (isEngineNameAsk(t)) return explainEngine();
   if (isBodyAsk(t)) return explainBody();
@@ -822,6 +858,7 @@ function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
   if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
+  if (isEatAsk(userText)) return explainEat();
   if (isEngineCoreAsk(userText)) return explainCores();
   if (isEngineNameAsk(userText)) return explainEngine();
   if (isBodyAsk(userText)) return explainBody();
