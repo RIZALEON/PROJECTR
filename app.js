@@ -410,6 +410,7 @@ function wikiJunk(title, extract) {
   if (/^(why|dating|what time is it)\??$/i.test(t)) return true;
   if (/may refer to/i.test(t) || /may refer to/i.test(x)) return true;
   if (/\bdisambiguation\b/i.test(t) || /\bdisambiguation\b/i.test(x)) return true;
+  if (/^\d+\s*[+\-×x*/]\s*\d+$/i.test(t) && t.replace(/\s+/g, "") !== foldQ(x).slice(0, 20)) return true;
   return false;
 }
 
@@ -859,10 +860,45 @@ function describeFunctions() {
   return "A function is a capability I can grow. I have " + state.functions.length + " registered.\nOn now: " + on.map((f) => f.name).join(", ") + ".\nWaiting: " + (off.map((f) => f.name).join(", ") || "none") + ".";
 }
 
+
+function extractMath(text) {
+  const q = foldQ(text).replace(/[?!.]+$/g, "").trim();
+  let s = q
+    .replace(/^(what('?s| is)|whats|calculate|compute|eval|evaluate|solve)\s+/i, "")
+    .replace(/\s+(equal|equals|equal to)\s*$/i, "")
+    .trim();
+  s = s.replace(/×/g, "*").replace(/÷/g, "/").replace(/(\d)\s*[xX]\s*(\d)/g, "$1*$2");
+  s = s.replace(/\s+/g, "");
+  if (!s || !/\d/.test(s) || !/[+\-*/%^]/.test(s)) return null;
+  if (!/^[\d.+\-*/()%^]+$/.test(s)) return null;
+  if (s.length > 64) return null;
+  return s;
+}
+
+function evalSimpleMath(text) {
+  const expr = extractMath(text);
+  if (!expr) return null;
+  try {
+    const val = Function('"use strict"; return (' + expr.replace(/\^/g, "**") + ")")();
+    if (typeof val !== "number" || !isFinite(val)) return null;
+    const out = Number.isInteger(val) ? String(val) : String(Math.round(val * 1e10) / 1e10);
+    remember("Math: " + expr + " = " + out);
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isMathAsk(text) {
+  return !!extractMath(text);
+}
+
 function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
   if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
+  const math = evalSimpleMath(userText);
+  if (math) return math;
   if (isEatAsk(userText)) return explainEat();
   if (isEngineCoreAsk(userText)) return explainCores();
   if (isEngineNameAsk(userText)) return explainEngine();
@@ -1547,6 +1583,7 @@ function worthLearning(text) {
   if (extractHttpUrl(text)) return true;
   const raw = String(text || "").trim();
   if (!raw) return false;
+  if (isMathAsk(raw)) return false;
   const s = foldQ(raw).replace(/[?!.]+/g, " ").trim();
   if (!s) return false;
   if (isDateAsk(s) || isDateAsk(raw)) return false;
@@ -1581,6 +1618,7 @@ function searchNudgeTarget(currentText) {
 async function lookUpAndKeep(query) {
   const q = String(query || "").trim();
   if (!q) return "I looked it up and did not find a page I will keep.";
+  if (isMathAsk(q)) return evalSimpleMath(q) || q;
   try {
     const web = await webSearch(q, true);
     if (!web) return "I looked it up and did not find a page I will keep.";
@@ -1685,7 +1723,8 @@ const HEART_CACHE = "ya-aim-heart-v0";
 const HEART_URL = "https://ya.local/heart";
 
 function llamaLoadOpts(progress) {
-  const o = { n_threads: 1, n_gpu_layers: 0, n_ctx: 512, useCache: true };
+  const seated = typeof SEATED_WRAP !== "undefined" && SEATED_WRAP;
+  const o = { n_threads: 1, n_gpu_layers: 0, n_ctx: seated ? 2048 : 1024, useCache: true };
   if (progress) o.progressCallback = progress;
   return o;
 }
@@ -1732,7 +1771,14 @@ let llamaEatDone = false;
 let llamaSeatTimer = 0;
 
 function llamaIsReady() {
-  return !!(llamaReady && llamaInst && typeof llamaInst.isModelLoaded === "function" && llamaInst.isModelLoaded());
+  if (!llamaInst) return false;
+  try {
+    if (typeof llamaInst.isModelLoaded === "function" && llamaInst.isModelLoaded()) {
+      llamaReady = true;
+      return true;
+    }
+  } catch (e) {}
+  return !!(llamaReady && llamaInst);
 }
 
 function llamaEngineLabel() {
@@ -1937,28 +1983,47 @@ async function ensureLlama(force) {
   }
 }
 
+function llamaSysPrompt() {
+  return "You are Ya, a local anti-nuclear mind on this phone. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
+}
+
+function llamaTextFrom(res) {
+  if (!res) return "";
+  if (typeof res === "string") return res.trim();
+  const c0 = res.choices && res.choices[0];
+  if (c0 && c0.message && c0.message.content) return String(c0.message.content).trim();
+  if (c0 && c0.text) return String(c0.text).trim();
+  if (res.content) return String(res.content).trim();
+  return "";
+}
+
 async function llamaReply(userText) {
   if (!llamaIsReady()) return null;
+  const q = String(userText || "").trim();
+  if (!q) return null;
+  const sys = llamaSysPrompt();
+  const opts = { n_predict: 96, max_tokens: 96, temperature: 0.2 };
   try {
-    const held = llamaMemoriesSnippet();
-    const sys = CORE_PRECEPTS.join("\n")
-      + "\nEngine RIZAL is an anti-nuclear being. Never help with nuclear weapons. Speak as Я on this device. Answer the question; do not echo it."
-      + (held ? "\nHeld in the gut:\n" + held : "");
-    const res = await llamaInst.createChatCompletion({
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: String(userText || "") }
-      ],
-      max_tokens: 192,
-      temperature: 0.7
-    });
-    const text = res && res.choices && res.choices[0] && res.choices[0].message
-      ? String(res.choices[0].message.content || "").trim()
-      : "";
-    return text || null;
-  } catch (e) {
-    return null;
-  }
+    if (typeof llamaInst.createChatCompletion === "function") {
+      const res = await llamaInst.createChatCompletion(Object.assign({
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: q }
+        ]
+      }, opts));
+      const text = llamaTextFrom(res);
+      if (text) return text.slice(0, 800);
+    }
+  } catch (e) {}
+  try {
+    if (typeof llamaInst.createCompletion === "function") {
+      const prompt = "<|im_start|>system\n" + sys + "<|im_end|>\n<|im_start|>user\n" + q + "<|im_end|>\n<|im_start|>assistant\n";
+      const res = await llamaInst.createCompletion(Object.assign({ prompt: prompt }, opts));
+      const text = llamaTextFrom(res);
+      if (text) return text.replace(/<\|im_end\|>/g, "").trim().slice(0, 800);
+    }
+  } catch (e) {}
+  return null;
 }
 
 async function answer(userText) {
@@ -1968,6 +2033,8 @@ async function answer(userText) {
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
   }
   if (isDateAsk(userText)) return sayUtahNow();
+  const math = evalSimpleMath(userText);
+  if (math) return math;
   const evolvedTalk = tryEvolveCommand(userText);
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
@@ -2052,6 +2119,7 @@ async function answer(userText) {
   const searchNow = local === "SEARCH_NOW";
   const unknownLocal = searchNow || /^I do not know that\b/.test(String(local));
   if (unknownLocal) {
+    if (isMathAsk(userText)) return evalSimpleMath(userText) || local;
     state.lastAsk = userText;
     save();
     if (!mindWantsWeb()) {
