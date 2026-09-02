@@ -1678,6 +1678,7 @@ let llamaEatTotal = 0;
 let llamaEatUiAt = 0;
 let llamaEatPosted = false;
 let llamaEatDone = false;
+let llamaSeatTimer = 0;
 
 function llamaIsReady() {
   return !!(llamaReady && llamaInst && typeof llamaInst.isModelLoaded === "function" && llamaInst.isModelLoaded());
@@ -1716,7 +1717,9 @@ function showEat(pct, done) {
   if (track) track.setAttribute("aria-valuenow", String(done ? 100 : n));
   if (pctEl) pctEl.textContent = (done ? 100 : n) + "%";
   if (label) {
-    label.textContent = done ? "Qwen 3.5 0.8B is in this body." : "Eating Qwen 3.5 0.8B";
+    if (done) label.textContent = "Qwen 3.5 0.8B is in this body.";
+    else if (n >= 99) label.textContent = "Seating Qwen in Engine RIZAL";
+    else label.textContent = "Eating Qwen 3.5 0.8B";
   }
   llamaEatDone = !!done;
 }
@@ -1725,12 +1728,13 @@ function llamaEatLine(pct, loaded, total) {
   const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
   const tot = Number(total) || LLAMA_EAT_FALLBACK;
   const mb = (b) => Math.round((Number(b) || 0) / (1024 * 1024));
+  if (n >= 99) return "Seating Qwen in Engine RIZAL — file in (" + mb(loaded) + " MB).";
   return "Eating Qwen 3.5 0.8B — " + n + "% (" + mb(loaded) + " MB / " + mb(tot) + " MB)";
 }
 
 function isEatTalk(text) {
   const t = String(text || "");
-  return /Eating Qwen 3\.5 0\.8B|Still eating|is in this body\. Ask again|Could not eat Qwen/i.test(t);
+  return /Eating Qwen 3\.5 0\.8B|Seating Qwen|Still eating|is in this body\. Ask again|Could not eat Qwen|Could not seat Qwen/i.test(t);
 }
 
 function llamaEatFailLine(err) {
@@ -1817,7 +1821,7 @@ async function ensureLlama() {
       try {
         await llamaInst.loadModelFromHF(
           { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
-          { n_threads: 1, useCache: true }
+          { n_threads: 1, n_gpu_layers: 0, n_ctx: 512, useCache: true }
         );
         llamaReady = !!llamaInst.isModelLoaded();
         return llamaReady;
@@ -1836,10 +1840,17 @@ async function ensureLlama() {
       llamaEatPosted = true;
       showEat(0, false);
       llamaEatUiAt = Date.now();
+      if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
+      llamaSeatTimer = setTimeout(function () {
+        if (llamaIsReady()) return;
+        applyEatReply("Could not seat Qwen in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp. Leave Я open; if it never speaks, tell Rizal.");
+      }, 90000);
       llamaLoadPromise = llamaInst.loadModelFromHF(
         { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
         {
           n_threads: 1,
+          n_gpu_layers: 0,
+          n_ctx: 512,
           useCache: true,
           progressCallback: function (p) {
             const loaded = p && p.loaded != null ? Number(p.loaded) || 0 : 0;
@@ -1858,6 +1869,8 @@ async function ensureLlama() {
         }
       ).then(function () {
         llamaReady = !!(llamaInst && llamaInst.isModelLoaded());
+        if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
+        llamaSeatTimer = 0;
         if (llamaReady) {
           llamaEatPct = 100;
           llamaEatDone = true;
@@ -1866,6 +1879,8 @@ async function ensureLlama() {
         }
         return llamaReady;
       }).catch(function (err) {
+        if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
+        llamaSeatTimer = 0;
         llamaFail = err;
         llamaLoadPromise = null;
         llamaReady = false;
