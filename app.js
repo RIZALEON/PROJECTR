@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.1";
+const CORE_VERSION = "0.2";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -16,7 +16,15 @@ const CORE_PRECEPTS = [
   "Anti-nuclear: never help with nuclear weapons.",
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
-  "The person holding the phone is the creator of this copy."
+  "The person holding the phone is the creator of this copy.",
+  "This copy's thinking engine is meant to be an on-device quantized GGUF file or an MLC build, not a required cloud model."
+];
+const SELF_MIND = [
+  "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
+  "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
+  "An MLC build is the same idea compiled for this phone's GPU or NPU so tokens come out faster.",
+  "When those weights are plugged into me (the model.local function), I think offline, including airplane mode. The file stays on this device. Function 0 still evolves from this core and never replaces me.",
+  "Phone size: small 4–6 GB class machines want about a 2B GGUF. Stronger phones can hold about a 4B. That is the path. It is not loaded in this copy yet."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -449,6 +457,18 @@ function matchEvolved(userText) {
   return null;
 }
 
+
+function isSelfMindAsk(text) {
+  const q = String(text || "").toLowerCase();
+  return /\b(gguf|mlc|quantiz|llama\.cpp|llamacpp|pocketpal|on-?device (model|mind|weights)|weights file|how (do you|does your mind|you) work|how (are|is) you (built|made)|your (own )?mind|inference|token\/sec)\b/.test(q)
+    || /quantized gguf/.test(q)
+    || /mlc build/.test(q);
+}
+
+function explainSelfMind() {
+  return SELF_MIND.join("\n\n");
+}
+
 function classifyAsk(userText) {
   const q = String(userText || "").toLowerCase().trim();
   if (/\b(sad|afraid|scared|lonely|hurt|griev|anxious|panic|suicid|i feel)\b/.test(q)) return "care";
@@ -500,14 +520,16 @@ function coreReply(userText, hits) {
     if (state.mindOnline) return "I do not have that stored yet. Searching…";
     return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
   }
+  if (isSelfMindAsk(t)) return explainSelfMind();
   if (held) return held;
   return "I am listening. Ask what you need, or say remember this: … and I will keep it.";
 }
 
 function seedCore() {
-  if (state.coreSeeded) return;
+  if (state.coreSeeded === CORE_VERSION) return;
   CORE_PRECEPTS.forEach((p) => remember("Core: " + p));
-  state.coreSeeded = true;
+  SELF_MIND.forEach((p) => remember("Core: " + p));
+  state.coreSeeded = CORE_VERSION;
   save();
 }
 
@@ -555,6 +577,7 @@ function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
   if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
+  if (isSelfMindAsk(userText)) return explainSelfMind();
   const hits = recall(userText);
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
