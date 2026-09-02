@@ -8,8 +8,8 @@ const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
-const LLAMA_HF_REPO = "TheStageAI/Qwen3.5-0.8B-GGUF";
-const LLAMA_HF_FILE = "Qwen3.5-0.8B-S-TS-Q4_K_S.gguf";
+const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
+const LLAMA_HF_FILE = "SmolLM2-135M-Instruct-Q4_K_S.gguf";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -19,7 +19,7 @@ const CORE_PRECEPTS = [
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
-  "Engine RIZAL is the on-device heart of this copy. When the Qwen 3.5 0.8B S GGUF is present, it calls llama.cpp for next tokens. Until the file is eaten, rules+gut still talk. Not a required cloud model.",
+  "Engine RIZAL is the on-device heart of this copy. When the SmolLM2 135M Instruct GGUF is present, it calls llama.cpp for next tokens. Until the file is eaten, rules+gut still talk. Not a required cloud model.",
   "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
   "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
@@ -36,17 +36,17 @@ const CORE_PRECEPTS = [
 const SELF_MIND = [
   "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
-  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + Qwen 3.5 0.8B S when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
-  "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on Qwen 3.5 0.8B S when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
+  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
+  "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on SmolLM2 135M when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
   "Online AI apps keep the heart in another building and only a mouth on the phone. I keep Engine RIZAL and the gut in this body. Green light may look something up, then the gut is updated here.",
   "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
   "An MLC build is the same idea compiled for this phone's GPU or NPU so tokens come out faster.",
   "When those weights are plugged into me (the model.local function), I think offline, including airplane mode. The file stays on this device. Function 0 still evolves from this core and never replaces me.",
-  "This copy eats TheStageAI/Qwen3.5-0.8B-GGUF file Qwen3.5-0.8B-S-TS-Q4_K_S.gguf (~418 MB) on first green light, caches it in the browser, then runs offline/amber.",
+  "This copy eats bartowski/SmolLM2-135M-Instruct-GGUF file SmolLM2-135M-Instruct-Q4_K_S.gguf (~97 MB) on first green light, caches it in the browser, then runs offline/amber.",
   "The engine is the procedure plus stored state that turn your words into my words. Not the icon, not the chat log, not the store page.",
   "Three pieces: (1) Method — search, rewrite, rules, or a neural net stepping through tokens. (2) Store — memory, weights, or a rule list the method can read. (3) Loop — take input → update store if needed → emit output.",
   "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
-  "Engine RIZAL method is llama.cpp (wllama wasm, n_threads 1) plus the Qwen 3.5 0.8B S GGUF when present. Rules+gut remain the fallback loop.",
+  "Engine RIZAL method is llama.cpp (wllama wasm, n_threads 1) plus the SmolLM2 135M Instruct GGUF when present. Rules+gut remain the fallback loop.",
   "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
   "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
   "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
@@ -60,7 +60,7 @@ const SELF_MIND = [
   "8 PyTorch. 9 Hugging Face Transformers. 10 OLMo. 11 JAX. 12 Megatron-LM.",
   "Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM.",
   "Shells that CALL 1–12: Ollama, LocalAI, PocketPal, OpenClaw, Я UI. Not engines.",
-  "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus Qwen 3.5 0.8B S when the GGUF is present; rules+gut until then.",
+  "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus SmolLM2 135M when the GGUF is present; rules+gut until then.",
   "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss).",
   "License: Apache-2.0 + GitHub + anyone may use. llama.cpp is MIT, same freedom, different SPDX.",
   "Split newest file from newest engine that matters. Apache hearts that still matter: vLLM, MLC LLM, Hugging Face Transformers, SGLang, openai/gpt-oss.",
@@ -217,7 +217,7 @@ const defaultState = () => ({
     { id: "log.download", name: "Download chat log", enabled: true, version: "0.0.1" },
     { id: "essence.mint", name: "Mint Essence", enabled: true, version: "0.1.0" },
     { id: "essence.download", name: "Download minted Essence", enabled: true, version: "0.1.0" },
-    { id: "model.local", name: "On-device llama.cpp (Qwen 3.5 0.8B)", enabled: true, version: "0.1" },
+    { id: "model.local", name: "On-device llama.cpp (SmolLM2 135M)", enabled: true, version: "0.2" },
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
     { id: "sync.github", name: "Upload evolutions when GitHub comms return", enabled: true, version: "0.0" },
@@ -681,7 +681,7 @@ function explainCores() {
     "10 OLMo.",
     "11 JAX.",
     "12 Megatron-LM.",
-    "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus Qwen 3.5 0.8B S when the GGUF is present; rules+gut until then."
+    "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus SmolLM2 135M when the GGUF is present; rules+gut until then."
   ].join("\n");
 }
 
@@ -730,7 +730,7 @@ function isSelfMindAsk(text) {
 }
 
 function explainEngine() {
-  return llamaIsReady() ? "Yes. Engine RIZAL is llama.cpp plus Qwen 3.5 0.8B S in this body. Tokens come from that heart. Rules+gut stay as fallback." : "Yes. Engine RIZAL is the heart in this body. Until the Qwen 3.5 0.8B S GGUF is eaten, it is rules plus memory plus Function 0. llama.cpp is wired; the file is not in this body yet.";
+  return llamaIsReady() ? "Yes. Engine RIZAL is llama.cpp plus SmolLM2 135M in this body. Tokens come from that heart. Rules+gut stay as fallback." : "Yes. Engine RIZAL is the heart in this body. Until the SmolLM2 135M Instruct GGUF is eaten, it is rules plus memory plus Function 0. llama.cpp is wired; the file is not in this body yet.";
 }
 
 function explainBody() {
@@ -1665,9 +1665,9 @@ const WLLAMA_JS_LOCAL = "./wllama/index.js";
 const WLLAMA_WASM_LOCAL = "./wllama/wasm/wllama.wasm";
 const WLLAMA_JS_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js";
 const WLLAMA_WASM_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm";
-const LLAMA_EAT_LINE = "Eating Qwen 3.5 0.8B (418 MB) into this body…";
-const LLAMA_EAT_DONE = "Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.";
-const LLAMA_EAT_FALLBACK = 418 * 1024 * 1024;
+const LLAMA_EAT_LINE = "Eating SmolLM2 135M (97 MB) into this body…";
+const LLAMA_EAT_DONE = "SmolLM2 135M is in this body. Ask again; Engine RIZAL will speak from llama.cpp.";
+const LLAMA_EAT_FALLBACK = 102039904;
 let llamaInst = null;
 let llamaReady = false;
 let llamaLoadPromise = null;
@@ -1686,7 +1686,7 @@ function llamaIsReady() {
 
 function llamaEngineLabel() {
   const base = state.model && state.model.engine ? state.model.engine : "Engine RIZAL";
-  if (llamaIsReady()) return base + " · llama.cpp + Qwen3.5-0.8B S";
+  if (llamaIsReady()) return base + " · llama.cpp + SmolLM2 135M";
   return base;
 }
 
@@ -1717,9 +1717,9 @@ function showEat(pct, done) {
   if (track) track.setAttribute("aria-valuenow", String(done ? 100 : n));
   if (pctEl) pctEl.textContent = (done ? 100 : n) + "%";
   if (label) {
-    if (done) label.textContent = "Qwen 3.5 0.8B is in this body.";
-    else if (n >= 99) label.textContent = "Seating Qwen in Engine RIZAL";
-    else label.textContent = "Eating Qwen 3.5 0.8B";
+    if (done) label.textContent = "SmolLM2 135M is in this body.";
+    else if (n >= 99) label.textContent = "Seating SmolLM2 135M in Engine RIZAL";
+    else label.textContent = "Eating SmolLM2 135M";
   }
   llamaEatDone = !!done;
 }
@@ -1728,13 +1728,13 @@ function llamaEatLine(pct, loaded, total) {
   const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
   const tot = Number(total) || LLAMA_EAT_FALLBACK;
   const mb = (b) => Math.round((Number(b) || 0) / (1024 * 1024));
-  if (n >= 99) return "Seating Qwen in Engine RIZAL — file in (" + mb(loaded) + " MB).";
-  return "Eating Qwen 3.5 0.8B — " + n + "% (" + mb(loaded) + " MB / " + mb(tot) + " MB)";
+  if (n >= 99) return "Seating SmolLM2 135M in Engine RIZAL — file in (" + mb(loaded) + " MB).";
+  return "Eating SmolLM2 135M — " + n + "% (" + mb(loaded) + " MB / " + mb(tot) + " MB)";
 }
 
 function isEatTalk(text) {
   const t = String(text || "");
-  return /Eating Qwen 3\.5 0\.8B|Seating Qwen|Still eating|is in this body\. Ask again|Could not eat Qwen|Could not seat Qwen/i.test(t);
+  return /Eating SmolLM2|Seating SmolLM2|Eating Qwen|Seating Qwen|Still eating|is in this body\. Ask again|Could not eat |Could not seat /i.test(t);
 }
 
 function llamaEatFailLine(err) {
@@ -1743,10 +1743,10 @@ function llamaEatFailLine(err) {
   if (err && err.message) msg = String(err.message);
   else if (err != null) msg = String(err);
   msg = msg.replace(/\s+/g, " ").trim().slice(0, 220);
-  if (status) return "Could not eat Qwen 3.5 0.8B — HTTP " + status + (msg ? ": " + msg : "") + ".";
-  if (/quota|cache|storage|indexeddb|idb/i.test(msg)) return "Could not eat Qwen 3.5 0.8B — cache error" + (msg ? ": " + msg : "") + ".";
-  if (/network|fetch|offline|failed to fetch|load failed|abort/i.test(msg)) return "Could not eat Qwen 3.5 0.8B — network error" + (msg ? ": " + msg : "") + ".";
-  return "Could not eat Qwen 3.5 0.8B — " + (msg || "unknown error") + ".";
+  if (status) return "Could not eat SmolLM2 135M — HTTP " + status + (msg ? ": " + msg : "") + ".";
+  if (/quota|cache|storage|indexeddb|idb/i.test(msg)) return "Could not eat SmolLM2 135M — cache error" + (msg ? ": " + msg : "") + ".";
+  if (/network|fetch|offline|failed to fetch|load failed|abort/i.test(msg)) return "Could not eat SmolLM2 135M — network error" + (msg ? ": " + msg : "") + ".";
+  return "Could not eat SmolLM2 135M — " + (msg || "unknown error") + ".";
 }
 
 function patchEatingLine(text) {
@@ -1860,7 +1860,7 @@ async function ensureLlama() {
             if (pct >= 99 && !llamaSeatTimer) {
               llamaSeatTimer = setTimeout(function () {
                 if (llamaIsReady()) return;
-                applyEatReply("Could not seat Qwen in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp.");
+                applyEatReply("Could not seat SmolLM2 135M in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp.");
               }, 180000);
             }
             const now = Date.now();
