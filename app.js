@@ -1666,6 +1666,8 @@ const WLLAMA_WASM_LOCAL = "./wllama/wasm/wllama.wasm";
 const WLLAMA_JS_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js";
 const WLLAMA_WASM_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm";
 const LLAMA_EAT_LINE = "Eating Qwen 3.5 0.8B (418 MB) into this body…";
+const LLAMA_EAT_DONE = "Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.";
+const LLAMA_EAT_FALLBACK = 418 * 1024 * 1024;
 let llamaInst = null;
 let llamaReady = false;
 let llamaLoadPromise = null;
@@ -1721,23 +1723,46 @@ function showEat(pct, done) {
 
 function llamaEatLine(pct, loaded, total) {
   const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  const tot = Number(total) || LLAMA_EAT_FALLBACK;
   const mb = (b) => Math.round((Number(b) || 0) / (1024 * 1024));
-  if (total) return "Eating Qwen 3.5 0.8B — " + n + "% (" + mb(loaded) + " MB / " + mb(total) + " MB)";
-  if (n) return "Eating Qwen 3.5 0.8B — " + n + "%";
-  return LLAMA_EAT_LINE;
+  return "Eating Qwen 3.5 0.8B — " + n + "% (" + mb(loaded) + " MB / " + mb(tot) + " MB)";
+}
+
+function isEatTalk(text) {
+  const t = String(text || "");
+  return /Eating Qwen 3\.5 0\.8B|Still eating|is in this body\. Ask again|Could not eat Qwen/i.test(t);
+}
+
+function llamaEatFailLine(err) {
+  const status = err && (err.status || err.statusCode || (err.response && err.response.status));
+  let msg = "";
+  if (err && err.message) msg = String(err.message);
+  else if (err != null) msg = String(err);
+  msg = msg.replace(/\s+/g, " ").trim().slice(0, 220);
+  if (status) return "Could not eat Qwen 3.5 0.8B — HTTP " + status + (msg ? ": " + msg : "") + ".";
+  if (/quota|cache|storage|indexeddb|idb/i.test(msg)) return "Could not eat Qwen 3.5 0.8B — cache error" + (msg ? ": " + msg : "") + ".";
+  if (/network|fetch|offline|failed to fetch|load failed|abort/i.test(msg)) return "Could not eat Qwen 3.5 0.8B — network error" + (msg ? ": " + msg : "") + ".";
+  return "Could not eat Qwen 3.5 0.8B — " + (msg || "unknown error") + ".";
 }
 
 function patchEatingLine(text) {
   const msgs = state.messages || [];
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i] && msgs[i].role === "ya" && /Eating Qwen 3\.5 0\.8B/.test(String(msgs[i].text || ""))) {
+    if (msgs[i] && msgs[i].role === "ya" && isEatTalk(msgs[i].text)) {
+      if (msgs[i].text === text) return true;
       msgs[i].text = text;
       msgs[i].at = Date.now();
       save();
       render();
-      return;
+      return true;
     }
   }
+  return false;
+}
+
+function applyEatReply(text) {
+  if (patchEatingLine(text)) return;
+  push("ya", text);
 }
 
 function llamaMemoriesSnippet() {
@@ -1778,6 +1803,8 @@ async function ensureLlama() {
 
       } catch (e) {
         llamaFail = e;
+        hideEat();
+        applyEatReply(llamaEatFailLine(e));
         return false;
       }
     }
@@ -1802,17 +1829,22 @@ async function ensureLlama() {
     if (!llamaLoadPromise) {
       llamaEatPct = 0;
       llamaEatLoaded = 0;
-      llamaEatTotal = 0;
+      llamaEatTotal = LLAMA_EAT_FALLBACK;
       llamaEatUiAt = 0;
       llamaEatDone = false;
+      llamaFail = null;
+      llamaEatPosted = true;
+      showEat(0, false);
+      llamaEatUiAt = Date.now();
       llamaLoadPromise = llamaInst.loadModelFromHF(
         { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
         {
           n_threads: 1,
+          useCache: true,
           progressCallback: function (p) {
-            const loaded = p && p.loaded ? p.loaded : 0;
-            const total = p && p.total ? p.total : 0;
-            if (!total) return;
+            const loaded = p && p.loaded != null ? Number(p.loaded) || 0 : 0;
+            let total = p && p.total ? Number(p.total) || 0 : 0;
+            if (!total) total = LLAMA_EAT_FALLBACK;
             const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
             llamaEatPct = pct;
             llamaEatLoaded = loaded;
@@ -1828,21 +1860,28 @@ async function ensureLlama() {
         llamaReady = !!(llamaInst && llamaInst.isModelLoaded());
         if (llamaReady) {
           llamaEatPct = 100;
+          llamaEatDone = true;
           showEat(100, true);
-          patchEatingLine("Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.");
+          applyEatReply(LLAMA_EAT_DONE);
         }
         return llamaReady;
       }).catch(function (err) {
         llamaFail = err;
         llamaLoadPromise = null;
         llamaReady = false;
+        llamaEatPosted = false;
         hideEat();
+        applyEatReply(llamaEatFailLine(err));
         return false;
       });
     }
     return llamaIsReady();
   } catch (e) {
     llamaFail = e;
+    llamaLoadPromise = null;
+    llamaEatPosted = false;
+    hideEat();
+    applyEatReply(llamaEatFailLine(e));
     return false;
   }
 }
@@ -1929,10 +1968,13 @@ async function answer(userText) {
         return gen;
       }
     } else if (mindWantsWeb() || llamaLoadPromise) {
-      if (llamaLoadPromise && llamaEatPosted) {
-        return llamaEatPct ? ("Still eating — " + llamaEatPct + "%.") : "Still eating.";
-      }
+      if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
+      if (llamaFail && !llamaLoadPromise) return llamaEatFailLine(llamaFail);
       llamaEatPosted = true;
+      showEat(llamaEatPct, false);
+      if (llamaEatPct) {
+        return "Still eating — " + llamaEatPct + "% (" + Math.round((llamaEatLoaded || 0) / (1024 * 1024)) + " MB).";
+      }
       return llamaEatLine(llamaEatPct, llamaEatLoaded, llamaEatTotal);
     }
   }
@@ -1988,7 +2030,14 @@ async function send(text) {
   const t = text.trim();
   if (!t || !fnEnabled("chat.send")) return;
   push("user", t);
-  const reply = await answer(t);
+  let reply = await answer(t);
+  if (llamaIsReady() && isEatTalk(reply) && reply !== LLAMA_EAT_DONE) {
+    reply = LLAMA_EAT_DONE;
+  }
+  if (isEatTalk(reply)) {
+    applyEatReply(reply);
+    return;
+  }
   push("ya", reply);
 }
 
