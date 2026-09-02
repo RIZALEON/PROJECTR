@@ -421,6 +421,7 @@ function registerEvolved(name, trigger, action) {
   }
   remember("Evolved function " + skill.name + ": when \"" + skill.trigger + "\" → " + skill.action);
   save();
+  noteLocalPing("new function " + skill.name);
   return skill;
 }
 
@@ -652,6 +653,11 @@ async function pushEvolutions() {
 
 
 function pingLocations(extra) {
+  if (ISOLATED) {
+    const hops = ["phone (Utah)", "brain download log"];
+    (extra || []).forEach((h) => { if (h && hops.indexOf(h) < 0) hops.push(h); });
+    return hops;
+  }
   const hops = ["phone (Utah)", "reconnect inbox", "Chief of Staff chat"];
   (extra || []).forEach((h) => { if (h && hops.indexOf(h) < 0) hops.push(h); });
   return hops;
@@ -679,6 +685,18 @@ function formatPingNote(rec) {
     "All ping locations:",
     past.length ? past.join("\n") : "(this is the first)"
   ].join("\n");
+}
+
+function noteLocalPing(reason) {
+  const rec = {
+    at: Date.now(),
+    utah: utahNow(),
+    reason: reason || "reconnect",
+    locations: pingLocations([]),
+    bytes: mindBytes()
+  };
+  recordPing(rec);
+  return rec;
 }
 
 function recordPing(rec) {
@@ -768,7 +786,22 @@ async function pushInbox() {
 }
 
 async function onCommsBack() {
-  if (ISOLATED) { renderNet(); return; }
+  if (ISOLATED) {
+    renderNet();
+    const nowBytes = mindBytes();
+    const rec = {
+      at: Date.now(),
+      utah: utahNow(),
+      reason: pingReason([], 0, 0, Math.max(0, nowBytes - (state.lastMindBytes || 0))),
+      locations: pingLocations([]),
+      bytes: nowBytes,
+      learned: []
+    };
+    noteLocalPing(rec.reason);
+    state.lastMindBytes = nowBytes;
+    save();
+    return;
+  }
   renderNet();
   const beforeBytes = state.lastMindBytes || 0;
   const evolvedBefore = (state.evolved || []).length;
@@ -1118,7 +1151,7 @@ function formatMindDump() {
     lines.push("- " + (when ? when + " · " : "") + m.text);
   });
   lines.push("");
-  lines.push("=== Pings (Я ↔ Chief of Staff) ===");
+  lines.push("=== Pings ===");
   const pings = state.pings || [];
   if (!pings.length) lines.push("(none yet)");
   pings.forEach((p) => {
