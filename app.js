@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.7";
+const CORE_VERSION = "0.8";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -21,7 +21,8 @@ const CORE_PRECEPTS = [
   "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
   "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
-  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required."
+  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required.",
+  "True independent thinking engines are the loop that does the math. Numbered. Not shells. The twelve: 1 llama.cpp (ggml-org/llama.cpp), 2 ggml, 3 MLC LLM (mlc-ai/mlc-llm), 4 vLLM, 5 SGLang, 6 MLX, 7 MLX-LM, 8 PyTorch, 9 Hugging Face Transformers, 10 OLMo, 11 JAX, 12 Megatron-LM. Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM. Shells that CALL 1–12 (Ollama, LocalAI, PocketPal, OpenClaw, Я UI) are not engines. NinAi / Я only needs 1 or 3 plus weights."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
@@ -41,7 +42,16 @@ const SELF_MIND = [
   "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
   "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
   "GOFLOF 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0.",
-  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required."
+  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required.",
+  "True independent thinking engines are the loop that does the math. Numbered. Not shells.",
+  "1 llama.cpp (ggml-org/llama.cpp) local Transformer GGUF CPU/GPU/Metal — NinAi first transplant.",
+  "2 ggml (ggml-org/ggml) tensor core under llama.cpp.",
+  "3 MLC LLM (mlc-ai/mlc-llm) compiles onto phone GPU via TVM — second transplant.",
+  "4 vLLM server. 5 SGLang server. 6 MLX Apple array. 7 MLX-LM LLM on MLX.",
+  "8 PyTorch. 9 Hugging Face Transformers. 10 OLMo. 11 JAX. 12 Megatron-LM.",
+  "Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM.",
+  "Shells that CALL 1–12: Ollama, LocalAI, PocketPal, OpenClaw, Я UI. Not engines.",
+  "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -600,6 +610,44 @@ function matchEvolved(userText) {
 }
 
 
+function isEngineCoreAsk(text) {
+  const q = String(text || "").toLowerCase();
+  return /llama\.cpp|llamacpp/.test(q)
+    || /\bggml\b/.test(q)
+    || /\bmlc\b/.test(q)
+    || /\bvllm\b/.test(q)
+    || /\bsglang\b/.test(q)
+    || /\bmlx(?:-lm)?\b/.test(q)
+    || /\bpytorch\b/.test(q)
+    || /\btransformers\b/.test(q)
+    || /\bolmo\b/.test(q)
+    || /\bjax\b/.test(q)
+    || /\bmegatron\b/.test(q)
+    || /twelve cores/.test(q)
+    || /true engine/.test(q)
+    || /thinking engine/.test(q)
+    || /\bninai\b/.test(q);
+}
+
+function explainCores() {
+  return [
+    "True independent thinking engines are the loop that does the math. Numbered. Not shells.",
+    "1 llama.cpp (ggml-org/llama.cpp) local Transformer GGUF CPU/GPU/Metal — NinAi first transplant.",
+    "2 ggml (ggml-org/ggml) tensor core under llama.cpp.",
+    "3 MLC LLM (mlc-ai/mlc-llm) compiles onto phone GPU via TVM — second transplant.",
+    "4 vLLM server.",
+    "5 SGLang server.",
+    "6 MLX Apple array.",
+    "7 MLX-LM LLM on MLX.",
+    "8 PyTorch.",
+    "9 Hugging Face Transformers.",
+    "10 OLMo.",
+    "11 JAX.",
+    "12 Megatron-LM.",
+    "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet."
+  ].join("\n");
+}
+
 function isEngineNameAsk(text) {
   const q = String(text || "").toLowerCase();
   return /engine\s*rizal/.test(q)
@@ -707,6 +755,7 @@ function coreReply(userText, hits) {
     if (state.mindOnline) return "SEARCH_NOW";
     return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
   }
+  if (isEngineCoreAsk(t)) return explainCores();
   if (isEngineNameAsk(t)) return explainEngine();
   if (isBodyAsk(t)) return explainBody();
   if (isSelfMindAsk(t)) return explainSelfMind();
@@ -773,6 +822,7 @@ function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
   if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
+  if (isEngineCoreAsk(userText)) return explainCores();
   if (isEngineNameAsk(userText)) return explainEngine();
   if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
