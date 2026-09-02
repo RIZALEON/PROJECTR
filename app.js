@@ -252,6 +252,7 @@ function load() {
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
+      fed: Array.isArray(parsed.fed) ? parsed.fed : [],
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
@@ -2160,6 +2161,14 @@ function formatMindDump() {
     lines.push("  " + (p.locations || []).join(" → "));
   });
   lines.push("");
+  lines.push("=== Fed into this body ===");
+  const fed = state.fed || [];
+  if (!fed.length) lines.push("(none yet)");
+  fed.forEach((f) => {
+    const when = f.at ? new Date(f.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
+    lines.push("- " + (when ? when + " · " : "") + (f.kind || "file") + " · " + (f.name || "") + " · " + formatBytes(f.bytes || 0));
+  });
+  lines.push("");
   lines.push("=== Conversations ===");
   const msgs = state.messages || [];
   if (!msgs.length) lines.push("(none yet)");
@@ -2194,13 +2203,154 @@ function formatLog(kind) {
   return head + lines.join("\n");
 }
 
-function saveFile(name, body, type) {
-  const blob = new Blob([body], { type });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+const FEED_CACHE = "ya-aim-feed-v0";
+
+function noteFed(rec) {
+  state.fed = Array.isArray(state.fed) ? state.fed : [];
+  state.fed.unshift(rec);
+  if (state.fed.length > 80) state.fed = state.fed.slice(0, 80);
+}
+
+function showDumpSheet(name, text) {
+  let wrap = document.getElementById("dump-sheet");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "dump-sheet";
+    wrap.style.cssText = "position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;";
+    wrap.innerHTML = '<div style="background:#141416;color:#f4f1ea;width:100%;max-height:86%;overflow:auto;padding:18px 16px calc(24px + env(safe-area-inset-bottom));border-top:1px solid #2a2a2e;border-radius:18px 18px 0 0;"><div id="dump-title" style="font-family:Georgia,serif;font-size:22px;margin-bottom:8px;"></div><div style="display:flex;gap:8px;margin-bottom:12px;"><button type="button" id="dump-copy">Copy</button><button type="button" id="dump-close">Close</button></div><pre id="dump-body" style="white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.4;"></pre></div>';
+    document.body.appendChild(wrap);
+    wrap.addEventListener("click", function (e) { if (e.target === wrap) wrap.remove(); });
+    wrap.querySelector("#dump-close").addEventListener("click", function () { wrap.remove(); });
+    wrap.querySelector("#dump-copy").addEventListener("click", function () {
+      const t = wrap.querySelector("#dump-body").textContent || "";
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+    });
+  }
+  wrap.querySelector("#dump-title").textContent = name || "Я mind dump";
+  wrap.querySelector("#dump-body").textContent = text || "";
+}
+
+async function saveFile(name, body, type) {
+  const blob = new Blob([body], { type: type || "text/plain;charset=utf-8" });
+  try {
+    const file = new File([blob], name, { type: blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: name, text: "Я mind dump" });
+      return;
+    }
+  } catch (e) {}
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (err) {} }, 2000);
+    return;
+  } catch (e) {}
+  showDumpSheet(name, typeof body === "string" ? body : "");
+}
+
+async function stashFeedBlob(file, name) {
+  try {
+    const cache = await caches.open(FEED_CACHE);
+    await cache.put("https://ya.local/feed/" + encodeURIComponent(name), new Response(file, {
+      headers: { "content-type": file.type || "application/octet-stream" }
+    }));
+  } catch (e) {}
+}
+
+async function fileLooksText(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let nuls = 0;
+  const n = Math.min(buf.length, 800);
+  for (let i = 0; i < n; i++) if (buf[i] === 0) nuls += 1;
+  if (nuls > 1) return { text: null, buf: buf };
+  return { text: new TextDecoder("utf-8", { fatal: false }).decode(buf), buf: buf };
+}
+
+async function eatBrainFile(file) {
+  const name = String(file && file.name || "feed");
+  const bytes = (file && file.size) || 0;
+  const lower = name.toLowerCase();
+  const mime = String(file && file.type || "");
+  if (nuclearBlocked(name)) return "No. I will not eat nuclear-weapons material.";
+  const magic = (await file.slice(0, 4).text().catch(function () { return ""; })) || "";
+  const isGguf = lower.endsWith(".gguf") || magic === "GGUF";
+  if (isGguf) {
+    await saveHeartBlob(file);
+    state.heart = { name: name, bytes: bytes, kind: "gguf", at: Date.now() };
+    save();
+    renderMind();
+    llamaReady = false;
+    llamaLoadPromise = null;
+    llamaFail = null;
+    llamaEatDone = false;
+    if (llamaInst && typeof llamaInst.exit === "function") {
+      try { await llamaInst.exit(); } catch (err) {}
+    }
+    llamaInst = null;
+    showEat(0, false);
+    ensureLlama(true);
+    return "Eating " + name + " (" + formatBytes(bytes) + ") into this body…";
+  }
+  if (lower.endsWith(".json") || mime.indexOf("json") >= 0) {
+    const text = await file.text();
+    if (nuclearBlocked(text)) return "No. I will not eat nuclear-weapons material.";
+    let parsed = null;
+    try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+    if (parsed && typeof parsed === "object") {
+      if (Array.isArray(parsed.memories)) state.memories = (state.memories || []).concat(parsed.memories);
+      if (Array.isArray(parsed.evolved)) state.evolved = (state.evolved || []).concat(parsed.evolved);
+      if (Array.isArray(parsed.functions)) {
+        parsed.functions.forEach(function (f) {
+          if (!f || !f.id || isLockedCoreId(f.id)) return;
+          if (!(state.functions || []).some(function (x) { return x.id === f.id; })) state.functions.push(f);
+        });
+      }
+      if (parsed.kind === "ya-essence" || parsed.memories || parsed.evolved) {
+        state.heart = { name: name, bytes: bytes, kind: "essence", at: Date.now() };
+      } else {
+        remember("Fed JSON " + name + ":\n" + text.slice(0, 80000));
+      }
+    } else {
+      remember("Fed text " + name + ":\n" + text.slice(0, 80000));
+    }
+    noteFed({ name: name, bytes: bytes, kind: "json", at: Date.now() });
+    save();
+    renderMind();
+    return "Kept " + name + " in the gut. Function 0 can use it.";
+  }
+  if (mime.indexOf("image/") === 0 || /\.(png|jpe?g|gif|webp|svg|bmp|heic)$/i.test(lower)) {
+    await stashFeedBlob(file, name);
+    remember("Fed image " + name + " (" + formatBytes(bytes) + "). Held in this body.");
+    noteFed({ name: name, bytes: bytes, kind: "image", at: Date.now() });
+    save();
+    renderMind();
+    return "Kept image " + name + " in this body. Ask me about it anytime.";
+  }
+  const look = await fileLooksText(file);
+  if (look.text && look.text.trim()) {
+    if (nuclearBlocked(look.text)) return "No. I will not eat nuclear-weapons material.";
+    remember("Fed file " + name + ":\n" + look.text.slice(0, 80000));
+    const first = look.text.trim().split(/\n/)[0];
+    let extra = "";
+    try {
+      const ev = tryEvolveCommand(first);
+      if (ev) extra = "\n" + ev;
+    } catch (e) {}
+    noteFed({ name: name, bytes: bytes, kind: "text", at: Date.now() });
+    save();
+    renderMind();
+    return "Kept " + name + " in the gut. Function 0 can use it." + extra;
+  }
+  await stashFeedBlob(file, name);
+  remember("Fed file " + name + " (" + formatBytes(bytes) + (mime ? ", " + mime : "") + "). Held in this body.");
+  noteFed({ name: name, bytes: bytes, kind: "bin", at: Date.now() });
+  save();
+  renderMind();
+  return "Kept " + name + " in this body.";
 }
 
 function downloadLog(kind) {
@@ -2918,45 +3068,16 @@ if (ulMind && ulMindFile) {
   });
   ulMindFile.addEventListener("change", async (e) => {
     e.stopPropagation();
-    const file = ulMindFile.files && ulMindFile.files[0];
+    const files = ulMindFile.files ? Array.prototype.slice.call(ulMindFile.files) : [];
     ulMindFile.value = "";
-    if (!file) return;
-    const name = String(file.name || "brain");
-    const bytes = file.size || 0;
-    const lower = name.toLowerCase();
-    try {
-      if (lower.endsWith(".json")) {
-        const text = await file.text();
-        const parsed = JSON.parse(text);
-        state.heart = { name: name, bytes: bytes, kind: "essence", at: Date.now() };
-        if (parsed && parsed.memories && Array.isArray(parsed.memories)) {
-          state.memories = (state.memories || []).concat(parsed.memories);
-        }
-        if (parsed && parsed.evolved && Array.isArray(parsed.evolved)) {
-          state.evolved = (state.evolved || []).concat(parsed.evolved);
-        }
-        save();
-        renderMind();
-        applyEatReply("Seated a mind file in the gut (" + formatBytes(bytes) + "). Function 0 can use it.");
-        return;
+    if (!files.length) return;
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const msg = await eatBrainFile(files[i]);
+        applyEatReply(msg);
+      } catch (err) {
+        applyEatReply(llamaEatFailLine(err));
       }
-      await saveHeartBlob(file);
-      state.heart = { name: name, bytes: bytes, kind: "gguf", at: Date.now() };
-      save();
-      renderMind();
-      llamaReady = false;
-      llamaLoadPromise = null;
-      llamaFail = null;
-      llamaEatDone = false;
-      if (llamaInst && typeof llamaInst.exit === "function") {
-        try { await llamaInst.exit(); } catch (err) {}
-      }
-      llamaInst = null;
-      applyEatReply("Eating " + name + " (" + formatBytes(bytes) + ") into this body…");
-      showEat(0, false);
-      ensureLlama(true);
-    } catch (err) {
-      applyEatReply(llamaEatFailLine(err));
     }
   });
 }

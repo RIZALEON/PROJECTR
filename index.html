@@ -19,7 +19,7 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=45" />
+  <link rel="stylesheet" href="./styles.css?v=46" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -81,14 +81,14 @@
         <div class="mind-size-row">
           <div class="mind-value" id="mind-size">0 B</div>
           <div class="mind-dl-pair">
-            <button type="button" class="mind-dl" id="ul-mind" title="Upload a brain or engine">
+            <button type="button" class="mind-dl" id="ul-mind" title="Feed engines, text, JSON, images">
               <img src="./mind-ul.svg" alt="Upload mind" width="40" height="40" />
             </button>
-            <button type="button" class="mind-dl" id="dl-mind" title="Download this mind as text">
+            <button type="button" class="mind-dl" id="dl-mind" title="Download full mind as text">
               <img src="./mind-dl.svg" alt="Download mind" width="40" height="40" />
             </button>
           </div>
-          <input id="ul-mind-file" type="file" accept=".gguf,.json,application/json,application/octet-stream" hidden />
+          <input id="ul-mind-file" type="file" accept="*/*" multiple hidden />
         </div>
       </div>
       <div class="downloads" id="fn-essence-block" hidden>
@@ -127,6 +127,6 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js?v=45"></script>
+  <script src="./app.js?v=46"></script>
 </body>
 </html>
