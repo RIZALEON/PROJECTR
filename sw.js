@@ -1,4 +1,4 @@
-const CACHE = "projectr-v0-43";
+const CACHE = "projectr-v0-44";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,7 +12,8 @@ const ASSETS = [
   "./favicon-32.png",
   "./logo.jpeg",
   "./brain.svg",
-  "./mind-dl.svg"
+  "./mind-dl.svg",
+  "./mind-ul.svg"
 ];
 
 function bypassSw(url) {
