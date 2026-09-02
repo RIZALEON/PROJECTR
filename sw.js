@@ -1,4 +1,4 @@
-const CACHE = "projectr-v0-38";
+const CACHE = "projectr-v0-39";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,23 @@ const ASSETS = [
   "./brain.svg",
   "./mind-dl.svg"
 ];
+
+function bypassSw(url) {
+  const s = String(url || "");
+  let host = "";
+  let path = "";
+  try {
+    const u = new URL(s);
+    host = (u.hostname || "").toLowerCase();
+    path = (u.pathname || "").toLowerCase();
+  } catch (e) {}
+  if (/\.gguf(\?|$)/i.test(s) || path.endsWith(".gguf")) return true;
+  if (host === "huggingface.co" || host.endsWith(".huggingface.co") || host === "hf.co" || host.endsWith(".hf.co")) return true;
+  if (host === "jsdelivr.net" || host.endsWith(".jsdelivr.net")) return true;
+  if (/wllama/i.test(s) || /wllama/i.test(path)) return true;
+  return false;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -30,6 +47,10 @@ self.addEventListener("activate", (event) => {
 });
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (bypassSw(event.request.url)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   event.respondWith((async () => {
     const cached = await caches.match(event.request);
     if (cached) return cached;
