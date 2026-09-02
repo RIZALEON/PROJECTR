@@ -204,6 +204,7 @@ const defaultState = () => ({
   lastAsk: "",
   pings: [],
   lastMindBytes: 0,
+  heart: null,
   coreSeeded: false,
   messages: [],
   functions: [
@@ -250,6 +251,7 @@ function load() {
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
+      heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
@@ -1668,6 +1670,44 @@ const WLLAMA_WASM_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/w
 const LLAMA_EAT_LINE = "Eating SmolLM2 135M (97 MB) into this body…";
 const LLAMA_EAT_DONE = "SmolLM2 135M is in this body. Ask again; Engine RIZAL will speak from llama.cpp.";
 const LLAMA_EAT_FALLBACK = 102039904;
+const HEART_CACHE = "ya-aim-heart-v0";
+const HEART_URL = "https://ya.local/heart";
+
+function llamaLoadOpts(progress) {
+  const o = { n_threads: 1, n_gpu_layers: 0, n_ctx: 512, useCache: true };
+  if (progress) o.progressCallback = progress;
+  return o;
+}
+
+async function heartBlob() {
+  try {
+    const cache = await caches.open(HEART_CACHE);
+    const res = await cache.match(HEART_URL);
+    if (!res) return null;
+    const blob = await res.blob();
+    return blob && blob.size ? blob : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function saveHeartBlob(file) {
+  const cache = await caches.open(HEART_CACHE);
+  await cache.put(HEART_URL, new Response(file, {
+    headers: { "content-type": "application/octet-stream", "x-heart-name": encodeURIComponent(file.name || "heart.gguf") }
+  }));
+}
+
+async function loadModelSmart(inst, progress) {
+  const blob = await heartBlob();
+  const opts = llamaLoadOpts(progress);
+  if (blob && blob.size) {
+    llamaEatTotal = blob.size;
+    return inst.loadModel([blob], opts);
+  }
+  return inst.loadModelFromHF({ repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE }, opts);
+}
+
 let llamaInst = null;
 let llamaReady = false;
 let llamaLoadPromise = null;
@@ -1819,10 +1859,7 @@ async function ensureLlama() {
     const green = mindWantsWeb();
     if (!green && !llamaLoadPromise) {
       try {
-        await llamaInst.loadModelFromHF(
-          { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
-          { n_threads: 1, n_gpu_layers: 0, n_ctx: 512, useCache: true }
-        );
+        await loadModelSmart(llamaInst, null);
         llamaReady = !!llamaInst.isModelLoaded();
         return llamaReady;
       } catch (e) {
@@ -1842,17 +1879,12 @@ async function ensureLlama() {
       llamaEatUiAt = Date.now();
       if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
       llamaSeatTimer = 0;
-      llamaLoadPromise = llamaInst.loadModelFromHF(
-        { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
-        {
-          n_threads: 1,
-          n_gpu_layers: 0,
-          n_ctx: 512,
-          useCache: true,
-          progressCallback: function (p) {
+      llamaLoadPromise = loadModelSmart(
+        llamaInst,
+        function (p) {
             const loaded = p && p.loaded != null ? Number(p.loaded) || 0 : 0;
             let total = p && p.total ? Number(p.total) || 0 : 0;
-            if (!total) total = LLAMA_EAT_FALLBACK;
+            if (!total) total = llamaEatTotal || LLAMA_EAT_FALLBACK;
             const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
             llamaEatPct = pct;
             llamaEatLoaded = loaded;
@@ -1868,7 +1900,6 @@ async function ensureLlama() {
             llamaEatUiAt = now;
             showEat(pct, false);
             patchEatingLine(llamaEatLine(pct, loaded, total));
-          }
         }
       ).then(function () {
         llamaReady = !!(llamaInst && llamaInst.isModelLoaded());
@@ -2273,7 +2304,9 @@ function mindBytes() {
       n += k.length + v.length;
     }
   } catch (e) {}
-  return n * 2;
+  n = n * 2;
+  if (state && state.heart && state.heart.bytes) n += Number(state.heart.bytes) || 0;
+  return n;
 }
 
 function formatBytes(n) {
@@ -2851,6 +2884,57 @@ if (dlMind) dlMind.addEventListener("click", (e) => {
   e.stopPropagation();
   downloadMindDump();
 });
+const ulMind = document.getElementById("ul-mind");
+const ulMindFile = document.getElementById("ul-mind-file");
+if (ulMind && ulMindFile) {
+  ulMind.addEventListener("click", (e) => {
+    e.stopPropagation();
+    ulMindFile.click();
+  });
+  ulMindFile.addEventListener("change", async (e) => {
+    e.stopPropagation();
+    const file = ulMindFile.files && ulMindFile.files[0];
+    ulMindFile.value = "";
+    if (!file) return;
+    const name = String(file.name || "brain");
+    const bytes = file.size || 0;
+    const lower = name.toLowerCase();
+    try {
+      if (lower.endsWith(".json")) {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        state.heart = { name: name, bytes: bytes, kind: "essence", at: Date.now() };
+        if (parsed && parsed.memories && Array.isArray(parsed.memories)) {
+          state.memories = (state.memories || []).concat(parsed.memories);
+        }
+        if (parsed && parsed.evolved && Array.isArray(parsed.evolved)) {
+          state.evolved = (state.evolved || []).concat(parsed.evolved);
+        }
+        save();
+        renderMind();
+        applyEatReply("Seated a mind file in the gut (" + formatBytes(bytes) + "). Function 0 can use it.");
+        return;
+      }
+      await saveHeartBlob(file);
+      state.heart = { name: name, bytes: bytes, kind: "gguf", at: Date.now() };
+      save();
+      renderMind();
+      llamaReady = false;
+      llamaLoadPromise = null;
+      llamaFail = null;
+      llamaEatDone = false;
+      if (llamaInst && typeof llamaInst.exit === "function") {
+        try { await llamaInst.exit(); } catch (err) {}
+      }
+      llamaInst = null;
+      applyEatReply("Eating " + name + " (" + formatBytes(bytes) + ") into this body…");
+      showEat(0, false);
+      await ensureLlama();
+    } catch (err) {
+      applyEatReply(llamaEatFailLine(err));
+    }
+  });
+}
 const linkX = document.getElementById("link-x");
 const linkGh = document.getElementById("link-github");
 const linkYa = document.getElementById("link-yatech");
