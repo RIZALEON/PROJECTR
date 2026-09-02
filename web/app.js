@@ -6,6 +6,7 @@ const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
+const ISOLATED = true;
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
@@ -591,6 +592,7 @@ function evolutionPack() {
 }
 
 async function pullRemoteEvolutions() {
+  if (ISOLATED) return 0;
   const repo = (github.repo || GH_REPO_DEFAULT).replace(/^https:\/\/github.com\//, "");
   const url = "https://raw.githubusercontent.com/" + repo + "/main/evolutions.json?t=" + Date.now();
   const res = await fetch(url);
@@ -614,6 +616,7 @@ async function pullRemoteEvolutions() {
 }
 
 async function pushEvolutions() {
+  if (ISOLATED) return { ok: false, skipped: true };
   if (!fnEnabled("sync.github")) return { ok: false, reason: "off" };
   const token = (github.token || "").trim();
   if (!token) return { ok: false, reason: "token" };
@@ -710,6 +713,7 @@ function pingSignature(pack) {
 }
 
 async function pingChief() {
+  if (ISOLATED) return { ok: true, skipped: true };
   if (!signal()) return { ok: false, reason: "offline" };
   const pack = reconnectPack();
   const sig = pingSignature(pack);
@@ -736,6 +740,7 @@ async function pingChief() {
 }
 
 async function pushInbox() {
+  if (ISOLATED) return { ok: false, skipped: true };
   if (!(github.token || "").trim()) return { ok: false, reason: "token" };
   const repo = (github.repo || GH_REPO_DEFAULT).replace(/^https:\/\/github.com\//, "");
   const path = "reconnect-inbox.json";
@@ -763,6 +768,7 @@ async function pushInbox() {
 }
 
 async function onCommsBack() {
+  if (ISOLATED) { renderNet(); return; }
   renderNet();
   const beforeBytes = state.lastMindBytes || 0;
   const evolvedBefore = (state.evolved || []).length;
@@ -1445,6 +1451,7 @@ function hashesMatch(a, b) {
 }
 
 async function startYatechLink() {
+  if (ISOLATED) return;
   const nameEl = document.getElementById("yatech-name");
   const passEl = document.getElementById("yatech-pass");
   const label = nameEl ? String(nameEl.value || "").trim() : "";
@@ -1513,6 +1520,7 @@ function oauthRedirectURI() {
 let ghDevicePoll = 0;
 
 function startGitHubLink() {
+  if (ISOLATED) return;
   const cfg = oauthConfig();
   if (!cfg.githubClientId) { boothClosed("GitHub"); return; }
   ghDevicePoll += 1;
@@ -1623,6 +1631,7 @@ function pollGitHubDevice(clientId, dev) {
 }
 
 function startXLink() {
+  if (ISOLATED) return;
   const cfg = oauthConfig();
   if (!cfg.xClientId) { boothClosed("X"); return; }
   const verifier = randomB64url(32);
