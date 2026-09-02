@@ -1975,6 +1975,7 @@ async function answer(userText) {
     return parts.join("\n\n——\n\n");
   }
   if (fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
+    const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
     const ready = await ensureLlama();
     if (ready) {
       const gen = await llamaReply(userText);
@@ -1985,7 +1986,7 @@ async function answer(userText) {
         llamaEatPosted = false;
         return gen;
       }
-    } else if (mindWantsWeb() || llamaLoadPromise) {
+    } else if (eatAsk && (mindWantsWeb() || llamaLoadPromise || llamaFail)) {
       if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
       if (llamaFail && !llamaLoadPromise) return llamaEatFailLine(llamaFail);
       llamaEatPosted = true;
