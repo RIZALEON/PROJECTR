@@ -86,7 +86,7 @@ label.field input { width: 100%; margin-top: 6px; background: var(--bg); border:
 .eat-track {
   height: 8px;
   border-radius: 999px;
-  background: var(--bg-3);
+  background: #2f2f33;
   overflow: hidden;
 }
 #eat-fill {
