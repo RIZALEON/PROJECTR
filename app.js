@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.4";
+const CORE_VERSION = "0.5";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -17,7 +17,9 @@ const CORE_PRECEPTS = [
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
-  "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model."
+  "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model.",
+  "GOFLOFr 0: Evolve on or offline. New functions apply as soon as they are grown on this device. No GitHub required because ISOLATED.",
+  "GOFLOFr 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
@@ -33,7 +35,9 @@ const SELF_MIND = [
   "Three pieces: (1) Method — search, rewrite, rules, or a neural net stepping through tokens. (2) Store — memory, weights, or a rule list the method can read. (3) Loop — take input → update store if needed → emit output.",
   "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
   "v0 engine is local memory + core rules + Function 0 + mint. No weight file loaded yet. Intended next method is quantized GGUF or an MLC build on this phone.",
-  "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline."
+  "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
+  "GOFLOFr is the function stack. 0 Evolve: on or offline, grown functions apply immediately in this body — no GitHub wait because ISOLATED.",
+  "GOFLOFr 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -173,7 +177,8 @@ const defaultState = () => ({
   coreSeeded: false,
   messages: [],
   functions: [
-    { id: "evolve.self", name: "0. Evolve (foundational)", enabled: true, version: "0.0" },
+    { id: "evolve.self", name: "0. Evolve (GOFLOFr)", enabled: true, version: "0.1" },
+    { id: "talk.offline", name: "1. Intelligent offline conversation (GOFLOFr)", enabled: true, version: "0.0" },
     { id: "account.link", name: "Link account (X, GitHub, or Я Technologies)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
@@ -229,7 +234,9 @@ function mergeFunctions(base, saved) {
     const s = map.get(f.id);
     if (!s) return { ...f };
     const out = { ...f, ...s };
-    if (f.id === "account.link") out.name = f.name;
+    if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline") out.name = f.name;
+    if (f.id === "evolve.self") out.version = f.version;
+    if (f.id === "talk.offline") out.enabled = true;
     return out;
   });
   for (const f of saved) {
@@ -602,8 +609,8 @@ function seedCore() {
 function tryEvolveCommand(userText) {
   const t = userText.trim();
   const q = t.toLowerCase();
-  if (q === "evolve" || q === "function 0" || q === "foundational function") {
-    return "Function 0 is Evolve. I can grow new functions on or offline, by command or conversation. Say: add function NAME: what it does. Or: when I say X, you Y. I will not replace myself. I will not help with nuclear weapons.";
+  if (q === "evolve" || q === "function 0" || q === "foundational function" || q === "goflofr 0" || q === "goflofr") {
+    return "GOFLOFr 0 is Evolve. I grow new functions on or offline, by command or conversation. Updates apply automatically in this body as soon as they are grown — no cloud wait, no GitHub required because ISOLATED. Say: add function NAME: what it does. Or: when I say X, you Y. I will not replace myself. I will not help with nuclear weapons.";
   }
   let add = t.match(/^evolve(?:\s+yourself)?[:\s]+add function\s+([^:]+):\s*(.+)$/i)
     || t.match(/^add function\s+([^:]+):\s*(.+)$/i)
@@ -670,14 +677,14 @@ function localEngine(userText) {
   if (/github|comms|reconnect|re-?establish/.test(q) && /evol/.test(q)) {
     return "When comms return I evolve from GitHub, then upload my evolutions to " + (github.repo || GH_REPO_DEFAULT) + ". A token in Functions is required to write. Pull works on the public repo with no token.";
   }
-  if (/what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
-    return describeFunctions();
+  if (/\bgoflofr\b/.test(q) || /function\s*1\b/.test(q) || /intelligent offline conversation/.test(q) || /list of functions/.test(q) || /what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
+    return "GOFLOFr: 0 evolve on/offline and apply immediately on this device; 1 Engine RIZAL talks from the gut with the light amber. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "Function 0 is Evolve. Say evolve, or add function NAME: what it does, or when I say X, you Y. That works online or off. I also chat, remember, mint Essence, and (green light) look things up.";
+    return "GOFLOFr 0 is Evolve. Say evolve, or add function NAME: what it does, or when I say X, you Y. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOFr 1, Engine RIZAL from the gut), remember, mint Essence, and (green light) look things up.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
-    return "Function 0: I evolve myself on or offline, by command or conversation. Say add function NAME: what it does. Or when I say X, you Y. New functions plug in. They do not replace me.";
+    return "GOFLOFr 0: I evolve myself on or offline, by command or conversation. Updates apply automatically in this body as soon as they are grown — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. New functions plug in. They do not replace Function 0.";
   }
   if (/what do you remember|what do you know about me/.test(q)) {
     const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
@@ -1528,7 +1535,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "talk.offline", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -2035,7 +2042,7 @@ function renderPanel() {
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "talk.offline", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
