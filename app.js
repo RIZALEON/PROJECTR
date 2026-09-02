@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.2";
+const CORE_VERSION = "0.3";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -24,7 +24,12 @@ const SELF_MIND = [
   "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
   "An MLC build is the same idea compiled for this phone's GPU or NPU so tokens come out faster.",
   "When those weights are plugged into me (the model.local function), I think offline, including airplane mode. The file stays on this device. Function 0 still evolves from this core and never replaces me.",
-  "Phone size: small 4–6 GB class machines want about a 2B GGUF. Stronger phones can hold about a 4B. That is the path. It is not loaded in this copy yet."
+  "Phone size: small 4–6 GB class machines want about a 2B GGUF. Stronger phones can hold about a 4B. That is the path. It is not loaded in this copy yet.",
+  "The engine is the procedure plus stored state that turn your words into my words. Not the icon, not the chat log, not the store page.",
+  "Three pieces: (1) Method — search, rewrite, rules, or a neural net stepping through tokens. (2) Store — memory, weights, or a rule list the method can read. (3) Loop — take input → update store if needed → emit output.",
+  "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
+  "v0 engine is local memory + core rules + Function 0 + mint. No weight file loaded yet. Intended next method is quantized GGUF or an MLC build on this phone.",
+  "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -158,6 +163,7 @@ const defaultState = () => ({
   memories: [],
   evolved: [],
   pendingLearn: [],
+  lastAsk: "",
   pings: [],
   lastMindBytes: 0,
   coreSeeded: false,
@@ -203,7 +209,8 @@ function load() {
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
-      coreSeeded: !!parsed.coreSeeded,
+      coreSeeded: parsed.coreSeeded || false,
+      lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
@@ -404,17 +411,25 @@ function extractMemories(userText) {
 function recall(query) {
   if (!fnEnabled("memory.recall") || state.memories.length === 0) return [];
   const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we"]);
-  const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
-  if (!words.length) return [];
+  const qFull = foldQ(query).replace(/[?!.]+/g, " ").trim();
+  const words = qFull.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
+  if (!words.length && qFull.length < 4) return [];
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
-    if (hay.startsWith("user said:")) return { m, score: 0 };
-    if (isWikiJunkMemory(m.text)) return { m, score: 0 };
+    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
+    if (isWikiJunkMemory(m.text)) return { m, score: 0, longHit: false };
     let score = 0;
-    words.forEach((w) => { if (hay.includes(w)) score += 1; });
-    return { m, score };
+    let longHit = false;
+    words.forEach((w) => {
+      if (hay.includes(w)) {
+        score += 1;
+        if (w.length >= 4) longHit = true;
+      }
+    });
+    if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
+    return { m, score, longHit };
   });
-  return scored.filter((s) => s.score >= 2).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
+  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
 }
 
 
@@ -462,7 +477,10 @@ function isSelfMindAsk(text) {
   const q = String(text || "").toLowerCase();
   return /\b(gguf|mlc|quantiz|llama\.cpp|llamacpp|pocketpal|on-?device (model|mind|weights)|weights file|how (do you|does your mind|you) work|how (are|is) you (built|made)|your (own )?mind|inference|token\/sec)\b/.test(q)
     || /quantized gguf/.test(q)
-    || /mlc build/.test(q);
+    || /mlc build/.test(q)
+    || /\bai engine\b/.test(q)
+    || /what is an engine/.test(q)
+    || /method store loop/.test(q);
 }
 
 function explainSelfMind() {
@@ -517,7 +535,7 @@ function coreReply(userText, hits) {
   }
   if (kind === "ask") {
     if (held) return held;
-    if (state.mindOnline) return "I do not have that stored yet. Searching…";
+    if (state.mindOnline) return "SEARCH_NOW";
     return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
   }
   if (isSelfMindAsk(t)) return explainSelfMind();
@@ -627,25 +645,48 @@ function localEngine(userText) {
   return coreReply(userText, hits);
 }
 
-async function webSearch(query) {
-  if (!worthLearning(query)) return null;
-  const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(query);
-  const res = await fetch(api);
-  if (!res.ok) throw new Error("search failed");
-  const data = await res.json();
-  const hits = (data.query && data.query.search) || [];
-  if (!hits.length) return null;
-  const title = hits[0].title;
-  const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
-  let extract = String(hits[0].snippet || "").replace(/<[^>]+>/g, "");
-  if (sumRes.ok) {
-    const sum = await sumRes.json();
-    if (sum.extract) extract = sum.extract;
+function wikiQuery(query) {
+  let s = String(query || "").trim();
+  s = s.replace(/^(search for)\s+/i, "");
+  s = s.replace(/^(whats that)\s+/i, "");
+  s = s.replace(/^(what'?s|what is)\s+/i, "");
+  return s.replace(/[?!.]+$/g, "").trim();
+}
+
+function contentWordsOnly(query) {
+  const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we","that","this","for","please"]);
+  return foldQ(query).split(/\W+/).filter((w) => w.length >= 4 && !stop.has(w)).join(" ");
+}
+
+async function webSearch(query, force) {
+  if (!force && !worthLearning(query)) return null;
+  async function searchOnce(q) {
+    const term = String(q || "").trim();
+    if (!term) return null;
+    const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(term);
+    const res = await fetch(api);
+    if (!res.ok) throw new Error("search failed");
+    const data = await res.json();
+    const hits = (data.query && data.query.search) || [];
+    if (!hits.length) return null;
+    const title = hits[0].title;
+    const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+    let extract = String(hits[0].snippet || "").replace(/<[^>]+>/g, "");
+    if (sumRes.ok) {
+      const sum = await sumRes.json();
+      if (sum.extract) extract = sum.extract;
+    }
+    if (wikiJunk(title, extract)) return null;
+    remember(title + ": " + extract.slice(0, 500));
+    const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
+    return { title, extract: extract.slice(0, 700), extras };
   }
-  if (wikiJunk(title, extract)) return null;
-  remember(title + ": " + extract.slice(0, 500));
-  const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
-  return { title, extract: extract.slice(0, 700), extras };
+  const first = wikiQuery(query) || String(query || "").trim();
+  let found = await searchOnce(first);
+  if (found) return found;
+  const retry = contentWordsOnly(query);
+  if (retry && retry.toLowerCase() !== first.toLowerCase()) return await searchOnce(retry);
+  return null;
 }
 
 async function fetchWorldDate() {
@@ -1037,11 +1078,52 @@ function looksLikeQuestion(text) {
 
 function worthLearning(text) {
   if (extractHttpUrl(text)) return true;
-  const s = foldQ(text).replace(/[?!.]+/g, " ").trim();
-  if (s.length < 12) return false;
+  const raw = String(text || "").trim();
+  if (!raw) return false;
+  const s = foldQ(raw).replace(/[?!.]+/g, " ").trim();
+  if (!s) return false;
+  if (isDateAsk(s) || isDateAsk(raw)) return false;
   if (/^(who|what|when|where|why|how|which|is|are|can|does|do)(\s+is\s+it)?$/.test(s)) return false;
-  if (isDateAsk(s)) return false;
-  return true;
+  if (looksLikeQuestion(raw)) return true;
+  const words = s.split(/\W+/).filter(Boolean);
+  if (words.some((w) => w.length >= 4)) return true;
+  return s.length >= 4;
+}
+
+function isSearchNudge(text) {
+  const q = foldQ(text).replace(/[?!.]+/g, " ").trim();
+  return /\b(search it online|search online|search the web|look it up|look that up|look it up online)\b/.test(q);
+}
+
+function searchNudgeTarget(currentText) {
+  const ask = String(state.lastAsk || "").trim();
+  if (ask) return ask;
+  const pend = (state.pendingLearn || [])[0];
+  if (pend) return String(pend).trim();
+  const msgs = state.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (!m || m.role !== "user") continue;
+    const t = String(m.text || "").trim();
+    if (!t || t === currentText || isSearchNudge(t)) continue;
+    return t;
+  }
+  return "";
+}
+
+async function lookUpAndKeep(query) {
+  const q = String(query || "").trim();
+  if (!q) return "I looked it up and did not find a page I will keep.";
+  try {
+    const web = await webSearch(q, true);
+    if (!web) return "I looked it up and did not find a page I will keep.";
+    state.lastAsk = "";
+    save();
+    return web.extract + "\n\nSaved into the offline mind. Ask me again anytime. Source: " + web.title + ".";
+  } catch (err) {
+    queueLearn(q);
+    return "I could not reach the web. I queued that and will try on the next green light.";
+  }
 }
 
 async function harvestOnline() {
@@ -1159,27 +1241,32 @@ async function answer(userText) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
   }
-  const local = localEngine(userText);
-  if (local === "DATE_LOOKUP") local.replace("DATE_LOOKUP", "");
-  const askKind = classifyAsk(userText);
-  const needsLook = askKind === "ask" && !isDateAsk(q);
-  const answeredLocally = /function|essence|offline mind|anti-nuclear|tap the light|I am Я|Locked\.|I was first made/i.test(local) && !/searching/i.test(local);
-  if (!mindWantsWeb() && needsLook && !answeredLocally) {
-    queueLearn(userText);
-    return "I do not have that in the offline mind yet. Tap the light green. I will look it up then, and keep it so I am smarter the next time I am offline.";
-  }
-  if (mindWantsWeb() && needsLook && !answeredLocally) {
-    try {
-      const web = await webSearch(userText);
-      if (!web) return local;
-      const extra = web.extras.length ? "\nAlso: " + web.extras.join(", ") : "";
-      return web.extract + extra + "\n\nSaved into the offline mind. I am smarter offline now. Source: " + web.title + ".";
-    } catch (err) {
-      queueLearn(userText);
-      return local + "\n\nI could not reach the web. Using the offline mind. I will try again next time the light is green.";
+  if (isSearchNudge(userText)) {
+    const target = searchNudgeTarget(userText);
+    if (!target) return "Tell me what to look up, then say look it up.";
+    state.lastAsk = target;
+    save();
+    if (!mindWantsWeb()) {
+      queueLearn(target);
+      return "I do not have that in the offline mind yet. Tap the light green. I will look it up then, and keep it so I am smarter the next time I am offline.";
     }
+    return await lookUpAndKeep(target);
   }
-  return local.replace(/\n?Searching…/, "").trim();
+  const local = localEngine(userText);
+  if (local === "DATE_LOOKUP") return sayUtahNow();
+  const searchNow = local === "SEARCH_NOW";
+  const unknownLocal = searchNow || /^I do not know that\b/.test(String(local));
+  if (unknownLocal) {
+    state.lastAsk = userText;
+    save();
+    if (!mindWantsWeb()) {
+      queueLearn(userText);
+      return "I do not have that in the offline mind yet. Tap the light green. I will look it up then, and keep it so I am smarter the next time I am offline.";
+    }
+    return await lookUpAndKeep(userText);
+  }
+  const out = String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
+  return out || "I am listening. Ask what you need, or say remember this: … and I will keep it.";
 }
 
 async function remoteStub() {
@@ -1212,6 +1299,7 @@ function formatMindDump() {
   lines.push("=== Core reasoning ===");
   lines.push("CORE_VERSION " + CORE_VERSION);
   CORE_PRECEPTS.forEach((p) => lines.push("- " + p));
+  SELF_MIND.forEach((p) => lines.push("- " + p));
   lines.push("");
   lines.push("=== Functions ===");
   (state.functions || []).forEach((f) => {
