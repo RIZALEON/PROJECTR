@@ -1669,8 +1669,13 @@ const LLAMA_EAT_LINE = "Eating Qwen 3.5 0.8B (418 MB) into this body…";
 let llamaInst = null;
 let llamaReady = false;
 let llamaLoadPromise = null;
-let llamaProgressOnce = false;
 let llamaFail = null;
+let llamaEatPct = 0;
+let llamaEatLoaded = 0;
+let llamaEatTotal = 0;
+let llamaEatUiAt = 0;
+let llamaEatPosted = false;
+let llamaEatDone = false;
 
 function llamaIsReady() {
   return !!(llamaReady && llamaInst && typeof llamaInst.isModelLoaded === "function" && llamaInst.isModelLoaded());
@@ -1688,6 +1693,38 @@ function wllamaUrl(rel) {
   } catch (e) {
     return rel;
   }
+}
+
+function hideEat() {
+  const wrap = document.getElementById("eat-wrap");
+  if (wrap) wrap.hidden = true;
+}
+
+function showEat(pct, done) {
+  const wrap = document.getElementById("eat-wrap");
+  const fill = document.getElementById("eat-fill");
+  const track = document.getElementById("eat-track");
+  const pctEl = document.getElementById("eat-pct");
+  const label = document.getElementById("eat-label");
+  if (!wrap || !fill) return;
+  if (llamaIsReady() && !done && wrap.hidden) return;
+  const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  wrap.hidden = false;
+  fill.style.width = (done ? 100 : n) + "%";
+  if (track) track.setAttribute("aria-valuenow", String(done ? 100 : n));
+  if (pctEl) pctEl.textContent = (done ? 100 : n) + "%";
+  if (label) {
+    label.textContent = done ? "Qwen 3.5 0.8B is in this body." : "Eating Qwen 3.5 0.8B";
+  }
+  llamaEatDone = !!done;
+}
+
+function llamaEatLine(pct, loaded, total) {
+  const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  const mb = (b) => Math.round((Number(b) || 0) / (1024 * 1024));
+  if (total) return "Eating Qwen 3.5 0.8B — " + n + "% (" + mb(loaded) + " MB / " + mb(total) + " MB)";
+  if (n) return "Eating Qwen 3.5 0.8B — " + n + "%";
+  return LLAMA_EAT_LINE;
 }
 
 function patchEatingLine(text) {
@@ -1763,7 +1800,11 @@ async function ensureLlama() {
     }
     if (!green) return false;
     if (!llamaLoadPromise) {
-      llamaProgressOnce = false;
+      llamaEatPct = 0;
+      llamaEatLoaded = 0;
+      llamaEatTotal = 0;
+      llamaEatUiAt = 0;
+      llamaEatDone = false;
       llamaLoadPromise = llamaInst.loadModelFromHF(
         { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
         {
@@ -1771,20 +1812,31 @@ async function ensureLlama() {
           progressCallback: function (p) {
             const loaded = p && p.loaded ? p.loaded : 0;
             const total = p && p.total ? p.total : 0;
-            if (llamaProgressOnce || !total) return;
-            llamaProgressOnce = true;
-            const pct = Math.round((loaded / total) * 100);
-            patchEatingLine(LLAMA_EAT_LINE + " " + pct + "%");
+            if (!total) return;
+            const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+            llamaEatPct = pct;
+            llamaEatLoaded = loaded;
+            llamaEatTotal = total;
+            const now = Date.now();
+            if (now - llamaEatUiAt < 250) return;
+            llamaEatUiAt = now;
+            showEat(pct, false);
+            patchEatingLine(llamaEatLine(pct, loaded, total));
           }
         }
       ).then(function () {
         llamaReady = !!(llamaInst && llamaInst.isModelLoaded());
-        if (llamaReady) patchEatingLine("Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.");
+        if (llamaReady) {
+          llamaEatPct = 100;
+          showEat(100, true);
+          patchEatingLine("Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.");
+        }
         return llamaReady;
       }).catch(function (err) {
         llamaFail = err;
         llamaLoadPromise = null;
         llamaReady = false;
+        hideEat();
         return false;
       });
     }
@@ -1872,10 +1924,16 @@ async function answer(userText) {
       if (gen) {
         const clip = gen.replace(/\s+/g, " ").slice(0, 160);
         remember("Engine RIZAL (llama.cpp): " + clip);
+        hideEat();
+        llamaEatPosted = false;
         return gen;
       }
     } else if (mindWantsWeb() || llamaLoadPromise) {
-      return LLAMA_EAT_LINE;
+      if (llamaLoadPromise && llamaEatPosted) {
+        return llamaEatPct ? ("Still eating — " + llamaEatPct + "%.") : "Still eating.";
+      }
+      llamaEatPosted = true;
+      return llamaEatLine(llamaEatPct, llamaEatLoaded, llamaEatTotal);
     }
   }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
