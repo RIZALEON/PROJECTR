@@ -1841,10 +1841,7 @@ async function ensureLlama() {
       showEat(0, false);
       llamaEatUiAt = Date.now();
       if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
-      llamaSeatTimer = setTimeout(function () {
-        if (llamaIsReady()) return;
-        applyEatReply("Could not seat Qwen in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp. Leave Я open; if it never speaks, tell Rizal.");
-      }, 90000);
+      llamaSeatTimer = 0;
       llamaLoadPromise = llamaInst.loadModelFromHF(
         { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
         {
@@ -1860,6 +1857,12 @@ async function ensureLlama() {
             llamaEatPct = pct;
             llamaEatLoaded = loaded;
             llamaEatTotal = total;
+            if (pct >= 99 && !llamaSeatTimer) {
+              llamaSeatTimer = setTimeout(function () {
+                if (llamaIsReady()) return;
+                applyEatReply("Could not seat Qwen in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp.");
+              }, 180000);
+            }
             const now = Date.now();
             if (now - llamaEatUiAt < 250) return;
             llamaEatUiAt = now;
@@ -1987,9 +1990,6 @@ async function answer(userText) {
       if (llamaFail && !llamaLoadPromise) return llamaEatFailLine(llamaFail);
       llamaEatPosted = true;
       showEat(llamaEatPct, false);
-      if (llamaEatPct) {
-        return "Still eating — " + llamaEatPct + "% (" + Math.round((llamaEatLoaded || 0) / (1024 * 1024)) + " MB).";
-      }
       return llamaEatLine(llamaEatPct, llamaEatLoaded, llamaEatTotal);
     }
   }
