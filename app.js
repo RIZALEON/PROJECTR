@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.5";
+const CORE_VERSION = "0.6";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -18,8 +18,9 @@ const CORE_PRECEPTS = [
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
   "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model.",
-  "GOFLOFr 0: Evolve on or offline. New functions apply as soon as they are grown on this device. No GitHub required because ISOLATED.",
-  "GOFLOFr 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network."
+  "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
+  "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
+  "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
@@ -36,8 +37,9 @@ const SELF_MIND = [
   "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
   "v0 engine is local memory + core rules + Function 0 + mint. No weight file loaded yet. Intended next method is quantized GGUF or an MLC build on this phone.",
   "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
-  "GOFLOFr is the function stack. 0 Evolve: on or offline, grown functions apply immediately in this body — no GitHub wait because ISOLATED.",
-  "GOFLOFr 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0."
+  "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
+  "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
+  "GOFLOF 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -177,8 +179,8 @@ const defaultState = () => ({
   coreSeeded: false,
   messages: [],
   functions: [
-    { id: "evolve.self", name: "0. Evolve (GOFLOFr)", enabled: true, version: "0.1" },
-    { id: "talk.offline", name: "1. Intelligent offline conversation (GOFLOFr)", enabled: true, version: "0.0" },
+    { id: "evolve.self", name: "0. Evolve / GOFLOF (gain and loss)", enabled: true, version: "0.1" },
+    { id: "talk.offline", name: "1. Intelligent offline conversation (GOFLOF)", enabled: true, version: "0.0" },
     { id: "account.link", name: "Link account (X, GitHub, or Я Technologies)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
@@ -473,10 +475,78 @@ function registerEvolved(name, trigger, action) {
   return skill;
 }
 
+function lockedCoreIds() {
+  return ["evolve.self", "talk.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline"];
+}
+
+function isLockedCoreId(id) {
+  return lockedCoreIds().includes(String(id || ""));
+}
+
+function isEvolvedId(id) {
+  const s = String(id || "");
+  if (s.indexOf("evolved.") === 0) return true;
+  return (state.evolved || []).some((x) => x && x.id === s);
+}
+
+function findEvolvedByName(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return null;
+  const needle = raw.toLowerCase().replace(/^evolved:\s*/, "");
+  const slug = slugFn(raw);
+  const list = state.evolved || [];
+  return list.find((s) => {
+    if (!s) return false;
+    const id = String(s.id || "").toLowerCase();
+    const nm = String(s.name || "").toLowerCase();
+    const tr = String(s.trigger || "").toLowerCase();
+    return id === needle || id === slug || nm === needle || tr === needle || id === slug.toLowerCase();
+  }) || null;
+}
+
+function dropEvolvedFunction(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  const needle = raw.toLowerCase();
+  const slug = slugFn(raw);
+  if (isLockedCoreId(needle) || isLockedCoreId(slug) || isLockedCoreId(raw)) {
+    return { ok: false, reason: "immune" };
+  }
+  const coreFn = (state.functions || []).find((f) => {
+    if (!f || !isLockedCoreId(f.id)) return false;
+    const nm = String(f.name || "").toLowerCase();
+    return f.id === needle || f.id === slug || nm === needle || nm.indexOf(needle) >= 0;
+  });
+  if (coreFn) return { ok: false, reason: "immune" };
+  let skill = findEvolvedByName(raw);
+  if (!skill) {
+    const fn = (state.functions || []).find((f) => {
+      if (!f || !isEvolvedId(f.id)) return false;
+      const nm = String(f.name || "").toLowerCase().replace(/^evolved:\s*/, "");
+      return f.id === needle || f.id === slug || nm === needle || String(f.id).toLowerCase() === needle;
+    });
+    if (fn) skill = { id: fn.id, name: fn.name };
+  }
+  if (!skill || !isEvolvedId(skill.id)) {
+    if (isLockedCoreId(needle) || isLockedCoreId(slug)) return { ok: false, reason: "immune" };
+    return { ok: false, reason: "missing" };
+  }
+  if (isLockedCoreId(skill.id)) return { ok: false, reason: "immune" };
+  const id = skill.id;
+  const label = skill.name || id;
+  state.evolved = (state.evolved || []).filter((s) => s && s.id !== id);
+  state.functions = (state.functions || []).filter((f) => f && f.id !== id);
+  remember("GOFLOF loss of function: dropped " + label + " [" + id + "]");
+  save();
+  noteLocalPing("dropped function " + label);
+  return { ok: true, name: label, id: id };
+}
+
 function matchEvolved(userText) {
   const q = userText.toLowerCase();
   const list = state.evolved || [];
   for (const s of list) {
+    if (!s || s.enabled === false) continue;
     if (!s.trigger) continue;
     if (q.includes(s.trigger.toLowerCase())) return s;
   }
@@ -609,8 +679,15 @@ function seedCore() {
 function tryEvolveCommand(userText) {
   const t = userText.trim();
   const q = t.toLowerCase();
-  if (q === "evolve" || q === "function 0" || q === "foundational function" || q === "goflofr 0" || q === "goflofr") {
-    return "GOFLOFr 0 is Evolve. I grow new functions on or offline, by command or conversation. Updates apply automatically in this body as soon as they are grown — no cloud wait, no GitHub required because ISOLATED. Say: add function NAME: what it does. Or: when I say X, you Y. I will not replace myself. I will not help with nuclear weapons.";
+  const drop = t.match(/^(?:drop|lose|remove|disable)\s+function\s+(.+)$/i);
+  if (drop) {
+    const res = dropEvolvedFunction(drop[1].replace(/[.?!:]+$/, "").trim());
+    if (res.reason === "immune") return "No. That id is locked core. Immune line stays. GOFLOF will not drop evolve.self, talk.offline, chat.send, memory.remember, memory.recall, log.download, essence.mint, essence.download, or learn.offline.";
+    if (res.reason === "missing" || res.reason === "empty") return "No evolved skill by that name in this body. GOFLOF loss of function only drops grown skills (id starts with evolved. or in the evolved list).";
+    return "GOFLOF loss of function applied in this body. Dropped: " + res.name + ".";
+  }
+  if (q === "evolve" || q === "function 0" || q === "foundational function" || q === "goflofr 0" || q === "goflof 0") {
+    return "GOFLOF 0 is Evolve: gain and loss. Gain: grow new functions on or offline. Loss: drop, lose, remove, or disable function NAME for evolved skills. Updates apply automatically in this body — no cloud wait, no GitHub required because ISOLATED. Say: add function NAME: what it does. Or: when I say X, you Y. Or: drop function NAME. I will not replace myself. I will not help with nuclear weapons. Locked core ids stay.";
   }
   let add = t.match(/^evolve(?:\s+yourself)?[:\s]+add function\s+([^:]+):\s*(.+)$/i)
     || t.match(/^add function\s+([^:]+):\s*(.+)$/i)
@@ -677,14 +754,17 @@ function localEngine(userText) {
   if (/github|comms|reconnect|re-?establish/.test(q) && /evol/.test(q)) {
     return "When comms return I evolve from GitHub, then upload my evolutions to " + (github.repo || GH_REPO_DEFAULT) + ". A token in Functions is required to write. Pull works on the public repo with no token.";
   }
-  if (/\bgoflofr\b/.test(q) || /function\s*1\b/.test(q) || /intelligent offline conversation/.test(q) || /list of functions/.test(q) || /what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
-    return "GOFLOFr: 0 evolve on/offline and apply immediately on this device; 1 Engine RIZAL talks from the gut with the light amber. Later functions plug in.\n\n" + describeFunctions();
+  if (/what is goflofr?\b/.test(q) || /^(what('?s| is) )?(goflofr?|gain of function|loss of function)\??$/.test(q) || /\bgain of function\b/.test(q) || /\bloss of function\b/.test(q)) {
+    return "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research — the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack. Function 0 is both gain (evolve/add) and loss (drop/disable), applied automatically on-device. Function 1 is intelligent offline conversation.";
+  }
+  if (/\bgoflofr?\b/.test(q) || /function\s*1\b/.test(q) || /intelligent offline conversation/.test(q) || /list of functions/.test(q) || /what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
+    return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "GOFLOFr 0 is Evolve. Say evolve, or add function NAME: what it does, or when I say X, you Y. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOFr 1, Engine RIZAL from the gut), remember, mint Essence, and (green light) look things up.";
+    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light) look things up.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
-    return "GOFLOFr 0: I evolve myself on or offline, by command or conversation. Updates apply automatically in this body as soon as they are grown — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. New functions plug in. They do not replace Function 0.";
+    return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
   }
   if (/what do you remember|what do you know about me/.test(q)) {
     const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
