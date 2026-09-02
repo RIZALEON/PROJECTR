@@ -1,4 +1,4 @@
-const CACHE = "projectr-v0-34";
+const CACHE = "projectr-v0-36";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,35 +15,34 @@ const ASSETS = [
   "./mind-dl.svg"
 ];
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    for (const asset of ASSETS) {
+      try {
+        await cache.add(asset);
+      } catch (e) {}
+    }
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  const live = /\.(html|js|css)$/.test(url.pathname) || url.pathname.endsWith("/") || /PROJECTR\/?$/.test(url.pathname);
-  if (live) {
-    event.respondWith(
-      fetch(event.request).then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-        }
-        return res;
-      }).catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html")))
-    );
-    return;
-  }
-  event.respondWith(caches.match(event.request).then((cached) => {
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request);
     if (cached) return cached;
-    return fetch(event.request).then((res) => {
+    try {
+      const res = await fetch(event.request);
       if (res.ok) {
         const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        const cache = await caches.open(CACHE);
+        await cache.put(event.request, copy);
       }
       return res;
-    }).catch(() => caches.match("./index.html"));
-  }));
+    } catch (e) {
+      return (await caches.match("./index.html")) || Response.error();
+    }
+  })());
 });

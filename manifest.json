@@ -2,6 +2,8 @@
   "name": "Я AIᵐ",
   "short_name": "Я",
   "description": "Offline-first conversational AI. Memory. Downloadable logs. Evolves.",
+  "id": "/PROJECTR/",
+  "scope": "./",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0b0c",
@@ -32,11 +34,5 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "display_override": [
-    "standalone",
-    "fullscreen",
-    "minimal-ui"
-  ],
-  "orientation": "portrait"
+  ]
 }
