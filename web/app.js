@@ -270,7 +270,7 @@ function mergeFunctions(base, saved) {
     const out = { ...f, ...s };
     if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline" || f.id === "web.video" || f.id === "model.local") out.name = f.name;
     if (f.id === "evolve.self" || f.id === "web.link" || f.id === "web.video" || f.id === "model.local") out.version = f.version;
-    if (f.id === "talk.offline" || f.id === "web.video" || f.id === "model.local") out.enabled = true;
+    if (f.id === "talk.offline" || f.id === "web.video" || f.id === "model.local" || f.id === "evolve.self" || f.id === "chat.send") out.enabled = true;
     return out;
   });
   for (const f of saved) {
@@ -812,7 +812,7 @@ function seedCore() {
 }
 
 function tryEvolveCommand(userText) {
-  const t = userText.trim();
+  const t = normalizeTalk(userText);
   const q = t.toLowerCase();
   const drop = t.match(/^(?:drop|lose|remove|disable)\s+function\s+(.+)$/i);
   if (drop) {
@@ -821,11 +821,11 @@ function tryEvolveCommand(userText) {
     if (res.reason === "missing" || res.reason === "empty") return "No evolved skill by that name in this body. GOFLOF loss of function only drops grown skills (id starts with evolved. or in the evolved list).";
     return "GOFLOF loss of function applied in this body. Dropped: " + res.name + ".";
   }
-  if (q === "evolve" || q === "function 0" || q === "foundational function" || q === "goflofr 0" || q === "goflof 0") {
+  if (q === "evolve" || q === "evolve yourself" || q === "function 0" || q === "foundational function" || q === "goflofr 0" || q === "goflof 0") {
     return "GOFLOF 0 is Evolve: gain and loss. Gain: grow new functions on or offline. Loss: drop, lose, remove, or disable function NAME for evolved skills. Updates apply automatically in this body — no cloud wait, no GitHub required because ISOLATED. Say: add function NAME: what it does. Or: when I say X, you Y. Or: drop function NAME. I will not replace myself. I will not help with nuclear weapons. Locked core ids stay.";
   }
-  let add = t.match(/^evolve(?:\s+yourself)?[:\s]+add function\s+([^:]+):\s*(.+)$/i)
-    || t.match(/^add function\s+([^:]+):\s*(.+)$/i)
+  let add = t.match(/^(?:please\s+|okay\s+|ok\s+)?evolve(?:\s+yourself)?[:\s]+add function\s+([^:\-]+)[:\-]\s*(.+)$/i)
+    || t.match(/^(?:please\s+|okay\s+|ok\s+)?add function\s+([^:\-]+)[:\-]\s*(.+)$/i)
     || t.match(/^evolve[:\s]+(.+)$/i);
   if (add && !/^when i say/i.test(t)) {
     if (add.length === 2 && /^evolve/i.test(t) && !/^evolve[:\s]+add function/i.test(t) && !/^add function/i.test(t)) {
@@ -1627,6 +1627,16 @@ function foldQ(q) {
   return String(q || "").toLowerCase().replace(/[\u2018\u2019\u201B`´]/g, "'");
 }
 
+function normalizeTalk(s) {
+  return String(s || "")
+    .replace(/[\u2018\u2019\u201B`´]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function utahNow() {
   return new Date().toLocaleString("en-US", {
     weekday: "long",
@@ -1823,10 +1833,12 @@ function llamaMemoriesSnippet() {
   return out.join("\n");
 }
 
-async function ensureLlama() {
+async function ensureLlama(force) {
   if (llamaIsReady()) return true;
   if (!fnEnabled("model.local")) return false;
-  if (llamaFail && !mindWantsWeb() && !llamaLoadPromise) return false;
+  const green = mindWantsWeb();
+  if (!force && !green) return false;
+  if (llamaFail && !force && !green && !llamaLoadPromise) return false;
   try {
     if (!llamaInst) {
       try {
@@ -1856,17 +1868,6 @@ async function ensureLlama() {
       llamaReady = true;
       return true;
     }
-    const green = mindWantsWeb();
-    if (!green && !llamaLoadPromise) {
-      try {
-        await loadModelSmart(llamaInst, null);
-        llamaReady = !!llamaInst.isModelLoaded();
-        return llamaReady;
-      } catch (e) {
-        return false;
-      }
-    }
-    if (!green) return false;
     if (!llamaLoadPromise) {
       llamaEatPct = 0;
       llamaEatLoaded = 0;
@@ -2005,25 +2006,24 @@ async function answer(userText) {
     }
     return parts.join("\n\n——\n\n");
   }
-  if (fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
-    const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
-    const ready = await ensureLlama();
-    if (ready) {
-      const gen = await llamaReply(userText);
-      if (gen) {
-        const clip = gen.replace(/\s+/g, " ").slice(0, 160);
-        remember("Engine RIZAL (llama.cpp): " + clip);
-        hideEat();
-        llamaEatPosted = false;
-        return gen;
-      }
-    } else if (eatAsk && (mindWantsWeb() || llamaLoadPromise || llamaFail)) {
-      if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
-      if (llamaFail && !llamaLoadPromise) return llamaEatFailLine(llamaFail);
-      llamaEatPosted = true;
-      showEat(llamaEatPct, false);
-      return llamaEatLine(llamaEatPct, llamaEatLoaded, llamaEatTotal);
+  if (fnEnabled("model.local") && llamaIsReady() && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
+    const gen = await llamaReply(userText);
+    if (gen) {
+      const clip = gen.replace(/\s+/g, " ").slice(0, 160);
+      remember("Engine RIZAL (llama.cpp): " + clip);
+      hideEat();
+      llamaEatPosted = false;
+      return gen;
     }
+  }
+  const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
+  if (eatAsk && fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
+    ensureLlama(true);
+    if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
+    if (llamaFail && !llamaLoadPromise) return llamaEatFailLine(llamaFail);
+    llamaEatPosted = true;
+    showEat(llamaEatPct, false);
+    return llamaEatLine(llamaEatPct, llamaEatLoaded, llamaEatTotal);
   }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
     const e = await mintEssence();
@@ -2074,10 +2074,18 @@ function push(role, text) {
 }
 
 async function send(text) {
-  const t = text.trim();
+  const t = normalizeTalk(text);
   if (!t || !fnEnabled("chat.send")) return;
   push("user", t);
-  let reply = await answer(t);
+  let reply;
+  try {
+    reply = await answer(t);
+  } catch (e) {
+    reply = "I am here. Function 0 is on this device and does not wait for a seated GGUF. Say hello, or: add function NAME: what it does.";
+  }
+  if (!reply) {
+    reply = "I am listening. Function 0 is on. Say add function NAME: what it does. Or when I say X, you Y.";
+  }
   if (llamaIsReady() && isEatTalk(reply) && reply !== LLAMA_EAT_DONE) {
     reply = LLAMA_EAT_DONE;
   }
@@ -2109,12 +2117,19 @@ function formatMindDump() {
   lines.push("");
   lines.push("=== Evolved (Function 0) ===");
   const ev = state.evolved || [];
-  if (!ev.length) lines.push("(none yet)");
+  if (!ev.length) lines.push("(no evolved gains yet)");
   ev.forEach((s) => {
-    lines.push("- " + (s.name || s.id));
+    lines.push("GAIN  " + (s.name || s.id) + " [" + s.id + "]");
     lines.push("  when: " + (s.trigger || ""));
     lines.push("  do: " + (s.action || ""));
+    lines.push("  at: " + (s.evolvedAt ? new Date(s.evolvedAt).toLocaleString("en-US", { timeZone: UTAH_TZ }) : ""));
   });
+  const losses = (state.memories || []).filter((m) => m && /GOFLOF loss of function/i.test(m.text || ""));
+  if (losses.length) {
+    lines.push("");
+    lines.push("--- recorded losses ---");
+    losses.forEach((m) => lines.push("- " + (m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) + " · " : "") + m.text));
+  }
   lines.push("");
   lines.push("=== Links and videos (URL + chat summary only) ===");
   const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text));
@@ -2817,6 +2832,16 @@ form.addEventListener("submit", (e) => {
   input.value = "";
   send(v);
 });
+if (input) {
+  input.setAttribute("enterkeyhint", "send");
+  input.setAttribute("autocapitalize", "sentences");
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event("submit", { cancelable: true }));
+    }
+  });
+}
 
 function standaloneApp() {
   return window.navigator.standalone === true
@@ -2929,7 +2954,7 @@ if (ulMind && ulMindFile) {
       llamaInst = null;
       applyEatReply("Eating " + name + " (" + formatBytes(bytes) + ") into this body…");
       showEat(0, false);
-      await ensureLlama();
+      ensureLlama(true);
     } catch (err) {
       applyEatReply(llamaEatFailLine(err));
     }
