@@ -1661,8 +1661,10 @@ function sayUtahNow() {
 }
 
 
-const WLLAMA_JS = "./wllama/index.js";
-const WLLAMA_WASM = "./wllama/wasm/wllama.wasm";
+const WLLAMA_JS_LOCAL = "./wllama/index.js";
+const WLLAMA_WASM_LOCAL = "./wllama/wasm/wllama.wasm";
+const WLLAMA_JS_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js";
+const WLLAMA_WASM_CDN = "https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm";
 const LLAMA_EAT_LINE = "Eating Qwen 3.5 0.8B (418 MB) into this body…";
 let llamaInst = null;
 let llamaReady = false;
@@ -1722,12 +1724,21 @@ async function ensureLlama() {
   try {
     if (!llamaInst) {
       try {
-        const mod = await import(wllamaUrl(WLLAMA_JS));
+        let mod = null;
+        let wasmPath = null;
+        try {
+          mod = await import(wllamaUrl(WLLAMA_JS_LOCAL));
+          wasmPath = wllamaUrl(WLLAMA_WASM_LOCAL);
+        } catch (localErr) {
+          mod = await import(WLLAMA_JS_CDN);
+          wasmPath = WLLAMA_WASM_CDN;
+        }
         const Wllama = mod.Wllama;
         llamaInst = new Wllama(
-          { default: wllamaUrl(WLLAMA_WASM) },
+          { default: wasmPath },
           { allowOffline: true }
         );
+
       } catch (e) {
         llamaFail = e;
         return false;
