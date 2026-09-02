@@ -1,4 +1,4 @@
-const CACHE = "projectr-v0-31";
+const CACHE = "projectr-v0-32";
 const ASSETS = [
   "./",
   "./index.html",

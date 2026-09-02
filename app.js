@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.6";
+const CORE_VERSION = "0.7";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -20,7 +20,8 @@ const CORE_PRECEPTS = [
   "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model.",
   "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
-  "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network."
+  "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
+  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
@@ -39,7 +40,8 @@ const SELF_MIND = [
   "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
   "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
   "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
-  "GOFLOF 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0."
+  "GOFLOF 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0.",
+  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required."
 ];
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
@@ -151,6 +153,7 @@ function persistActiveMind() {
 function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
+  try { scrubLinkJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
   vault = loadVault();
   github = loadGithub();
@@ -181,6 +184,7 @@ const defaultState = () => ({
   functions: [
     { id: "evolve.self", name: "0. Evolve / GOFLOF (gain and loss)", enabled: true, version: "0.1" },
     { id: "talk.offline", name: "1. Intelligent offline conversation (GOFLOF)", enabled: true, version: "0.0" },
+    { id: "web.video", name: "2. Sites and videos (green light)", enabled: true, version: "0.0" },
     { id: "account.link", name: "Link account (X, GitHub, or Я Technologies)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
@@ -192,7 +196,7 @@ const defaultState = () => ({
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
     { id: "sync.github", name: "Upload evolutions when GitHub comms return", enabled: true, version: "0.0" },
-    { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.3.0" },
+    { id: "web.link", name: "Follow and describe links", enabled: true, version: "0.4" },
     { id: "model.remote", name: "Remote model", enabled: false, version: "stub" },
     { id: "voice.listen", name: "Voice in", enabled: false, version: "stub" },
     { id: "voice.speak", name: "Voice out", enabled: false, version: "stub" }
@@ -202,6 +206,7 @@ const defaultState = () => ({
 let account = loadAccount();
 let state = load();
 try { scrubWikiJunk(); } catch (e) {}
+try { scrubLinkJunk(); } catch (e) {}
 let creator = null;
 let vault = loadVault();
 let github = loadGithub();
@@ -236,9 +241,9 @@ function mergeFunctions(base, saved) {
     const s = map.get(f.id);
     if (!s) return { ...f };
     const out = { ...f, ...s };
-    if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline") out.name = f.name;
-    if (f.id === "evolve.self") out.version = f.version;
-    if (f.id === "talk.offline") out.enabled = true;
+    if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline" || f.id === "web.video") out.name = f.name;
+    if (f.id === "evolve.self" || f.id === "web.link" || f.id === "web.video") out.version = f.version;
+    if (f.id === "talk.offline" || f.id === "web.video") out.enabled = true;
     return out;
   });
   for (const f of saved) {
@@ -394,11 +399,52 @@ function scrubWikiJunk() {
   if (state.memories.length !== before) save();
 }
 
+function isLinkJunk(title, body) {
+  const t = String(title || "").replace(/\s+/g, " ").trim();
+  const b = String(body || "").replace(/\s+/g, " ").trim();
+  if (!t && !b) return true;
+  const tLow = t.toLowerCase();
+  if (tLow === "- youtube" || tLow === "youtube" || tLow === "– youtube" || tLow === "— youtube") return true;
+  const hay = (t + "\n" + b).toLowerCase();
+  if (/\bcaptcha\b/.test(hay)) return true;
+  if (/this page maybe requiring/.test(hay)) return true;
+  if (/before you continue to youtube/.test(hay)) return true;
+  if (/sign[- ]?in to confirm/.test(hay)) return true;
+  if (/verify you are (a )?human/.test(hay)) return true;
+  if (/unusual traffic from your computer/.test(hay)) return true;
+  if (/are you a robot/.test(hay)) return true;
+  if (/i.?m not a robot/.test(hay)) return true;
+  if (/enable javascript and cookies to continue/.test(hay)) return true;
+  if (/consent.?cookie/.test(hay) && /youtube/.test(hay) && b.length < 400) return true;
+  const urls = hay.match(/https?:\/\/\S+/gi) || [];
+  const stripped = hay.replace(/https?:\/\/\S+/gi, "").replace(/[\s.:\/-]+/g, "");
+  if (urls.length && !stripped) return true;
+  if (b.length < 48 && /^https?:\/\//i.test(b)) return true;
+  return false;
+}
+
+function isLinkJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  const tagged = /^(Link note:|Video note:)/i.test(s);
+  if (!tagged && !/Title:\s*[-–—]\s*YouTube/i.test(s) && !(/\bcaptcha\b/i.test(s) && /this page maybe requiring/i.test(s))) return false;
+  const rest = s.replace(/^(Link note:|Video note:)\s*/i, "");
+  const first = rest.split("\n").map((l) => l.trim()).filter(Boolean)[0] || "";
+  return isLinkJunk(first, rest);
+}
+
+function scrubLinkJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isLinkJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
 function remember(text) {
   if (!fnEnabled("memory.remember")) return;
   const clean = text.trim();
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
+  if (isLinkJunkMemory(clean)) return;
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
   state.memories = state.memories.slice(0, 200);
@@ -430,7 +476,7 @@ function recall(query) {
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
-    if (isWikiJunkMemory(m.text)) return { m, score: 0, longHit: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false };
     let score = 0;
     let longHit = false;
     words.forEach((w) => {
@@ -476,7 +522,7 @@ function registerEvolved(name, trigger, action) {
 }
 
 function lockedCoreIds() {
-  return ["evolve.self", "talk.offline", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline"];
+  return ["evolve.self", "talk.offline", "web.video", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline"];
 }
 
 function isLockedCoreId(id) {
@@ -682,7 +728,7 @@ function tryEvolveCommand(userText) {
   const drop = t.match(/^(?:drop|lose|remove|disable)\s+function\s+(.+)$/i);
   if (drop) {
     const res = dropEvolvedFunction(drop[1].replace(/[.?!:]+$/, "").trim());
-    if (res.reason === "immune") return "No. That id is locked core. Immune line stays. GOFLOF will not drop evolve.self, talk.offline, chat.send, memory.remember, memory.recall, log.download, essence.mint, essence.download, or learn.offline.";
+    if (res.reason === "immune") return "No. That id is locked core. Immune line stays. GOFLOF will not drop evolve.self, talk.offline, web.video, chat.send, memory.remember, memory.recall, log.download, essence.mint, essence.download, or learn.offline.";
     if (res.reason === "missing" || res.reason === "empty") return "No evolved skill by that name in this body. GOFLOF loss of function only drops grown skills (id starts with evolved. or in the evolved list).";
     return "GOFLOF loss of function applied in this body. Dropped: " + res.name + ".";
   }
@@ -755,13 +801,13 @@ function localEngine(userText) {
     return "When comms return I evolve from GitHub, then upload my evolutions to " + (github.repo || GH_REPO_DEFAULT) + ". A token in Functions is required to write. Pull works on the public repo with no token.";
   }
   if (/what is goflofr?\b/.test(q) || /^(what('?s| is) )?(goflofr?|gain of function|loss of function)\??$/.test(q) || /\bgain of function\b/.test(q) || /\bloss of function\b/.test(q)) {
-    return "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research — the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack. Function 0 is both gain (evolve/add) and loss (drop/disable), applied automatically on-device. Function 1 is intelligent offline conversation.";
+    return "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research — the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack. Function 0 is both gain (evolve/add) and loss (drop/disable), applied automatically on-device. Function 1 is intelligent offline conversation. Function 2 is optional nerves: green light can open sites and videos.";
   }
   if (/\bgoflofr?\b/.test(q) || /function\s*1\b/.test(q) || /intelligent offline conversation/.test(q) || /list of functions/.test(q) || /what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
-    return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
+    return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 optional nerves — green light opens sites and videos, learns, keeps notes in the gut. Amber is Function 1 only. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light) look things up.";
+    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
@@ -1145,6 +1191,187 @@ function outlineFromText(raw) {
   return uniq.slice(0, 14);
 }
 
+function youtubeId(url) {
+  let u;
+  try { u = new URL(String(url || "").trim()); } catch (e) { return null; }
+  const host = (u.hostname || "").replace(/^www\./i, "").toLowerCase();
+  const ok = host === "youtu.be" || host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com" || host === "youtube-nocookie.com";
+  if (!ok) return null;
+  u.searchParams.delete("si");
+  const idRe = /^[A-Za-z0-9_-]{11}$/;
+  if (host === "youtu.be") {
+    const id = (u.pathname.split("/").filter(Boolean)[0] || "").replace(/[^A-Za-z0-9_-].*$/, "");
+    return idRe.test(id) ? id : null;
+  }
+  const v = u.searchParams.get("v");
+  if (v && idRe.test(v)) return v;
+  const parts = u.pathname.split("/").filter(Boolean);
+  const kind = (parts[0] || "").toLowerCase();
+  if ((kind === "shorts" || kind === "embed" || kind === "live" || kind === "v") && parts[1] && idRe.test(parts[1])) return parts[1];
+  return null;
+}
+
+function realYtTitle(t) {
+  const s = String(t || "").replace(/\s+/g, " ").trim();
+  if (!s) return "";
+  if (/^[-–—]?\s*youtube\s*$/i.test(s)) return "";
+  return s.slice(0, 180);
+}
+
+function fmtDuration(sec) {
+  const n = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = n % 60;
+  if (h) return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+function extractiveSentences(text, minN, maxN) {
+  const raw = String(text || "").replace(/\s+/g, " ").trim();
+  if (!raw) return [];
+  const parts = raw.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [raw];
+  const sents = parts.map((x) => x.trim()).filter((x) => x.length >= 24 && !/https?:\/\//i.test(x.slice(0, 12)));
+  const take = sents.slice(0, maxN || 6);
+  if (take.length >= (minN || 3)) return take;
+  return take.length ? take : (raw ? [raw.slice(0, 220)] : []);
+}
+
+function captionPlain(raw) {
+  let t = String(raw || "");
+  try {
+    const j = JSON.parse(t);
+    if (Array.isArray(j)) t = j.map((x) => (x && (x.text || x.content)) || "").join(" ");
+    else if (j && Array.isArray(j.events)) t = j.events.map((e) => (e && e.segs ? e.segs.map((s) => s.utf8 || "").join("") : "")).join(" ");
+  } catch (e) {}
+  t = t.replace(/<[^>]+>/g, " ").replace(/\{[^}]+\}/g, " ");
+  t = t.replace(/^\d+\s*$/gm, " ").replace(/\d{2}:\d{2}:\d{2}[.,]\d+.*/g, " ");
+  t = t.replace(/WEBVTT|Kind:|Language:/gi, " ").replace(/\s+/g, " ").trim();
+  return t.slice(0, 2500);
+}
+
+async function fetchJsonLoose(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchTextLoose(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return "";
+    return await res.text();
+  } catch (e) {
+    return "";
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function isVideoAsk(text) {
+  const q = String(text || "").toLowerCase();
+  if (/\bcan you watch youtube\b/.test(q)) return true;
+  if (/\bsummariz[ea] this video\b/.test(q)) return true;
+  if (/\b(youtube|video)\b/.test(q) && /\b(watch|summariz|summaris|open|fetch|read)\b/.test(q)) return true;
+  return false;
+}
+
+const WALL_MSG = "That page showed a wall. I did not save it. Try another link, or tell me the point to remember.";
+
+async function describeYoutube(id, url) {
+  const watch = "https://www.youtube.com/watch?v=" + id;
+  let title = "";
+  let channel = "";
+  let thumb = "";
+  let description = "";
+  let duration = "";
+  let captions = "";
+  const noemb = await fetchJsonLoose("https://noembed.com/embed?url=" + encodeURIComponent(watch));
+  if (noemb) {
+    title = realYtTitle(noemb.title);
+    channel = String(noemb.author_name || "").trim();
+    thumb = String(noemb.thumbnail_url || "").trim();
+  }
+  if (!title) {
+    const oe = await fetchJsonLoose("https://www.youtube.com/oembed?url=" + encodeURIComponent(watch) + "&format=json");
+    if (oe) {
+      title = realYtTitle(oe.title);
+      if (!channel) channel = String(oe.author_name || "").trim();
+      if (!thumb) thumb = String(oe.thumbnail_url || "").trim();
+    }
+  }
+  const instances = ["https://inv.nadeko.net", "https://yewtu.be", "https://invidious.fdn.fr"];
+  let inv = null;
+  let invBase = "";
+  for (const base of instances) {
+    const j = await fetchJsonLoose(base.replace(/\/$/, "") + "/api/v1/videos/" + id);
+    if (j && (j.title || j.author || j.description)) {
+      inv = j;
+      invBase = base.replace(/\/$/, "");
+      break;
+    }
+  }
+  if (inv) {
+    if (!title) title = realYtTitle(inv.title);
+    if (!channel) channel = String(inv.author || "").trim();
+    description = String(inv.description || "").replace(/\s+/g, " ").trim().slice(0, 1200);
+    if (inv.lengthSeconds) duration = fmtDuration(inv.lengthSeconds);
+    const tracks = (inv.captions && inv.captions.captions) || (Array.isArray(inv.captions) ? inv.captions : []) || [];
+    const en = tracks.find((c) => {
+      const code = String((c && (c.language_code || c.languageCode || c.lang)) || "").toLowerCase();
+      const label = String((c && c.label) || "").toLowerCase();
+      return code === "en" || code.indexOf("en-") === 0 || /english/.test(label);
+    }) || tracks[0];
+    if (en) {
+      let capUrl = String(en.url || en.baseUrl || "").trim();
+      if (capUrl && capUrl.indexOf("http") !== 0) capUrl = invBase + (capUrl.charAt(0) === "/" ? capUrl : "/" + capUrl);
+      if (!capUrl && en.label) capUrl = invBase + "/api/v1/captions/" + id + "?label=" + encodeURIComponent(en.label);
+      if (capUrl) captions = captionPlain(await fetchTextLoose(capUrl));
+    }
+  }
+  if (!title) return null;
+  if (isLinkJunk(title, "")) return null;
+  const spoken = captions
+    ? "Spoken (captions):\n" + captions
+    : "No captions on this copy. I kept title and description, not the spoken lecture.";
+  const analysisSrc = (description + " " + captions).trim();
+  const sents = extractiveSentences(analysisSrc, 3, 6);
+  const note = sents.length ? ("Note: " + sents.join(" ")) : "Note: Title and channel only; no usable description yet.";
+  const bodyBits = [
+    title,
+    channel ? ("Channel: " + channel) : "",
+    duration ? ("Duration: " + duration) : "",
+    description ? ("Description: " + description) : "",
+    spoken,
+    note
+  ].filter(Boolean);
+  const body = bodyBits.join("\n");
+  const d = {
+    title,
+    url: url || watch,
+    body,
+    kind: "youtube",
+    outline: [channel, duration].filter(Boolean),
+    channel,
+    duration,
+    note,
+    captions: captions || "",
+    thumb
+  };
+  remember("Video note:\n" + [d.title, d.url, d.channel, d.duration, note, captions ? captions.slice(0, 900) : spoken].filter(Boolean).join("\n"));
+  return d;
+}
+
 async function fetchLinkRaw(url) {
   const tries = [
     "https://r.jina.ai/" + url,
@@ -1171,18 +1398,29 @@ function linkNote(d) {
 
 async function describeLink(url) {
   if (nuclearBlocked(url)) return null;
+  const yid = youtubeId(url);
+  if (yid) return await describeYoutube(yid, url);
   const raw = await fetchLinkRaw(url);
   const titleMatch = raw.match(/^Title:\s*(.+)$/m) || raw.match(/<title>([^<]+)<\/title>/i);
   const title = (titleMatch ? titleMatch[1].trim() : url).slice(0, 180);
   const clean = raw.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
   const outline = outlineFromText(raw);
   const preview = clean.slice(0, 3500);
-  const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500 };
+  const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500, kind: "link" };
+  if (isLinkJunk(d.title, d.body)) return null;
   remember("Link note:\n" + linkNote(d));
   return d;
 }
 
 function formatLinkRead(d) {
+  if (d && d.kind === "youtube") {
+    const bits = [d.title, d.url];
+    if (d.channel) bits.push(d.channel);
+    if (d.note) bits.push("", d.note);
+    if (d.captions) bits.push("", "Spoken (captions):", d.captions);
+    bits.push("", "Saved into the offline mind.");
+    return bits.join("\n");
+  }
   const bits = [d.title, d.url, ""];
   if (d.outline && d.outline.length) {
     bits.push("Contents:");
@@ -1348,9 +1586,19 @@ async function answer(userText) {
     return evolvedHit.action;
   }
   const links = extractHttpUrls(userText);
+  const videoAsk = isVideoAsk(userText);
+  if (videoAsk && !links.length) {
+    if (!mindWantsWeb()) {
+      return "When the light is green I can watch and summarize YouTube. Tap the light green, then paste the URL.";
+    }
+    return "Yes. Paste a YouTube or site URL. I will fetch it, summarize it, and keep a good note in the gut — not a CAPTCHA wall.";
+  }
   if (links.length) {
     if (!mindWantsWeb()) {
       links.forEach((u) => queueLearn(u));
+      if (videoAsk || links.some((u) => youtubeId(u))) {
+        return "Mind is amber. I queued that URL. Tap the light green and I will fetch, summarize, and keep a note in the gut.";
+      }
       return "Mind is offline. Tap the light green. I will open " + (links.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
     }
     const parts = [];
@@ -1358,7 +1606,8 @@ async function answer(userText) {
       try {
         const d = await describeLink(link);
         if (!d) {
-          parts.push("I will not open " + link + ".");
+          if (nuclearBlocked(link)) parts.push("I will not open " + link + ".");
+          else parts.push(WALL_MSG);
           continue;
         }
         parts.push(formatLinkRead(d));
@@ -1452,17 +1701,17 @@ function formatMindDump() {
     lines.push("  do: " + (s.action || ""));
   });
   lines.push("");
-  lines.push("=== Links (URL + chat summary only) ===");
-  const linkNotes = (state.memories || []).filter((m) => m && /^Link note:/i.test(m.text));
+  lines.push("=== Links and videos (URL + chat summary only) ===");
+  const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text));
   if (!linkNotes.length) lines.push("(none yet)");
   linkNotes.forEach((m) => {
-    lines.push(m.text.replace(/^Link note:\s*/i, "").trim());
+    lines.push(m.text.replace(/^(Link note:|Video note:)\s*/i, "").trim());
     lines.push("");
   });
   lines.push("=== Learned (offline mind) ===");
   const mem = (state.memories || []).filter((m) => {
     if (!m || !m.text || /^user said:/i.test(m.text)) return false;
-    if (/^Link note:/i.test(m.text)) return false;
+    if (/^(Link note:|Video note:)/i.test(m.text)) return false;
     if (/^Link .+ \[\d+\]:/i.test(m.text)) return false;
     if (/chars read$/i.test(m.text)) return false;
     return true;
@@ -1615,7 +1864,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "talk.offline", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -2122,7 +2371,7 @@ function renderPanel() {
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "talk.offline", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
