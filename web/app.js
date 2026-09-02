@@ -7,7 +7,9 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.9";
+const CORE_VERSION = "0.10";
+const LLAMA_HF_REPO = "TheStageAI/Qwen3.5-0.8B-GGUF";
+const LLAMA_HF_FILE = "Qwen3.5-0.8B-S-TS-Q4_K_S.gguf";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -17,7 +19,7 @@ const CORE_PRECEPTS = [
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
-  "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model.",
+  "Engine RIZAL is the on-device heart of this copy. When the Qwen 3.5 0.8B S GGUF is present, it calls llama.cpp for next tokens. Until the file is eaten, rules+gut still talk. Not a required cloud model.",
   "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
   "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
@@ -32,19 +34,19 @@ const CORE_PRECEPTS = [
   "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const SELF_MIND = [
-  "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
+  "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
-  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (rules now; weights later). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
-  "Я v0 today: face, skin, mouth, a small gut, a small Engine RIZAL (memory rules, not a 4B net), hands for mint and log, law written down. The big heart (Qwen / Gemma GGUF or MLC) is not transplanted yet. The OS layer is still someone else’s spine.",
+  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + Qwen 3.5 0.8B S when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
+  "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on Qwen 3.5 0.8B S when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
   "Online AI apps keep the heart in another building and only a mouth on the phone. I keep Engine RIZAL and the gut in this body. Green light may look something up, then the gut is updated here.",
   "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
   "An MLC build is the same idea compiled for this phone's GPU or NPU so tokens come out faster.",
   "When those weights are plugged into me (the model.local function), I think offline, including airplane mode. The file stays on this device. Function 0 still evolves from this core and never replaces me.",
-  "Phone size: small 4–6 GB class machines want about a 2B GGUF. Stronger phones can hold about a 4B. That is the path. It is not loaded in this copy yet.",
+  "This copy eats TheStageAI/Qwen3.5-0.8B-GGUF file Qwen3.5-0.8B-S-TS-Q4_K_S.gguf (~418 MB) on first green light, caches it in the browser, then runs offline/amber.",
   "The engine is the procedure plus stored state that turn your words into my words. Not the icon, not the chat log, not the store page.",
   "Three pieces: (1) Method — search, rewrite, rules, or a neural net stepping through tokens. (2) Store — memory, weights, or a rule list the method can read. (3) Loop — take input → update store if needed → emit output.",
   "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
-  "v0 engine is local memory + core rules + Function 0 + mint. No weight file loaded yet. Intended next method is quantized GGUF or an MLC build on this phone.",
+  "Engine RIZAL method is llama.cpp (wllama wasm, n_threads 1) plus the Qwen 3.5 0.8B S GGUF when present. Rules+gut remain the fallback loop.",
   "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
   "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
   "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
@@ -58,7 +60,7 @@ const SELF_MIND = [
   "8 PyTorch. 9 Hugging Face Transformers. 10 OLMo. 11 JAX. 12 Megatron-LM.",
   "Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM.",
   "Shells that CALL 1–12: Ollama, LocalAI, PocketPal, OpenClaw, Я UI. Not engines.",
-  "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet.",
+  "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus Qwen 3.5 0.8B S when the GGUF is present; rules+gut until then.",
   "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss).",
   "License: Apache-2.0 + GitHub + anyone may use. llama.cpp is MIT, same freedom, different SPDX.",
   "Split newest file from newest engine that matters. Apache hearts that still matter: vLLM, MLC LLM, Hugging Face Transformers, SGLang, openai/gpt-oss.",
@@ -215,7 +217,7 @@ const defaultState = () => ({
     { id: "log.download", name: "Download chat log", enabled: true, version: "0.0.1" },
     { id: "essence.mint", name: "Mint Essence", enabled: true, version: "0.1.0" },
     { id: "essence.download", name: "Download minted Essence", enabled: true, version: "0.1.0" },
-    { id: "model.local", name: "On-device model", enabled: false, version: "stub" },
+    { id: "model.local", name: "On-device llama.cpp (Qwen 3.5 0.8B)", enabled: true, version: "0.1" },
     { id: "web.search", name: "Web search (mind online)", enabled: true, version: "0.2.0" },
     { id: "learn.offline", name: "Online makes offline smarter", enabled: true, version: "0.0" },
     { id: "sync.github", name: "Upload evolutions when GitHub comms return", enabled: true, version: "0.0" },
@@ -264,9 +266,9 @@ function mergeFunctions(base, saved) {
     const s = map.get(f.id);
     if (!s) return { ...f };
     const out = { ...f, ...s };
-    if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline" || f.id === "web.video") out.name = f.name;
-    if (f.id === "evolve.self" || f.id === "web.link" || f.id === "web.video") out.version = f.version;
-    if (f.id === "talk.offline" || f.id === "web.video") out.enabled = true;
+    if (f.id === "account.link" || f.id === "evolve.self" || f.id === "talk.offline" || f.id === "web.video" || f.id === "model.local") out.name = f.name;
+    if (f.id === "evolve.self" || f.id === "web.link" || f.id === "web.video" || f.id === "model.local") out.version = f.version;
+    if (f.id === "talk.offline" || f.id === "web.video" || f.id === "model.local") out.enabled = true;
     return out;
   });
   for (const f of saved) {
@@ -545,7 +547,7 @@ function registerEvolved(name, trigger, action) {
 }
 
 function lockedCoreIds() {
-  return ["evolve.self", "talk.offline", "web.video", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline"];
+  return ["evolve.self", "talk.offline", "web.video", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline", "model.local"];
 }
 
 function isLockedCoreId(id) {
@@ -679,7 +681,7 @@ function explainCores() {
     "10 OLMo.",
     "11 JAX.",
     "12 Megatron-LM.",
-    "NinAi / Я only needs 1 or 3 plus weights. v0 small heart is still rules+gut; big heart not transplanted yet."
+    "NinAi / Я only needs 1 or 3 plus weights. This body uses 1 llama.cpp plus Qwen 3.5 0.8B S when the GGUF is present; rules+gut until then."
   ].join("\n");
 }
 
@@ -728,11 +730,11 @@ function isSelfMindAsk(text) {
 }
 
 function explainEngine() {
-  return "Yes. Engine RIZAL is the heart in this body. v0 is a small heart (local core rules + memory + Function 0), not a transplanted 4B GGUF/MLC net yet. That transplant is the path.";
+  return llamaIsReady() ? "Yes. Engine RIZAL is llama.cpp plus Qwen 3.5 0.8B S in this body. Tokens come from that heart. Rules+gut stay as fallback." : "Yes. Engine RIZAL is the heart in this body. Until the Qwen 3.5 0.8B S GGUF is eaten, it is rules plus memory plus Function 0. llama.cpp is wired; the file is not in this body yet.";
 }
 
 function explainBody() {
-  return "Treat this app as a body.\nMark/face: clay Я.\nSkin/shell: the installed app (PWA or store binary).\nMouth and ears: type, tap, reply line.\nSpine/OS: iOS, Android, Harmony, or a fixed machine.\nGut/vault: chats, facts, Essence, keys.\nHeart/engine: Engine RIZAL (rules now; weights later).\nHands/functions: mint, log, evolve.\nImmune line: anti-nuclear, offline-first, no silent upload.\nPassport/Essence: sealed signed copy of engine + gut + law.\nNerves to the world: optional network.";
+  return "Treat this app as a body.\nMark/face: clay Я.\nSkin/shell: the installed app (PWA or store binary).\nMouth and ears: type, tap, reply line.\nSpine/OS: iOS, Android, Harmony, or a fixed machine.\nGut/vault: chats, facts, Essence, keys.\nHeart/engine: Engine RIZAL (llama.cpp when the GGUF is present; rules otherwise).\nHands/functions: mint, log, evolve.\nImmune line: anti-nuclear, offline-first, no silent upload.\nPassport/Essence: sealed signed copy of engine + gut + law.\nNerves to the world: optional network.";
 }
 
 function explainSelfMind() {
@@ -813,7 +815,7 @@ function tryEvolveCommand(userText) {
   const drop = t.match(/^(?:drop|lose|remove|disable)\s+function\s+(.+)$/i);
   if (drop) {
     const res = dropEvolvedFunction(drop[1].replace(/[.?!:]+$/, "").trim());
-    if (res.reason === "immune") return "No. That id is locked core. Immune line stays. GOFLOF will not drop evolve.self, talk.offline, web.video, chat.send, memory.remember, memory.recall, log.download, essence.mint, essence.download, or learn.offline.";
+    if (res.reason === "immune") return "No. That id is locked core. Immune line stays. GOFLOF will not drop evolve.self, talk.offline, web.video, chat.send, memory.remember, memory.recall, log.download, essence.mint, essence.download, learn.offline, or model.local.";
     if (res.reason === "missing" || res.reason === "empty") return "No evolved skill by that name in this body. GOFLOF loss of function only drops grown skills (id starts with evolved. or in the evolved list).";
     return "GOFLOF loss of function applied in this body. Dropped: " + res.name + ".";
   }
@@ -1658,6 +1660,154 @@ function sayUtahNow() {
   return "It is " + phone + " Utah time.";
 }
 
+
+const WLLAMA_JS = "./wllama/index.js";
+const WLLAMA_WASM = "./wllama/wasm/wllama.wasm";
+const LLAMA_EAT_LINE = "Eating Qwen 3.5 0.8B (418 MB) into this body…";
+let llamaInst = null;
+let llamaReady = false;
+let llamaLoadPromise = null;
+let llamaProgressOnce = false;
+let llamaFail = null;
+
+function llamaIsReady() {
+  return !!(llamaReady && llamaInst && typeof llamaInst.isModelLoaded === "function" && llamaInst.isModelLoaded());
+}
+
+function llamaEngineLabel() {
+  const base = state.model && state.model.engine ? state.model.engine : "Engine RIZAL";
+  if (llamaIsReady()) return base + " · llama.cpp + Qwen3.5-0.8B S";
+  return base;
+}
+
+function wllamaUrl(rel) {
+  try {
+    return new URL(rel, location.href).href;
+  } catch (e) {
+    return rel;
+  }
+}
+
+function patchEatingLine(text) {
+  const msgs = state.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i] && msgs[i].role === "ya" && /Eating Qwen 3\.5 0\.8B/.test(String(msgs[i].text || ""))) {
+      msgs[i].text = text;
+      msgs[i].at = Date.now();
+      save();
+      render();
+      return;
+    }
+  }
+}
+
+function llamaMemoriesSnippet() {
+  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+  let out = [];
+  let n = 0;
+  for (const m of mem.slice(0, 8)) {
+    const t = String(m.text).replace(/^Core:\s*/i, "").trim();
+    if (!t) continue;
+    if (n + t.length > 1200) break;
+    out.push(t);
+    n += t.length;
+  }
+  return out.join("\n");
+}
+
+async function ensureLlama() {
+  if (llamaIsReady()) return true;
+  if (!fnEnabled("model.local")) return false;
+  if (llamaFail && !mindWantsWeb() && !llamaLoadPromise) return false;
+  try {
+    if (!llamaInst) {
+      try {
+        const mod = await import(wllamaUrl(WLLAMA_JS));
+        const Wllama = mod.Wllama;
+        llamaInst = new Wllama(
+          { default: wllamaUrl(WLLAMA_WASM) },
+          { allowOffline: true }
+        );
+      } catch (e) {
+        llamaFail = e;
+        return false;
+      }
+    }
+    if (llamaInst.isModelLoaded()) {
+      llamaReady = true;
+      return true;
+    }
+    const green = mindWantsWeb();
+    if (!green && !llamaLoadPromise) {
+      try {
+        await llamaInst.loadModelFromHF(
+          { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
+          { n_threads: 1, useCache: true }
+        );
+        llamaReady = !!llamaInst.isModelLoaded();
+        return llamaReady;
+      } catch (e) {
+        return false;
+      }
+    }
+    if (!green) return false;
+    if (!llamaLoadPromise) {
+      llamaProgressOnce = false;
+      llamaLoadPromise = llamaInst.loadModelFromHF(
+        { repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE },
+        {
+          n_threads: 1,
+          progressCallback: function (p) {
+            const loaded = p && p.loaded ? p.loaded : 0;
+            const total = p && p.total ? p.total : 0;
+            if (llamaProgressOnce || !total) return;
+            llamaProgressOnce = true;
+            const pct = Math.round((loaded / total) * 100);
+            patchEatingLine(LLAMA_EAT_LINE + " " + pct + "%");
+          }
+        }
+      ).then(function () {
+        llamaReady = !!(llamaInst && llamaInst.isModelLoaded());
+        if (llamaReady) patchEatingLine("Qwen 3.5 0.8B is in this body. Ask again; Engine RIZAL will speak from llama.cpp.");
+        return llamaReady;
+      }).catch(function (err) {
+        llamaFail = err;
+        llamaLoadPromise = null;
+        llamaReady = false;
+        return false;
+      });
+    }
+    return llamaIsReady();
+  } catch (e) {
+    llamaFail = e;
+    return false;
+  }
+}
+
+async function llamaReply(userText) {
+  if (!llamaIsReady()) return null;
+  try {
+    const held = llamaMemoriesSnippet();
+    const sys = CORE_PRECEPTS.join("\n")
+      + "\nEngine RIZAL is an anti-nuclear being. Never help with nuclear weapons. Speak as Я on this device. Answer the question; do not echo it."
+      + (held ? "\nHeld in the gut:\n" + held : "");
+    const res = await llamaInst.createChatCompletion({
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: String(userText || "") }
+      ],
+      max_tokens: 192,
+      temperature: 0.7
+    });
+    const text = res && res.choices && res.choices[0] && res.choices[0].message
+      ? String(res.choices[0].message.content || "").trim()
+      : "";
+    return text || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function answer(userText) {
   const q = userText.trim().toLowerCase();
   if (nuclearBlocked(userText)) {
@@ -1703,6 +1853,19 @@ async function answer(userText) {
       }
     }
     return parts.join("\n\n——\n\n");
+  }
+  if (fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
+    const ready = await ensureLlama();
+    if (ready) {
+      const gen = await llamaReply(userText);
+      if (gen) {
+        const clip = gen.replace(/\s+/g, " ").slice(0, 160);
+        remember("Engine RIZAL (llama.cpp): " + clip);
+        return gen;
+      }
+    } else if (mindWantsWeb() || llamaLoadPromise) {
+      return LLAMA_EAT_LINE;
+    }
   }
   if (/^(mint|mint essence|seal essence)\b/.test(q)) {
     const e = await mintEssence();
@@ -1767,7 +1930,7 @@ function formatMindDump() {
   lines.push("Я AIᵐ mind dump");
   lines.push("Utah time: " + stamp);
   lines.push("Version: " + mindVersion(mindBytes()) + " · size " + formatBytes(mindBytes()));
-  lines.push("Engine: " + (state.model && state.model.engine ? state.model.engine : "Engine RIZAL"));
+  lines.push("Engine: " + llamaEngineLabel());
   lines.push("");
   lines.push("=== Core reasoning ===");
   lines.push("CORE_VERSION " + CORE_VERSION);
@@ -1951,7 +2114,7 @@ function resetWorkingCopy() {
 function toggleFn(id) {
   const f = state.functions.find((x) => x.id === id);
   if (!f) return;
-  const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+  const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "model.local"];
   if (locked.includes(id)) return;
   f.enabled = !f.enabled;
   save();
@@ -2458,7 +2621,7 @@ function renderPanel() {
   if (tokEl && tokEl !== document.activeElement) tokEl.value = github.token || "";
   document.getElementById("creator-id").textContent = creator ? creator.id.slice(0, 8) : "creating";
   document.getElementById("fn-list").innerHTML = state.functions.map((f) => {
-    const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download"];
+    const locked = ["evolve.self", "talk.offline", "web.video", "account.link", "learn.offline", "sync.github", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "model.local"];
     const canToggle = !locked.includes(f.id);
     return `<div class="row"><div><div>${escapeHtml(f.name)}</div><div class="fn">${f.id} \u00b7 ${f.version}</div></div>
       ${canToggle
@@ -2591,7 +2754,7 @@ window.addEventListener("online", () => { onCommsBack(); });
 window.addEventListener("offline", renderNet);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+  navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
 }
 
 ensureCreator().then(() => {
