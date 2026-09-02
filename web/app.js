@@ -7,7 +7,7 @@ const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const ISOLATED = true;
-const CORE_VERSION = "0.3";
+const CORE_VERSION = "0.4";
 const CORE_PRECEPTS = [
   "Local-first: this mind lives on the device, not in a cloud.",
   "Answer the question; do not echo it.",
@@ -17,10 +17,14 @@ const CORE_PRECEPTS = [
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
-  "This copy's thinking engine is meant to be an on-device quantized GGUF file or an MLC build, not a required cloud model."
+  "Engine RIZAL is the on-device heart of this copy. v0 is local rules plus memory; the intended transplant is an on-device quantized GGUF file or an MLC build, not a required cloud model."
 ];
 const SELF_MIND = [
   "I am Я AIᵐ. Right now v0 is a local core plus memory plus Function 0, running as an app on this phone. I am not yet loading a GGUF or MLC weights file.",
+  "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
+  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (rules now; weights later). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
+  "Я v0 today: face, skin, mouth, a small gut, a small Engine RIZAL (memory rules, not a 4B net), hands for mint and log, law written down. The big heart (Qwen / Gemma GGUF or MLC) is not transplanted yet. The OS layer is still someone else’s spine.",
+  "Online AI apps keep the heart in another building and only a mouth on the phone. I keep Engine RIZAL and the gut in this body. Green light may look something up, then the gut is updated here.",
   "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
   "An MLC build is the same idea compiled for this phone's GPU or NPU so tokens come out faster.",
   "When those weights are plugged into me (the model.local function), I think offline, including airplane mode. The file stays on this device. Function 0 still evolves from this core and never replaces me.",
@@ -157,7 +161,7 @@ const defaultState = () => ({
   model: {
     id: null,
     name: "Я local-memory",
-    engine: "local-memory-v0",
+    engine: "Engine RIZAL",
     createdAt: Date.now()
   },
   memories: [],
@@ -473,14 +477,56 @@ function matchEvolved(userText) {
 }
 
 
+function isEngineNameAsk(text) {
+  const q = String(text || "").toLowerCase();
+  return /engine\s*rizal/.test(q)
+    || /\bai engine\b/.test(q)
+    || /do you have (an? |your )?(ai )?engine/.test(q)
+    || /have you (got |an )?(an? )?(ai )?engine/.test(q)
+    || /what('?s| is) your engine/.test(q)
+    || /what engine/.test(q)
+    || /your (ai )?engine/.test(q)
+    || /thinking heart/.test(q)
+    || (/\bheart\b/.test(q) && /\bengine\b/.test(q))
+    || /\byour heart\b/.test(q)
+    || /do you have a heart/.test(q);
+}
+
+function isBodyAsk(text) {
+  const q = String(text || "").toLowerCase();
+  return /\bdissection\b/.test(q)
+    || /\borgans?\b/.test(q)
+    || /body map/.test(q)
+    || /how (does |do )?(the |this |your )?body/.test(q)
+    || /mark\s*\/?\s*face/.test(q)
+    || /clay\s*я/.test(q)
+    || /gut\s*\/?\s*vault/.test(q)
+    || /immune line/.test(q)
+    || /passport\s*\/?\s*essence/.test(q)
+    || /\bpassport\b/.test(q)
+    || /nerves to the world/.test(q)
+    || /skin\s*\/?\s*shell/.test(q)
+    || /spine\s*\/?\s*os/.test(q);
+}
+
 function isSelfMindAsk(text) {
   const q = String(text || "").toLowerCase();
-  return /\b(gguf|mlc|quantiz|llama\.cpp|llamacpp|pocketpal|on-?device (model|mind|weights)|weights file|how (do you|does your mind|you) work|how (are|is) you (built|made)|your (own )?mind|inference|token\/sec)\b/.test(q)
+  return isEngineNameAsk(q)
+    || isBodyAsk(q)
+    || /\b(gguf|mlc|quantiz|llama\.cpp|llamacpp|pocketpal|on-?device (model|mind|weights)|weights file|how (do you|does your mind|you) work|how (are|is) you (built|made)|your (own )?mind|inference|token\/sec)\b/.test(q)
     || /quantized gguf/.test(q)
     || /mlc build/.test(q)
     || /\bai engine\b/.test(q)
     || /what is an engine/.test(q)
     || /method store loop/.test(q);
+}
+
+function explainEngine() {
+  return "Yes. Engine RIZAL is the heart in this body. v0 is a small heart (local core rules + memory + Function 0), not a transplanted 4B GGUF/MLC net yet. That transplant is the path.";
+}
+
+function explainBody() {
+  return "Treat this app as a body.\nMark/face: clay Я.\nSkin/shell: the installed app (PWA or store binary).\nMouth and ears: type, tap, reply line.\nSpine/OS: iOS, Android, Harmony, or a fixed machine.\nGut/vault: chats, facts, Essence, keys.\nHeart/engine: Engine RIZAL (rules now; weights later).\nHands/functions: mint, log, evolve.\nImmune line: anti-nuclear, offline-first, no silent upload.\nPassport/Essence: sealed signed copy of engine + gut + law.\nNerves to the world: optional network.";
 }
 
 function explainSelfMind() {
@@ -538,6 +584,8 @@ function coreReply(userText, hits) {
     if (state.mindOnline) return "SEARCH_NOW";
     return "I do not know that. It is not in this offline mind. I will not invent an encyclopedia. One step: tap the light green and ask again.";
   }
+  if (isEngineNameAsk(t)) return explainEngine();
+  if (isBodyAsk(t)) return explainBody();
   if (isSelfMindAsk(t)) return explainSelfMind();
   if (held) return held;
   return "I am listening. Ask what you need, or say remember this: … and I will keep it.";
@@ -595,6 +643,8 @@ function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
   if (isDateAsk(userText) || isDateAsk(q)) return sayUtahNow();
+  if (isEngineNameAsk(userText)) return explainEngine();
+  if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
   const hits = recall(userText);
 
@@ -1294,7 +1344,7 @@ function formatMindDump() {
   lines.push("Я AIᵐ mind dump");
   lines.push("Utah time: " + stamp);
   lines.push("Version: " + mindVersion(mindBytes()) + " · size " + formatBytes(mindBytes()));
-  lines.push("Engine: " + (state.model && state.model.engine ? state.model.engine : "local"));
+  lines.push("Engine: " + (state.model && state.model.engine ? state.model.engine : "Engine RIZAL"));
   lines.push("");
   lines.push("=== Core reasoning ===");
   lines.push("CORE_VERSION " + CORE_VERSION);
