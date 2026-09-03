@@ -24,7 +24,7 @@ enum ModelManager {
     static func status() -> [String: Any] {
         [
             "heartBytes": NativeVault.heartBytes(),
-            "seated": NativeHeart.seated,
+            "seated": NativeHeart.shared.seated,
             "catalog": smolName,
             "files": listGGUF().map { $0.lastPathComponent }
         ]

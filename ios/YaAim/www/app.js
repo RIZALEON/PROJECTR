@@ -2306,6 +2306,13 @@ async function answer(userText) {
   if (known) {
     return String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
   }
+  if (isNativeSpine()) {
+    const st = await nativeAsk("status");
+    if (st && st.engine === "llama.cpp") {
+      const g = await nativeAsk("generate", { prompt: userText });
+      if (g && g.text) return String(g.text);
+    }
+  }
   if (fnEnabled("model.local") && llamaIsReady() && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
     const gen = await llamaReply(userText);
     if (gen) {
@@ -3409,13 +3416,34 @@ function isNativeSpine() {
     && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ya);
 }
 
+let nativeWaiters = {};
+let nativeSeq = 0;
+function nativeAsk(op, extra) {
+  return new Promise(function (resolve) {
+    if (!isNativeSpine()) return resolve(null);
+    const id = "n" + (++nativeSeq);
+    nativeWaiters[id] = resolve;
+    const msg = Object.assign({ op: op, id: id }, extra || {});
+    try { window.webkit.messageHandlers.ya.postMessage(msg); }
+    catch (e) { delete nativeWaiters[id]; return resolve(null); }
+    setTimeout(function () {
+      if (nativeWaiters[id]) { nativeWaiters[id](null); delete nativeWaiters[id]; }
+    }, 25000);
+  });
+}
+
 window.yaNativeReply = function (msg) {
   if (!msg || typeof msg !== "object") return;
+  if (msg.id && nativeWaiters[msg.id]) {
+    const fn = nativeWaiters[msg.id];
+    delete nativeWaiters[msg.id];
+    fn(msg);
+  }
   if (msg.op === "picked" && Array.isArray(msg.files)) {
     msg.files.forEach(function (f) {
       remember("Native vault kept " + (f.name || "file") + " (" + formatBytes(f.bytes || 0) + "). Spine is iOS Documents, not Safari Cache.");
       try { noteFed({ name: f.name, bytes: f.bytes || 0, kind: f.kind || "part", at: Date.now() }); } catch (e) {}
-      if (f.kind === "gguf") applyEatReply("Heart landed in native Documents (not Safari). " + (f.name || "heart.gguf") + " · " + formatBytes(f.bytes || 0) + ". Link llama.xcframework on a Mac to seat Metal.");
+      if (f.kind === "gguf") applyEatReply("Heart landed in native Documents (not Safari). " + (f.name || "heart.gguf") + " · " + formatBytes(f.bytes || 0) + ". NativeHeart seats Metal when llama.xcframework is linked.");
       else applyEatReply("Kept " + (f.name || "file") + " in native Documents.");
     });
     try { save(); renderMind(); } catch (e) {}

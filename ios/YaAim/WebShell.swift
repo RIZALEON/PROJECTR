@@ -50,12 +50,17 @@ struct WebShell: UIViewRepresentable {
                 presentPicker()
             case "generate":
                 let prompt = (body["prompt"] as? String) ?? ""
-                let out = NativeHeart.generate(prompt: prompt)
-                reply(["op": "generate", "text": out])
+                let out = NativeHeart.shared.generate(prompt: prompt)
+                var payload: [String: Any] = ["op": "generate", "text": out, "engine": NativeHeart.shared.engine.rawValue]
+                if let id = body["id"] as? String { payload["id"] = id }
+                reply(payload)
             case "status":
-                var st = ModelManager.status()
+                var st = NativeHeart.shared.status()
                 st["op"] = "status"
                 st["gutBytes"] = NativeVault.gutBytes()
+                let files = ModelManager.status()
+                if let list = files["files"] { st["files"] = list }
+                if let id = body["id"] as? String { st["id"] = id }
                 reply(st)
             default:
                 break
