@@ -2231,6 +2231,13 @@ async function answer(userText) {
     const senseTalk = trySenseCommand(userText);
     if (senseTalk) return senseTalk;
   }
+  if (!signal()) {
+    const localOff = localEngine(userText);
+    if (localOff === "DATE_LOOKUP") return sayUtahNow();
+    const line = String(localOff || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
+    if (line && !/^I do not know that\b/.test(line) && !/^I am listening\b/.test(line)) return line;
+    return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or add function NAME: …";
+  }
   const links = extractHttpUrls(userText);
   const videoAsk = isVideoAsk(userText);
   if (videoAsk && !links.length) {
