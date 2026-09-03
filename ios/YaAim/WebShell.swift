@@ -24,8 +24,14 @@ struct WebShell: UIViewRepresentable {
         context.coordinator.web = web
         if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "www") {
             web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        } else if let pages = URL(string: "https://rizaleon.github.io/PROJECTR/") {
-            web.load(URLRequest(url: pages))
+        } else {
+            let html = """
+            <!doctype html><meta charset=utf-8>
+            <body style="background:#0b0b0c;color:#e8e4d9;font:16px/1.4 -apple-system;padding:24px">
+            Function 0 is here. Offline. www missing from this bundle — rebuild in Xcode.
+            </body>
+            """
+            web.loadHTMLString(html, baseURL: nil)
         }
         return web
     }

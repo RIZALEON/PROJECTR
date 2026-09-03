@@ -1,6 +1,6 @@
 # Я AIᵐ — iOS native spine
 
-Safari / PWA cannot outgrow WebKit limits (Memory64, wasm RAM, Cache quota). This folder is the **breakout**:
+Safari / PWA cannot outgrow WebKit limits (Memory64, wasm RAM, Cache quota). This folder is the **breakout**. **Core is offline.** Network is a nerve, not the spine.
 
 | Organ | Where it lives | Limit |
 |---|---|---|

@@ -1845,6 +1845,12 @@ async function loadModelSmart(inst, progress) {
   if (typeof SEATED_WRAP !== "undefined" && SEATED_WRAP) {
     throw new Error("Packed GGUF missing from APK assets");
   }
+  if (typeof isNativeSpine === "function" && isNativeSpine()) {
+    throw new Error("Native spine is offline-first. Seat a GGUF from Documents. No Hugging Face.");
+  }
+  if (ISOLATED || !signal()) {
+    throw new Error("Offline core: no local heart to seat. Function 0 still talks.");
+  }
   return inst.loadModelFromHF({ repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE }, opts);
 }
 
