@@ -29,11 +29,12 @@ Core is **offline**. These mouths share files, not Safari RAM. llama.cpp + Metal
 
 Shortcuts → New Shortcut named `Я` → Share → **Add to Home Screen** → choose the clay Я image (Files / Photos).
 
-Menu (three buttons):
+Menu (four buttons):
 
 1. **Skin** — Open URL `https://rizaleon.github.io/PROJECTR/` (or the Home Screen PWA)
 2. **Mouth** — Pyto Run Script `ios/workaround/ya_engine.py`
-3. **Hands** — Open App **a-Shell** (optional: run `cd ~/Documents && ls`)
+3. **Hands** — Open App **a-Shell**
+4. **Borrowed heart** — Open App **Local LLM: MITHRIL** (not Я — see `MITHRIL.md`)
 
 Airplane mode. Skin and mouth still work.
 
@@ -60,5 +61,5 @@ Safari PWA gut is still its own Cache until native C. Do not expect the PWA and 
 ## 4. Inference
 
 - **Now:** rules + gut (PWA and/or Pyto).
-- **Borrowed Metal:** App Store **MITHRIL** can load `heart.gguf`. Their tile, not clay Я.
-- **Ours:** `ios/YaAim.xcodeproj` on a Mac / iPad Playgrounds.
+- **Borrowed Metal (Phase 1):** App Store **MITHRIL**. Import SmolLM2 GGUF. Airplane. Their tile. Steps: `MITHRIL.md`.
+- **Ours (Phase 2):** `ios/YaAim.xcodeproj` — same llama.cpp + Metal pattern, clay Я, our Documents.

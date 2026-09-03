@@ -9,6 +9,8 @@
 		A10002 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
 		A10003 /* NativeVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeVault.swift; sourceTree = "<group>"; };
 		A10004 /* NativeHeart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHeart.swift; sourceTree = "<group>"; };
+		A10009 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		A1000A /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
 		A10005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10007 /* www */ = {isa = PBXFileReference; lastKnownFileType = folder; path = www; sourceTree = "<group>"; };
@@ -17,6 +19,8 @@
 		A10011 /* WebShell.swift */ = {isa = PBXBuildFile; fileRef = A10002 /* WebShell.swift */; };
 		A10012 /* NativeVault.swift */ = {isa = PBXBuildFile; fileRef = A10003 /* NativeVault.swift */; };
 		A10013 /* NativeHeart.swift */ = {isa = PBXBuildFile; fileRef = A10004 /* NativeHeart.swift */; };
+		A10016 /* ModelManager.swift */ = {isa = PBXBuildFile; fileRef = A10009 /* ModelManager.swift */; };
+		A10017 /* ConversationStore.swift */ = {isa = PBXBuildFile; fileRef = A1000A /* ConversationStore.swift */; };
 		A10014 /* Assets.xcassets */ = {isa = PBXBuildFile; fileRef = A10006 /* Assets.xcassets */; };
 		A10015 /* www */ = {isa = PBXBuildFile; fileRef = A10007 /* www */; };
 		A10020 /* Sources */ = {
@@ -27,6 +31,8 @@
 				A10011 /* WebShell.swift in Sources */,
 				A10012 /* NativeVault.swift in Sources */,
 				A10013 /* NativeHeart.swift in Sources */,
+				A10016 /* ModelManager.swift in Sources */,
+				A10017 /* ConversationStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,6 +59,8 @@
 				A10002 /* WebShell.swift */,
 				A10003 /* NativeVault.swift */,
 				A10004 /* NativeHeart.swift */,
+				A10009 /* ModelManager.swift */,
+				A1000A /* ConversationStore.swift */,
 				A10005 /* Info.plist */,
 				A10006 /* Assets.xcassets */,
 				A10007 /* www */,

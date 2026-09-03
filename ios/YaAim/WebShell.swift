@@ -53,12 +53,10 @@ struct WebShell: UIViewRepresentable {
                 let out = NativeHeart.generate(prompt: prompt)
                 reply(["op": "generate", "text": out])
             case "status":
-                reply([
-                    "op": "status",
-                    "heartBytes": NativeVault.heartBytes(),
-                    "gutBytes": NativeVault.gutBytes(),
-                    "seated": NativeHeart.seated
-                ])
+                var st = ModelManager.status()
+                st["op"] = "status"
+                st["gutBytes"] = NativeVault.gutBytes()
+                reply(st)
             default:
                 break
             }
