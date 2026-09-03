@@ -1,27 +1,45 @@
-# Я AIᵐ — iOS native spine
+# ЯENGINE — native iOS tile
 
-Safari / PWA cannot outgrow WebKit limits (Memory64, wasm RAM, Cache quota). This folder is the **breakout**. **Core is offline.** Network is a nerve, not the spine.
+```
+┌─────────────────────────────┐
+│          ЯENGINE             │
+│                             │
+│  WKWebView = SKIN           │
+│           ↓                 │
+│  Native Core = ENGINE       │
+│           ↓                 │
+│  llama.cpp + Metal          │
+│           ↓                 │
+│  Local Model                │
+└─────────────────────────────┘
+             ↑
+             │
+      Home Screen icon
+```
 
-| Organ | Where it lives | Limit |
+**Core is offline.** Network is a nerve. Tile and skin stay replaceable. No jailbreak. Unsigned OK.
+
+| Layer | File | What |
 |---|---|---|
-| Mouth / skin | WKWebView (same Я UI) | UI only |
-| Gut / vault | App **Documents** (Files, iTunes sharing) | phone storage, 4 GB law |
-| Heart | **llama.cpp native + Metal** (not wasm) | device RAM, not Safari |
+| Home Screen icon | `YaAim/Assets.xcassets/AppIcon` | clay serif **Я** |
+| WKWebView = SKIN | `YaAim/WebShell.swift` + `YaAim/www/` | same mouth as the PWA |
+| Native Core = ENGINE | `YaAim/NativeVault.swift` | Documents gut, 4 GB law |
+| llama.cpp + Metal | `YaAim/NativeHeart.swift` + `llama.xcframework` | not wasm, not Safari RAM |
+| Local Model | `Documents/heart.gguf` | cloud-up or Files → On My iPhone → Я |
 
-Unsigned is OK. No jailbreak. Function 0 still talks if the heart is not linked yet.
+Function 0 talks even if the heart is not linked yet.
 
 ## On a Mac (your Apple ID)
 
-1. Install Xcode 16+.
-2. Optional heart (Metal): clone [llama.cpp](https://github.com/ggml-org/llama.cpp), run `./build-xcframework.sh`, drop `build-apple/llama.xcframework` onto **YaAim** → Frameworks, Embed & Sign.
-3. Open `ios/YaAim.xcodeproj`.
-4. Signing & Capabilities → your Team (free Apple ID works). Bundle `io.github.rizaleon.yaaim`.
-5. Plug in the iPhone → Run. Trust the developer in Settings → General → VPN & Device Management.
+1. Xcode 16+ → open `ios/YaAim.xcodeproj`
+2. Signing → your Team. Bundle `io.github.rizaleon.yaaim`
+3. Heart: clone [llama.cpp](https://github.com/ggml-org/llama.cpp), `./build-xcframework.sh`, drop `build-apple/llama.xcframework` onto YaAim → Embed & Sign
+4. Run on the iPhone. Trust the developer in Settings → General → VPN & Device Management
 
-The clay Я icon is the app tile. Feed a GGUF with the cloud-up button — native document picker copies **file-to-file** into Documents (does not inflate Safari RAM). Files app → On My iPhone → Я also works.
+That Run **is** the Home Screen icon in the diagram.
 
 ## What this is not
 
-- Not a TWA. Not “Add to Home Screen.”
-- Not WKWebView wasm seating. That path stays the PWA fallback.
-- Not a store build until you greenlight TestFlight / App Store (4 GB uncompressed cap; 500 MB start).
+- Not Safari Add to Home Screen (that is tile A, PWA fallback)
+- Not a-Shell / Pyto / Shortcuts (those are launchers, not Engine RIZAL)
+- Not Play/App Store until you greenlight
