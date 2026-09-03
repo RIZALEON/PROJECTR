@@ -1,0 +1,6 @@
+{"id":"sense.draw.mark","shelf":"art","trigger":"draw ya","action":"emit SVG clay mark from spine","kind":"svg"}
+{"id":"sense.draw.circle","shelf":"art","trigger":"draw a circle","action":"emit SVG circle on clay","kind":"svg"}
+{"id":"sense.beat","shelf":"art","trigger":"make a beat","action":"Web Audio kick/hat + MIDI file","kind":"midi"}
+{"id":"sense.sfx.blip","shelf":"art","trigger":"play a blip","action":"jsfxr-class oscillator","kind":"sfx"}
+{"id":"sense.sfx.thump","shelf":"art","trigger":"play a thump","action":"low sine kick","kind":"sfx"}
+{"id":"sense.voice.slot","shelf":"technology","trigger":"speak","action":"refuse until ONNX voice part is seated","kind":"voice"}

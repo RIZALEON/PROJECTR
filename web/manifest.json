@@ -2,7 +2,7 @@
   "name": "Я AIᵐ",
   "short_name": "Я",
   "description": "Offline-first conversational AI. Memory. Downloadable logs. Evolves.",
-  "id": "/PROJECTR/",
+  "id": "./",
   "scope": "./",
   "start_url": "./index.html",
   "display": "standalone",

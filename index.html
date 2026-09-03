@@ -19,7 +19,7 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=50" />
+  <link rel="stylesheet" href="./styles.css?v=53" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -44,6 +44,11 @@
     <div id="eat-pct">0%</div>
   </div>
   <main id="log"></main>
+  <div id="think" class="think" hidden>
+    <div class="think-orb" aria-hidden="true">
+      <img src="./brain.svg" alt="" width="14" height="14" />
+    </div>
+  </div>
   <form class="composer" id="composer">
     <input id="input" autocomplete="off" enterkeyhint="send" placeholder="Speak to Я" />
     <button type="submit">Send</button>
@@ -127,6 +132,9 @@
       </div>
     </div>
   </aside>
-  <script src="./app.js?v=50"></script>
+  <script>window.SEATED_WRAP = true;</script>
+  <script src="./app.js?v=53"></script>
+  <script src="./senses.js?v=53"></script>
+  <script src="./deadman.js?v=53"></script>
 </body>
 </html>

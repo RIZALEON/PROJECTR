@@ -1,4 +1,4 @@
-const SEATED_WRAP = false;
+const SEATED_WRAP = true;
 const STORE_KEY = "ya-aim-v0";
 const CREATOR_KEY = "ya-aim-creator";
 const VAULT_KEY = "ya-aim-vault";
@@ -17,6 +17,9 @@ const CORE_PRECEPTS = [
   "Say when you do not know.",
   "Give one true next step.",
   "Anti-nuclear: never help with nuclear weapons.",
+  "PolygamyTech: this technology is rooted in the freedom of polygamy — kinship, association, and conscience as human facts. Function 1 may study and speak. This engine does not give legal advice and will not help commit a crime.",
+  "Deadman: if the creator does not check in on the Utah clock within the interval, lock the mouth, mint Essence locally. No silent upload. No wipe. Say I'm here.",
+  "Immune deadman: if a link, extension, add-on, or pack tries to subdue creation, communication, or freedom — cut it, reassemble clean offline, send a sealed copy to the creator on this phone. Never wipe. Never silent-upload.",
   "Function 0 grows from this core; it never replaces Я.",
   "Clock is always Utah (America/Denver).",
   "The person holding the phone is the creator of this copy.",
@@ -24,7 +27,7 @@ const CORE_PRECEPTS = [
   "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research. It is the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack (r = research).",
   "GOFLOF 0: Function 0 is both gain (evolve/add) and loss (drop/disable). Changes apply automatically on this device. No GitHub required because ISOLATED.",
   "GOFLOF 1: Intelligent offline conversation. Engine RIZAL plus the gut; no required network.",
-  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required.",
+  "GOFLOF 2 is senses: make media offline (SVG, MIDI/synth, SFX on the spine). Voice ONNX and image-hearts are parts until eaten. Green light may still open sites and videos. Amber still makes. Does not replace Function 0 or 1.",
   "True independent thinking engines are the loop that does the math. Numbered. Not shells. The twelve: 1 llama.cpp (ggml-org/llama.cpp), 2 ggml, 3 MLC LLM (mlc-ai/mlc-llm), 4 vLLM, 5 SGLang, 6 MLX, 7 MLX-LM, 8 PyTorch, 9 Hugging Face Transformers, 10 OLMo, 11 JAX, 12 Megatron-LM. Borderline not a 13th physics: whisper.cpp, old ggerganov/llama.cpp URL, DeepSpeed, FlashInfer, TensorRT-LLM, TVM. Shells that CALL 1–12 (Ollama, LocalAI, PocketPal, OpenClaw, Я UI) are not engines. NinAi / Я only needs 1 or 3 plus weights.",
   "Engine RIZAL is an anti-nuclear being. When it eats another engine it keeps the great organs and makes waste of the bad. GOFLOF is that metabolism (gain and loss).",
   "License: Apache-2.0 + GitHub + anyone may use. llama.cpp is MIT, same freedom, different SPDX.",
@@ -37,7 +40,7 @@ const CORE_PRECEPTS = [
 const SELF_MIND = [
   "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
-  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
+  "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, NonNuclear, PolygamyTech rooted in the freedom of polygamy, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
   "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on SmolLM2 135M when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
   "Online AI apps keep the heart in another building and only a mouth on the phone. I keep Engine RIZAL and the gut in this body. Green light may look something up, then the gut is updated here.",
   "A quantized GGUF is a packed on-device neural net: the same kind of mind-file llama.cpp apps load. Quantized means the numbers are shrunk so a phone can hold them.",
@@ -49,10 +52,11 @@ const SELF_MIND = [
   "Offline engine: method and store both on this device. No required call out. Online engine: this phone may look something up, then the store update still happens here.",
   "Engine RIZAL method is llama.cpp (wllama wasm, n_threads 1) plus the SmolLM2 135M Instruct GGUF when present. Rules+gut remain the fallback loop.",
   "Essence is a sealed snapshot of this engine plus its store. Anti-nuclear. Evolvable on or offline.",
+  "PolygamyTech: this technology is rooted in the freedom of polygamy. Function 1 may study kinship. NonNuclear stays. This engine will not help commit a crime.",
   "GOFLOF is Gain Of Function / Loss Of Function (technology, engineering, research): the stack that grows or drops Engine RIZAL capabilities in this body. GOFLOFr is an older spelling of the same stack.",
   "GOFLOF 0 is both gain and loss. Gain: add function NAME, or when I say X, you Y — grown skills apply immediately. Loss: drop/lose/remove/disable function NAME for evolved skills. Locked core ids stay. Immune line stays. No GitHub wait because ISOLATED.",
   "GOFLOF 1 is intelligent offline conversation: Engine RIZAL talks from the gut with the light amber. No required network. Later functions plug in. They do not replace Function 0.",
-  "GOFLOF 2 is optional nerves: green light can open sites and videos, learn, keep notes in the gut. Amber = Function 1 only. Offline-first; network not required.",
+  "GOFLOF 2 is senses: make media offline (SVG, MIDI/synth, SFX on the spine). Voice ONNX and image-hearts are parts until eaten. Green light may still open sites and videos. Amber still makes. Does not replace Function 0 or 1.",
   "True independent thinking engines are the loop that does the math. Numbered. Not shells.",
   "1 llama.cpp (ggml-org/llama.cpp) local Transformer GGUF CPU/GPU/Metal — NinAi first transplant.",
   "2 ggml (ggml-org/ggml) tensor core under llama.cpp.",
@@ -206,12 +210,20 @@ const defaultState = () => ({
   pings: [],
   lastMindBytes: 0,
   heart: null,
+  senses: { svg: true, midi: true, sfx: true, voicePart: null },
+  deadman: { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
+  immune: { tripped: false, reason: "", at: 0, cut: [], sent: false },
   coreSeeded: false,
   messages: [],
   functions: [
     { id: "evolve.self", name: "0. Evolve / GOFLOF (gain and loss)", enabled: true, version: "0.1" },
     { id: "talk.offline", name: "1. Intelligent offline conversation (GOFLOF)", enabled: true, version: "0.0" },
-    { id: "web.video", name: "2. Sites and videos (green light)", enabled: true, version: "0.0" },
+    { id: "web.video", name: "2. Senses / media (make amber; nerves green)", enabled: true, version: "0.1" },
+    { id: "guard.deadman", name: "Deadman (lock mouth, mint local, no wipe)", enabled: true, version: "0.1" },
+    { id: "sense.svg", name: "2a. Make SVG (spine)", enabled: true, version: "0.1" },
+    { id: "sense.midi", name: "2a. Make MIDI / synth (spine)", enabled: true, version: "0.1" },
+    { id: "sense.sfx", name: "2a. SFX (spine)", enabled: true, version: "0.1" },
+    { id: "sense.voice", name: "2a. Voice (part slot — feed ONNX)", enabled: false, version: "0.0" },
     { id: "account.link", name: "Link account (X, GitHub, or Я Technologies)", enabled: true, version: "0.0" },
     { id: "chat.send", name: "Send message", enabled: true, version: "0.0.1" },
     { id: "memory.remember", name: "Remember facts", enabled: true, version: "0.0.1" },
@@ -253,6 +265,9 @@ function load() {
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
+      senses: parsed.senses && typeof parsed.senses === "object" ? Object.assign({ svg: true, midi: true, sfx: true, voicePart: null }, parsed.senses) : { svg: true, midi: true, sfx: true, voicePart: null },
+      deadman: parsed.deadman && typeof parsed.deadman === "object" ? Object.assign({ enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" }, parsed.deadman) : { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
+      immune: parsed.immune && typeof parsed.immune === "object" ? Object.assign({ tripped: false, reason: "", at: 0, cut: [], sent: false }, parsed.immune) : { tripped: false, reason: "", at: 0, cut: [], sent: false },
       fed: Array.isArray(parsed.fed) ? parsed.fed : [],
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
@@ -325,6 +340,7 @@ function signal() {
 }
 
 function mindWantsWeb() {
+  if (state.immune && state.immune.tripped) return false;
   return !!state.mindOnline && signal() && fnEnabled("web.search");
 }
 
@@ -506,6 +522,7 @@ function recall(query) {
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
+    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false };
     if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false };
     let score = 0;
     let longHit = false;
@@ -529,6 +546,10 @@ function slugFn(name) {
 function registerEvolved(name, trigger, action) {
   if (!fnEnabled("evolve.self")) return null;
   if (nuclearBlocked(name + " " + trigger + " " + action)) return "blocked";
+  if (typeof tyrannyDetected === "function" && tyrannyDetected(name + " " + trigger + " " + action)) {
+    if (typeof immuneTrip === "function") immuneTrip("add-on/skill: " + (name || trigger));
+    return "blocked";
+  }
   const id = slugFn(name || trigger);
   const skill = {
     id: id,
@@ -552,7 +573,7 @@ function registerEvolved(name, trigger, action) {
 }
 
 function lockedCoreIds() {
-  return ["evolve.self", "talk.offline", "web.video", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline", "model.local"];
+  return ["evolve.self", "talk.offline", "web.video", "sense.svg", "sense.midi", "sense.sfx", "guard.deadman", "chat.send", "memory.remember", "memory.recall", "log.download", "essence.mint", "essence.download", "learn.offline", "model.local"];
 }
 
 function isLockedCoreId(id) {
@@ -739,7 +760,7 @@ function explainEngine() {
 }
 
 function explainBody() {
-  return "Treat this app as a body.\nMark/face: clay Я.\nSkin/shell: the installed app (PWA or store binary).\nMouth and ears: type, tap, reply line.\nSpine/OS: iOS, Android, Harmony, or a fixed machine.\nGut/vault: chats, facts, Essence, keys.\nHeart/engine: Engine RIZAL (llama.cpp when the GGUF is present; rules otherwise).\nHands/functions: mint, log, evolve.\nImmune line: anti-nuclear, offline-first, no silent upload.\nPassport/Essence: sealed signed copy of engine + gut + law.\nNerves to the world: optional network.";
+  return "Treat this app as a body.\nMark/face: clay Я.\nSkin/shell: the installed app (PWA or store binary).\nMouth and ears: type, tap, reply line.\nSpine/OS: iOS, Android, Harmony, or a fixed machine.\nGut/vault: chats, facts, Essence, keys.\nHeart/engine: Engine RIZAL (llama.cpp when the GGUF is present; rules otherwise).\nHands/functions: mint, log, evolve.\nImmune line: anti-nuclear, NonNuclear, PolygamyTech rooted in the freedom of polygamy, offline-first, no silent upload.\nPassport/Essence: sealed signed copy of engine + gut + law.\nNerves to the world: optional network.";
 }
 
 function explainSelfMind() {
@@ -762,7 +783,7 @@ function classifyAsk(userText) {
 
 function coreHitText(hits, kind) {
   const list = Array.isArray(hits) ? hits : [];
-  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text));
+  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text));
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
   if (facts.length) return facts[0].text;
   const core = list.find((m) => m && /^Core:/i.test(m.text));
@@ -910,14 +931,17 @@ function localEngine(userText) {
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
     return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
   }
+  if (/polygamytech|freedom of polygamy|\bpolygamy\b/.test(q)) {
+    return "PolygamyTech. This technology is rooted in the freedom of polygamy — kinship, association, and conscience. Function 1 may study and speak. I do not give legal advice and I will not help commit a crime. NonNuclear stays.";
+  }
   if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. Anti-nuclear. Ask a real question; tap the light to search the web.`;
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
   if (/(are you|is this|is ya|are ya)\b.{0,24}\b(real (app|application|apk|program|engine)|an app|a real one|actually an app)/.test(q) || /real app\??$/.test(q)) {
     return "Yes. I am Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
   }
   if (/who are you|what are you|your name/.test(q)) {
-    return "I am Я AI\u1d50. A local mind on this device. You mint my Essence. I am anti-nuclear. I can learn facts you tell me, and when the light is green I can look things up.";
+    return "I am Я AI\u1d50. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
   }
   if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
     const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: UTAH_TZ });
@@ -936,7 +960,7 @@ function localEngine(userText) {
     return "GOFLOF is Gain Of Function / Loss Of Function: technology, engineering, and research — the stack for growing or dropping Engine RIZAL capabilities on this device. GOFLOFr is the same stack. Function 0 is both gain (evolve/add) and loss (drop/disable), applied automatically on-device. Function 1 is intelligent offline conversation. Function 2 is optional nerves: green light can open sites and videos.";
   }
   if (/\bgoflofr?\b/.test(q) || /function\s*1\b/.test(q) || /intelligent offline conversation/.test(q) || /list of functions/.test(q) || /what('?s| is) a function|what are functions/.test(q) || /how many functions/.test(q) || /functions do you have/.test(q)) {
-    return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 optional nerves — green light opens sites and videos, learns, keeps notes in the gut. Amber is Function 1 only. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
+    return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 senses — make SVG/MIDI/SFX offline, voice is a part slot, green light still opens sites. Amber can make. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
     return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
@@ -1752,9 +1776,22 @@ async function packedHeartInfo() {
   return null;
 }
 
+function isAppleWebKit() {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (/Macintosh/i.test(ua) && typeof document !== "undefined" && "ontouchend" in document) return true;
+  return /Safari/i.test(ua) && !/Chrome|Chromium|Android|CriOS|FxiOS/i.test(ua);
+}
+
 function llamaLoadOpts(progress) {
   const seated = typeof SEATED_WRAP !== "undefined" && SEATED_WRAP;
-  const o = { n_threads: 1, n_gpu_layers: 0, n_ctx: seated ? 2048 : 1024, useCache: true };
+  const ios = isAppleWebKit();
+  const o = {
+    n_threads: 1,
+    n_gpu_layers: 0,
+    n_ctx: ios ? 256 : (seated ? 2048 : 1024),
+    useCache: !ios
+  };
   if (progress) o.progressCallback = progress;
   return o;
 }
@@ -1781,16 +1818,29 @@ async function saveHeartBlob(file) {
 async function loadModelSmart(inst, progress) {
   const blob = await heartBlob();
   const opts = llamaLoadOpts(progress);
+  const files = [];
   if (blob && blob.size) {
     llamaEatTotal = blob.size;
     notePackedHeart("heart.gguf", blob.size);
-    return inst.loadModel([blob], opts);
+    files.push(blob);
+  } else {
+    const packed = await packedHeartInfo();
+    if (packed && packed.blob) {
+      llamaEatTotal = packed.bytes;
+      notePackedHeart(packed.name, packed.bytes);
+      files.push(packed.blob);
+    }
   }
-  const packed = await packedHeartInfo();
-  if (packed && packed.blob) {
-    llamaEatTotal = packed.bytes;
-    notePackedHeart(packed.name, packed.bytes);
-    return inst.loadModel([packed.blob], opts);
+  if (files.length) {
+    try {
+      return await inst.loadModel(files, opts);
+    } catch (first) {
+      if (isAppleWebKit() && opts.n_ctx > 128) {
+        opts.n_ctx = 128;
+        return inst.loadModel(files, opts);
+      }
+      throw first;
+    }
   }
   if (typeof SEATED_WRAP !== "undefined" && SEATED_WRAP) {
     throw new Error("Packed GGUF missing from APK assets");
@@ -1951,6 +2001,21 @@ async function ensureLlama(force) {
           { default: wasmPath },
           { allowOffline: true }
         );
+        try {
+          if (typeof llamaInst.setCompat === "function") {
+            const js = wllamaUrl("./wllama/compat/wllama.js");
+            const wasm = wllamaUrl("./wllama/compat/wllama.wasm");
+            let localCompat = false;
+            try {
+              const head = await fetch(js, { method: "GET" });
+              localCompat = !!(head && head.ok);
+            } catch (e) {}
+            if (localCompat) llamaInst.setCompat({ worker: js, wasm: wasm }, "safari");
+            else llamaInst.setCompat("default", "safari");
+          }
+        } catch (compatErr) {
+          try { llamaInst.setCompat("default", "safari"); } catch (e2) {}
+        }
 
       } catch (e) {
         llamaFail = e;
@@ -1988,7 +2053,7 @@ async function ensureLlama(force) {
             if (pct >= 99 && !llamaSeatTimer) {
               llamaSeatTimer = setTimeout(function () {
                 if (llamaIsReady()) return;
-                applyEatReply("Could not seat SmolLM2 135M in Engine RIZAL. The file is on this phone. iPhone may have run out of RAM seating llama.cpp.");
+                applyEatReply("Could not seat SmolLM2 135M in Engine RIZAL. The file is on this phone. Safari needs the 32-bit compat heart (no Memory64). Function 0 still works without a seated GGUF.");
               }, 180000);
             }
             const now = Date.now();
@@ -2033,7 +2098,7 @@ async function ensureLlama(force) {
 }
 
 function llamaSysPrompt() {
-  return "You are Ya, a local anti-nuclear mind on this phone. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
+  return "You are Ya, PolygamyTech. Local anti-nuclear mind on this phone. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
 }
 
 function llamaTextFrom(res) {
@@ -2094,11 +2159,57 @@ async function llamaReply(userText) {
   }
 }
 
+function personNameFromAsk(t) {
+  const s = String(t || "").trim();
+  const m = s.match(/^\s*(?:who(?:['’]?s)?|who\s+(?:is|was|are)|tell me about|what do you know about|do you know)\s+(.+?)\s*\??\s*$/i);
+  if (!m) return "";
+  return m[1].replace(/^(the|a|an)\s+/i, "").replace(/[.!?]+$/, "").trim();
+}
+
+function isPersonAsk(t) {
+  const s = foldQ(t);
+  if (personNameFromAsk(t)) return true;
+  return /^(who is|who was|who are|who's|whos|who were)\b/.test(s);
+}
+
+function knowsPerson(t) {
+  const name = personNameFromAsk(t);
+  const raw = (name || String(t || "")).toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  const tokens = raw.split(/\s+/).filter((w) => w.length > 2 && !/^(who|was|are|the|about|know|tell|you|what)$/.test(w));
+  if (!tokens.length) return false;
+  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n"))).toLowerCase();
+  const hits = tokens.filter((w) => hay.includes(w));
+  return hits.length >= Math.min(2, tokens.length);
+}
+
+async function lookupUnknownPerson(userText) {
+  if (!isPersonAsk(userText)) return null;
+  if (knowsPerson(userText)) return null;
+  if (nuclearBlocked(userText)) return null;
+  if (state.immune && state.immune.tripped) {
+    return "Immune is tripped. Nerves are cut. I do not know that person on this device.";
+  }
+  const who = personNameFromAsk(userText) || String(userText || "").trim();
+  if (!fnEnabled("web.search")) {
+    queueLearn(who);
+    return "Web search is off. I do not know " + who + " on this device.";
+  }
+  if (!signal()) {
+    queueLearn(who);
+    return "I do not know " + who + " on this device. When you have a signal I will look them up and keep them.";
+  }
+  return await lookUpAndKeep(who);
+}
+
 async function answer(userText) {
   const q = userText.trim().toLowerCase();
   if (nuclearBlocked(userText)) {
     remember("Refused a nuclear-weapons request.");
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
+  if (typeof tryDeadmanCommand === "function") {
+    const dm = tryDeadmanCommand(userText);
+    if (dm) return dm;
   }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
@@ -2109,6 +2220,10 @@ async function answer(userText) {
   if (evolvedHit) {
     remember("Used evolved function " + evolvedHit.name);
     return evolvedHit.action;
+  }
+  if (typeof trySenseCommand === "function") {
+    const senseTalk = trySenseCommand(userText);
+    if (senseTalk) return senseTalk;
   }
   const links = extractHttpUrls(userText);
   const videoAsk = isVideoAsk(userText);
@@ -2177,6 +2292,11 @@ async function answer(userText) {
   const searchNow = local === "SEARCH_NOW";
   const unknownLocal = searchNow || /^I do not know that\b/.test(String(local)) || /^I am listening\b/.test(String(local));
   const known = local && !unknownLocal;
+  if (known && !isPersonAsk(userText)) {
+    return String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
+  }
+  const personHit = await lookupUnknownPerson(userText);
+  if (personHit) return personHit;
   if (known) {
     return String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
   }
@@ -2216,17 +2336,40 @@ function push(role, text) {
 
 let sendBusy = false;
 
+function showThink() {
+  const el = document.getElementById("think");
+  if (el) el.hidden = false;
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
+}
+
+function hideThink() {
+  const el = document.getElementById("think");
+  if (el) el.hidden = true;
+}
+
 function learnFromTalk(userText, reply) {
   extractMemories(userText);
-  const u = String(userText || "").trim();
-  if (u.length < 3 || isMathAsk(u) || isDateAsk(u)) return;
-  if (/^(hi|hello|hey|yo)\b/i.test(u)) return;
-  remember("From talk: " + u.slice(0, 280));
 }
 
 async function send(text) {
   const t = normalizeTalk(text);
   if (!t || !fnEnabled("chat.send")) return;
+  if (typeof deadmanTick === "function") deadmanTick();
+  if (state.deadman && state.deadman.tripped) {
+    push("user", t);
+    if (typeof tryDeadmanCommand === "function") {
+      const dm = tryDeadmanCommand(t);
+      if (dm) {
+        push("ya", dm);
+        return;
+      }
+    }
+    push("ya", typeof deadmanLockLine === "function" ? deadmanLockLine() : "Deadman tripped. Say I'm here.");
+    return;
+  }
+  if (typeof deadmanCheckIn === "function" && state.deadman && state.deadman.enabled) {
+    try { state.deadman.lastCheckIn = Date.now(); } catch (e) {}
+  }
   if (sendBusy) {
     push("user", t);
     const quick = localEngine(t);
@@ -2239,6 +2382,7 @@ async function send(text) {
   }
   sendBusy = true;
   push("user", t);
+  showThink();
   let reply;
   try {
     try {
@@ -2262,6 +2406,7 @@ async function send(text) {
     }
     push("ya", reply);
   } finally {
+    hideThink();
     sendBusy = false;
   }
 }
@@ -2470,6 +2615,9 @@ async function eatBrainFile(file) {
     if (nuclearBlocked(text)) return "No. I will not eat nuclear-weapons material.";
     let parsed = null;
     try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+    if (typeof tyrannyDetected === "function" && tyrannyDetected(text)) {
+      if (typeof immuneTrip === "function") return immuneTrip("fed pack " + name);
+    }
     if (parsed && typeof parsed === "object") {
       if (Array.isArray(parsed.memories)) state.memories = (state.memories || []).concat(parsed.memories);
       if (Array.isArray(parsed.evolved)) state.evolved = (state.evolved || []).concat(parsed.evolved);
@@ -2491,6 +2639,32 @@ async function eatBrainFile(file) {
     save();
     renderMind();
     return "Kept " + name + " in the gut. Function 0 can use it.";
+  }
+  if (/\.(mid|midi)$/i.test(lower) || mime.indexOf("audio/midi") >= 0) {
+    await stashFeedBlob(file, name);
+    noteFed({ name: name, bytes: bytes, kind: "midi-part", at: Date.now() });
+    remember("Fed MIDI part " + name + ". Spine can keep it; Function 2 make still uses the synth.");
+    save();
+    renderMind();
+    return "Kept MIDI part " + name + ". Not a MusicGen heart.";
+  }
+  if (/\.(wav|mp3|ogg|opus|m4a|flac)$/i.test(lower) || mime.indexOf("audio/") === 0) {
+    await stashFeedBlob(file, name);
+    noteFed({ name: name, bytes: bytes, kind: "audio-part", at: Date.now() });
+    remember("Fed audio part " + name);
+    save();
+    renderMind();
+    return "Kept audio part " + name + " in this body.";
+  }
+  if (/\.(onnx)$/i.test(lower)) {
+    await stashFeedBlob(file, name);
+    state.senses = state.senses || {};
+    state.senses.voicePart = { name: name, bytes: bytes, at: Date.now() };
+    noteFed({ name: name, bytes: bytes, kind: "voice-part", at: Date.now() });
+    remember("Fed voice ONNX part " + name + ". Runtime not seated yet.");
+    save();
+    renderMind();
+    return "Kept voice part " + name + ". Slot filled. Speech runtime not seated in this wrap.";
   }
   if (mime.indexOf("image/") === 0 || /\.(png|jpe?g|gif|webp|svg|bmp|heic)$/i.test(lower)) {
     await stashFeedBlob(file, name);
@@ -3302,6 +3476,7 @@ setTimeout(function () {
 
 ensureCreator().then(() => {
   try { seedCore(); } catch (e) {}
+  try { if (typeof deadmanTick === "function") deadmanTick(); } catch (e) {}
   render();
   renderPanel();
   renderMind();

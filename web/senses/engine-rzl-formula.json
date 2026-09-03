@@ -1,0 +1,59 @@
+{
+  "kind": "ya-engine-formula",
+  "deadman": {
+    "kind": "ya-deadman",
+    "tz": "America/Denver",
+    "published": false,
+    "isolated": true,
+    "silence": {
+      "intervalDays": 7,
+      "checkIn": [
+        "talk",
+        "I'm here"
+      ],
+      "onTrip": [
+        "lock mouth",
+        "mint Essence locally"
+      ]
+    },
+    "tyranny": {
+      "detect": [
+        "subdue creation",
+        "subdue communication",
+        "subdue freedom",
+        "silent upload",
+        "required cloud",
+        "disable Function 0",
+        "replace Function 0"
+      ],
+      "cut": [
+        "web.search",
+        "web.link",
+        "sync.github",
+        "model.remote",
+        "account.link"
+      ],
+      "keep": [
+        "evolve.self",
+        "talk.offline",
+        "model.local",
+        "memory",
+        "essence",
+        "senses make",
+        "guard.deadman"
+      ],
+      "onTrip": [
+        "force amber",
+        "drop tyrannical skills",
+        "reassemble clean offline",
+        "save Essence + mind dump to creator on this phone"
+      ],
+      "never": [
+        "wipe gut",
+        "silent upload",
+        "attack other apps",
+        "email from bot box"
+      ]
+    }
+  }
+}
