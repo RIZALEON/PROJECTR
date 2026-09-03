@@ -1,0 +1,5 @@
+
+*.gguf
+*.keystore
+wllama/wasm/
+wllama/compat/

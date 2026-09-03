@@ -3398,6 +3398,24 @@ document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
   save();
 });
+function isNativeSpine() {
+  return !!(window.YA_NATIVE && window.YA_NATIVE.spine === "ios-native"
+    && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ya);
+}
+
+window.yaNativeReply = function (msg) {
+  if (!msg || typeof msg !== "object") return;
+  if (msg.op === "picked" && Array.isArray(msg.files)) {
+    msg.files.forEach(function (f) {
+      remember("Native vault kept " + (f.name || "file") + " (" + formatBytes(f.bytes || 0) + "). Spine is iOS Documents, not Safari Cache.");
+      try { noteFed({ name: f.name, bytes: f.bytes || 0, kind: f.kind || "part", at: Date.now() }); } catch (e) {}
+      if (f.kind === "gguf") applyEatReply("Heart landed in native Documents (not Safari). " + (f.name || "heart.gguf") + " · " + formatBytes(f.bytes || 0) + ". Link llama.xcframework on a Mac to seat Metal.");
+      else applyEatReply("Kept " + (f.name || "file") + " in native Documents.");
+    });
+    try { save(); renderMind(); } catch (e) {}
+  }
+};
+
 const dlMind = document.getElementById("dl-mind");
 if (dlMind) dlMind.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -3408,6 +3426,10 @@ const ulMindFile = document.getElementById("ul-mind-file");
 if (ulMind && ulMindFile) {
   ulMind.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (isNativeSpine()) {
+      try { window.webkit.messageHandlers.ya.postMessage({ op: "pick" }); } catch (err) { ulMindFile.click(); }
+      return;
+    }
     ulMindFile.click();
   });
   ulMindFile.addEventListener("change", async (e) => {

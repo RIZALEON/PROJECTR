@@ -1,0 +1,207 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		A10001 /* YaAimApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YaAimApp.swift; sourceTree = "<group>"; };
+		A10002 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
+		A10003 /* NativeVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeVault.swift; sourceTree = "<group>"; };
+		A10004 /* NativeHeart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHeart.swift; sourceTree = "<group>"; };
+		A10005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10007 /* www */ = {isa = PBXFileReference; lastKnownFileType = folder; path = www; sourceTree = "<group>"; };
+		A10008 /* YaAim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YaAim.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10010 /* YaAimApp.swift */ = {isa = PBXBuildFile; fileRef = A10001 /* YaAimApp.swift */; };
+		A10011 /* WebShell.swift */ = {isa = PBXBuildFile; fileRef = A10002 /* WebShell.swift */; };
+		A10012 /* NativeVault.swift */ = {isa = PBXBuildFile; fileRef = A10003 /* NativeVault.swift */; };
+		A10013 /* NativeHeart.swift */ = {isa = PBXBuildFile; fileRef = A10004 /* NativeHeart.swift */; };
+		A10014 /* Assets.xcassets */ = {isa = PBXBuildFile; fileRef = A10006 /* Assets.xcassets */; };
+		A10015 /* www */ = {isa = PBXBuildFile; fileRef = A10007 /* www */; };
+		A10020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10010 /* YaAimApp.swift in Sources */,
+				A10011 /* WebShell.swift in Sources */,
+				A10012 /* NativeVault.swift in Sources */,
+				A10013 /* NativeHeart.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10021 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10014 /* Assets.xcassets in Resources */,
+				A10015 /* www in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10030 /* YaAim */ = {
+			isa = PBXGroup;
+			children = (
+				A10001 /* YaAimApp.swift */,
+				A10002 /* WebShell.swift */,
+				A10003 /* NativeVault.swift */,
+				A10004 /* NativeHeart.swift */,
+				A10005 /* Info.plist */,
+				A10006 /* Assets.xcassets */,
+				A10007 /* www */,
+			);
+			path = YaAim;
+			sourceTree = "<group>";
+		};
+		A10031 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10008 /* YaAim.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A10032 = {
+			isa = PBXGroup;
+			children = (
+				A10030 /* YaAim */,
+				A10031 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10040 /* YaAim */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10052 /* Target */;
+			buildPhases = (
+				A10020 /* Sources */,
+				A10022 /* Frameworks */,
+				A10021 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YaAim;
+			productName = YaAim;
+			productReference = A10008 /* YaAim.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10050 /* Project */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10060 /* Debug */,
+				A10061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10052 /* Target */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10062 /* Debug */,
+				A10063 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A10061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		A10062 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 53;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YaAim/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Я";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.53;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim;
+				PRODUCT_NAME = YaAim;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A10063 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 53;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YaAim/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Я";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.53;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim;
+				PRODUCT_NAME = YaAim;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A10070 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A10040 = { CreatedOnToolsVersion = 16.0; };
+				};
+			};
+			buildConfigurationList = A10050 /* Project */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = A10032;
+			productRefGroup = A10031 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10040 /* YaAim */,
+			);
+		};
+	};
+	rootObject = A10070 /* Project object */;
+}

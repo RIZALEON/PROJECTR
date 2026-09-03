@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Я" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <title>Я AIᵐ</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180" />
+  <meta property="og:title" content="Я AIᵐ" />
+  <meta property="og:description" content="Offline-first conversational AI. Memory. Downloadable logs. Evolves." />
+  <meta property="og:image" content="./logo.jpeg" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:image" content="./logo.jpeg" />
+  <link rel="stylesheet" href="./styles.css?v=53" />
+</head>
+<body>
+  <div id="sa-top" class="sa-top" aria-hidden="true"></div>
+  <header>
+    <div class="brand">
+      <div class="logo"><img src="./icon-192.png" alt="Я" width="40" height="40" /></div>
+      <div class="wordmark" id="wordmark"><span class="wm-ai">AIᵐ</span> · <span class="wm-ver">V 0.0</span></div>
+    </div>
+    <div class="status">
+      <span class="dot" id="net-dot"></span>
+      <span id="net-label">local engine</span>
+    </div>
+    <div class="actions">
+      <button class="icon" id="open-mind" title="Я AI powered by Machine"><img src="./brain.svg" alt="Я AI powered by Machine" width="32" height="32" /></button>
+    </div>
+  </header>
+  <div id="eat-wrap" class="eat-wrap" hidden>
+    <div id="eat-label">Eating SmolLM2 135M</div>
+    <div class="eat-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="eat-track">
+      <div id="eat-fill"></div>
+    </div>
+    <div id="eat-pct">0%</div>
+  </div>
+  <main id="log"></main>
+  <div id="think" class="think" hidden>
+    <div class="think-orb" aria-hidden="true">
+      <img src="./brain.svg" alt="" width="14" height="14" />
+    </div>
+  </div>
+  <form class="composer" id="composer">
+    <input id="input" autocomplete="off" enterkeyhint="send" placeholder="Speak to Я" />
+    <button type="submit">Send</button>
+  </form>
+  <aside class="panel" id="mind">
+    <div class="sheet">
+      <h2>Я AI powered by Machine</h2>
+      <p class="lead">Version grows 0.1 for every 1 GB this mind holds on the device.</p>
+      <div class="mind-stat" id="account-block" hidden>
+        <div class="mind-label">This Я</div>
+        <div class="mind-value mind-id" id="account-label">Guest</div>
+        <p class="lead" style="margin: 10px 0 0;">The brain stays on this phone. Name it with X, GitHub, or a Я Technologies Account.</p>
+        <p class="lead" id="account-booth" style="margin: 6px 0 0;"></p>
+        <div class="downloads" style="margin-bottom: 0;">
+          <button type="button" id="link-x">X</button>
+          <button type="button" id="link-github">GitHub</button>
+          <button type="button" id="link-yatech">Я Technologies Account</button>
+          <button type="button" id="unlink-account" hidden>Unlink</button>
+        </div>
+        <div id="yatech-fields">
+          <label class="field">Name
+            <input id="yatech-name" autocomplete="username" />
+          </label>
+          <label class="field">Passphrase
+            <input id="yatech-pass" type="password" autocomplete="off" />
+          </label>
+        </div>
+      </div>
+      <div class="mind-stat">
+        <div class="mind-label">Version</div>
+        <div class="mind-value" id="mind-version">0.0</div>
+      </div>
+      <div class="mind-stat">
+        <div class="mind-label">Mind size</div>
+        <div class="mind-size-row">
+          <div class="mind-value" id="mind-size">0 B</div>
+          <div class="mind-dl-pair">
+            <button type="button" class="mind-dl" id="ul-mind" title="Feed engines, text, JSON, images">
+              <img src="./mind-ul.svg" alt="Upload mind" width="40" height="40" />
+            </button>
+            <button type="button" class="mind-dl" id="dl-mind" title="Download full mind as text">
+              <img src="./mind-dl.svg" alt="Download mind" width="40" height="40" />
+            </button>
+          </div>
+          <input id="ul-mind-file" type="file" accept="*/*" multiple hidden />
+        </div>
+      </div>
+      <div class="downloads" id="fn-essence-block" hidden>
+        <button id="open-panel">Functions &amp; Essence</button>
+      </div>
+    </div>
+  </aside>
+  <aside class="panel" id="panel">
+    <div class="sheet">
+      <h2>Я</h2>
+      <p class="lead">Offline from the start. You mint the Essence. You download it whenever you want.</p>
+      <label class="field">Your name
+        <input id="name-input" />
+      </label>
+      <p class="lead">Creator key <span id="creator-id">…</span> — generated on this device, never sent.</p>
+      <p class="lead">Clock is always Utah. When comms return I message Chief of Staff automatically with what I learned and functions to add or update.</p>
+      <label class="field">GitHub repo
+        <input id="gh-repo" autocomplete="off" />
+      </label>
+      <label class="field">GitHub token (optional; only to write evolutions into the repo)
+        <input id="gh-token" type="password" autocomplete="off" />
+      </label>
+      <div class="downloads">
+        <button id="mint-now">Mint Essence</button>
+        <button id="dl-txt">Log .txt</button>
+        <button id="dl-md">Log .md</button>
+        <button id="dl-json">Log .json</button>
+      </div>
+      <h3 style="margin: 8px 0 4px; font-weight: 500;">Vault</h3>
+      <div id="vault-list"></div>
+      <h3 style="margin: 8px 0 4px; font-weight: 500;">Functions</h3>
+      <div id="fn-list"></div>
+      <div class="downloads" style="margin-top: 22px;">
+        <button id="clear-chat">Clear chat</button>
+        <button id="reset-all">Reset Essence</button>
+      </div>
+    </div>
+  </aside>
+  <script>window.SEATED_WRAP = true;</script>
+  <script src="./app.js?v=53"></script>
+  <script src="./senses.js?v=53"></script>
+  <script src="./deadman.js?v=53"></script>
+</body>
+</html>
