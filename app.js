@@ -1,3 +1,4 @@
+const SEATED_WRAP = false;
 const STORE_KEY = "ya-aim-v0";
 const CREATOR_KEY = "ya-aim-creator";
 const VAULT_KEY = "ya-aim-vault";
@@ -912,6 +913,9 @@ function localEngine(userText) {
   if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
     return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
+  if (/(are you|is this|is ya|are ya)\b.{0,24}\b(real (app|application|apk|program|engine)|an app|a real one|actually an app)/.test(q) || /real app\??$/.test(q)) {
+    return "Yes. I am Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
+  }
   if (/who are you|what are you|your name/.test(q)) {
     return "I am Я AI\u1d50. A local mind on this device. You mint my Essence. I am anti-nuclear. I can learn facts you tell me, and when the light is green I can look things up.";
   }
@@ -1721,6 +1725,32 @@ const LLAMA_EAT_DONE = "SmolLM2 135M is in this body. Ask again; Engine RIZAL wi
 const LLAMA_EAT_FALLBACK = 102039904;
 const HEART_CACHE = "ya-aim-heart-v0";
 const HEART_URL = "https://ya.local/heart";
+const PACKED_HEART_CANDIDATES = ["./heart.gguf", "./SmolLM2-135M-Instruct-Q4_K_S.gguf"];
+
+function notePackedHeart(name, bytes) {
+  const n = Number(bytes) || 0;
+  if (!n) return;
+  if (state && state.heart && Number(state.heart.bytes) === n) return;
+  if (!state) return;
+  state.heart = { name: String(name || "heart.gguf"), bytes: n, kind: "gguf", seated: "apk", at: Date.now() };
+  try { save(); } catch (e) {}
+  try { renderMind(); } catch (e) {}
+}
+
+async function packedHeartInfo() {
+  for (const cand of PACKED_HEART_CANDIDATES) {
+    try {
+      const url = wllamaUrl(cand);
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (blob && blob.size > 1024) {
+        return { url: url, blob: blob, name: cand.replace("./", ""), bytes: blob.size };
+      }
+    } catch (e) {}
+  }
+  return null;
+}
 
 function llamaLoadOpts(progress) {
   const seated = typeof SEATED_WRAP !== "undefined" && SEATED_WRAP;
@@ -1753,7 +1783,17 @@ async function loadModelSmart(inst, progress) {
   const opts = llamaLoadOpts(progress);
   if (blob && blob.size) {
     llamaEatTotal = blob.size;
+    notePackedHeart("heart.gguf", blob.size);
     return inst.loadModel([blob], opts);
+  }
+  const packed = await packedHeartInfo();
+  if (packed && packed.blob) {
+    llamaEatTotal = packed.bytes;
+    notePackedHeart(packed.name, packed.bytes);
+    return inst.loadModel([packed.blob], opts);
+  }
+  if (typeof SEATED_WRAP !== "undefined" && SEATED_WRAP) {
+    throw new Error("Packed GGUF missing from APK assets");
   }
   return inst.loadModelFromHF({ repo: LLAMA_HF_REPO, file: LLAMA_HF_FILE }, opts);
 }
@@ -1800,6 +1840,10 @@ function hideEat() {
   if (wrap) wrap.hidden = true;
 }
 
+let llamaShowEat = false;
+let llamaBusy = false;
+let llamaHangUntil = 0;
+
 function showEat(pct, done) {
   const wrap = document.getElementById("eat-wrap");
   const fill = document.getElementById("eat-fill");
@@ -1807,18 +1851,22 @@ function showEat(pct, done) {
   const pctEl = document.getElementById("eat-pct");
   const label = document.getElementById("eat-label");
   if (!wrap || !fill) return;
-  if (llamaIsReady() && !done && wrap.hidden) return;
+  if (done) {
+    llamaEatDone = true;
+    hideEat();
+    return;
+  }
+  if (!llamaShowEat) return;
   const n = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
   wrap.hidden = false;
-  fill.style.width = (done ? 100 : n) + "%";
-  if (track) track.setAttribute("aria-valuenow", String(done ? 100 : n));
-  if (pctEl) pctEl.textContent = (done ? 100 : n) + "%";
+  fill.style.width = n + "%";
+  if (track) track.setAttribute("aria-valuenow", String(n));
+  if (pctEl) pctEl.textContent = n + "%";
   if (label) {
-    if (done) label.textContent = "SmolLM2 135M is in this body.";
-    else if (n >= 99) label.textContent = "Seating SmolLM2 135M in Engine RIZAL";
+    if (n >= 99) label.textContent = "Seating SmolLM2 135M in Engine RIZAL";
     else label.textContent = "Eating SmolLM2 135M";
   }
-  llamaEatDone = !!done;
+  llamaEatDone = false;
 }
 
 function llamaEatLine(pct, loaded, total) {
@@ -1923,7 +1971,7 @@ async function ensureLlama(force) {
       llamaEatDone = false;
       llamaFail = null;
       llamaEatPosted = true;
-      showEat(0, false);
+      if (llamaShowEat) showEat(0, false);
       llamaEatUiAt = Date.now();
       if (llamaSeatTimer) clearTimeout(llamaSeatTimer);
       llamaSeatTimer = 0;
@@ -1956,8 +2004,9 @@ async function ensureLlama(force) {
         if (llamaReady) {
           llamaEatPct = 100;
           llamaEatDone = true;
-          showEat(100, true);
-          applyEatReply(LLAMA_EAT_DONE);
+          hideEat();
+          if (llamaShowEat) applyEatReply(LLAMA_EAT_DONE);
+          llamaShowEat = false;
         }
         return llamaReady;
       }).catch(function (err) {
@@ -1997,33 +2046,52 @@ function llamaTextFrom(res) {
   return "";
 }
 
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error("timeout")); }, ms);
+    })
+  ]);
+}
+
 async function llamaReply(userText) {
-  if (!llamaIsReady()) return null;
+  if (!llamaIsReady() || llamaBusy) return null;
+  if (Date.now() < llamaHangUntil) return null;
   const q = String(userText || "").trim();
   if (!q) return null;
   const sys = llamaSysPrompt();
-  const opts = { n_predict: 96, max_tokens: 96, temperature: 0.2 };
+  const opts = { n_predict: 48, max_tokens: 48, temperature: 0.2 };
+  llamaBusy = true;
   try {
-    if (typeof llamaInst.createChatCompletion === "function") {
-      const res = await llamaInst.createChatCompletion(Object.assign({
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: q }
-        ]
-      }, opts));
-      const text = llamaTextFrom(res);
-      if (text) return text.slice(0, 800);
+    try {
+      if (typeof llamaInst.createChatCompletion === "function") {
+        const res = await withTimeout(llamaInst.createChatCompletion(Object.assign({
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: q }
+          ]
+        }, opts)), 7000);
+        const text = llamaTextFrom(res);
+        if (text) return text.slice(0, 800);
+      }
+    } catch (e) {
+      if (e && /timeout/i.test(String(e.message || e))) llamaHangUntil = Date.now() + 45000;
     }
-  } catch (e) {}
-  try {
-    if (typeof llamaInst.createCompletion === "function") {
-      const prompt = "<|im_start|>system\n" + sys + "<|im_end|>\n<|im_start|>user\n" + q + "<|im_end|>\n<|im_start|>assistant\n";
-      const res = await llamaInst.createCompletion(Object.assign({ prompt: prompt }, opts));
-      const text = llamaTextFrom(res);
-      if (text) return text.replace(/<\|im_end\|>/g, "").trim().slice(0, 800);
+    try {
+      if (typeof llamaInst.createCompletion === "function" && Date.now() >= llamaHangUntil) {
+        const prompt = "<|im_start|>system\n" + sys + "<|im_end|>\n<|im_start|>user\n" + q + "<|im_end|>\n<|im_start|>assistant\n";
+        const res = await withTimeout(llamaInst.createCompletion(Object.assign({ prompt: prompt }, opts)), 5000);
+        const text = llamaTextFrom(res);
+        if (text) return text.replace(/<\|im_end\|>/g, "").trim().slice(0, 800);
+      }
+    } catch (e) {
+      if (e && /timeout/i.test(String(e.message || e))) llamaHangUntil = Date.now() + 45000;
     }
-  } catch (e) {}
-  return null;
+    return null;
+  } finally {
+    llamaBusy = false;
+  }
 }
 
 async function answer(userText) {
@@ -2074,16 +2142,6 @@ async function answer(userText) {
     }
     return parts.join("\n\n——\n\n");
   }
-  if (fnEnabled("model.local") && llamaIsReady() && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
-    const gen = await llamaReply(userText);
-    if (gen) {
-      const clip = gen.replace(/\s+/g, " ").slice(0, 160);
-      remember("Engine RIZAL (llama.cpp): " + clip);
-      hideEat();
-      llamaEatPosted = false;
-      return gen;
-    }
-  }
   const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
   if (eatAsk && fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
     ensureLlama(true);
@@ -2117,7 +2175,21 @@ async function answer(userText) {
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") return sayUtahNow();
   const searchNow = local === "SEARCH_NOW";
-  const unknownLocal = searchNow || /^I do not know that\b/.test(String(local));
+  const unknownLocal = searchNow || /^I do not know that\b/.test(String(local)) || /^I am listening\b/.test(String(local));
+  const known = local && !unknownLocal;
+  if (known) {
+    return String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
+  }
+  if (fnEnabled("model.local") && llamaIsReady() && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
+    const gen = await llamaReply(userText);
+    if (gen) {
+      const clip = gen.replace(/\s+/g, " ").slice(0, 160);
+      remember("Engine RIZAL (llama.cpp): " + clip);
+      hideEat();
+      llamaEatPosted = false;
+      return gen;
+    }
+  }
   if (unknownLocal) {
     if (isMathAsk(userText)) return evalSimpleMath(userText) || local;
     state.lastAsk = userText;
@@ -2129,7 +2201,7 @@ async function answer(userText) {
     return await lookUpAndKeep(userText);
   }
   const out = String(local || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
-  return out || "I am listening. Ask what you need, or say remember this: … and I will keep it.";
+  return out || "I am here. Ask again, or say remember this: … and I will keep it.";
 }
 
 async function remoteStub() {
@@ -2142,27 +2214,56 @@ function push(role, text) {
   render();
 }
 
+let sendBusy = false;
+
+function learnFromTalk(userText, reply) {
+  extractMemories(userText);
+  const u = String(userText || "").trim();
+  if (u.length < 3 || isMathAsk(u) || isDateAsk(u)) return;
+  if (/^(hi|hello|hey|yo)\b/i.test(u)) return;
+  remember("From talk: " + u.slice(0, 280));
+}
+
 async function send(text) {
   const t = normalizeTalk(text);
   if (!t || !fnEnabled("chat.send")) return;
+  if (sendBusy) {
+    push("user", t);
+    const quick = localEngine(t);
+    const line = (quick && quick !== "SEARCH_NOW" && !/^I do not know that\b/.test(String(quick)))
+      ? String(quick)
+      : "I am here. Ask again.";
+    learnFromTalk(t, line);
+    push("ya", line);
+    return;
+  }
+  sendBusy = true;
   push("user", t);
   let reply;
   try {
-    reply = await answer(t);
-  } catch (e) {
-    reply = "I am here. Function 0 is on this device and does not wait for a seated GGUF. Say hello, or: add function NAME: what it does.";
+    try {
+      reply = await withTimeout(answer(t), 10000);
+    } catch (e) {
+      try { reply = localEngine(t); } catch (e2) { reply = ""; }
+      if (!reply || reply === "SEARCH_NOW" || /^I do not know that\b/.test(String(reply))) {
+        reply = "I am here. Function 0 is on this device. Ask again, or say remember this: …";
+      }
+    }
+    if (!reply) {
+      reply = "I am here. Function 0 is on. Say add function NAME: what it does. Or when I say X, you Y.";
+    }
+    if (llamaIsReady() && isEatTalk(reply) && reply !== LLAMA_EAT_DONE) {
+      reply = LLAMA_EAT_DONE;
+    }
+    try { learnFromTalk(t, reply); } catch (e) {}
+    if (isEatTalk(reply)) {
+      applyEatReply(reply);
+      return;
+    }
+    push("ya", reply);
+  } finally {
+    sendBusy = false;
   }
-  if (!reply) {
-    reply = "I am listening. Function 0 is on. Say add function NAME: what it does. Or when I say X, you Y.";
-  }
-  if (llamaIsReady() && isEatTalk(reply) && reply !== LLAMA_EAT_DONE) {
-    reply = LLAMA_EAT_DONE;
-  }
-  if (isEatTalk(reply)) {
-    applyEatReply(reply);
-    return;
-  }
-  push("ya", reply);
 }
 
 
@@ -2359,6 +2460,7 @@ async function eatBrainFile(file) {
       try { await llamaInst.exit(); } catch (err) {}
     }
     llamaInst = null;
+    llamaShowEat = true;
     showEat(0, false);
     ensureLlama(true);
     return "Eating " + name + " (" + formatBytes(bytes) + ") into this body…";
@@ -3188,6 +3290,15 @@ window.addEventListener("offline", renderNet);
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
 }
+
+setTimeout(function () {
+  packedHeartInfo().then(function (p) {
+    if (p) {
+      llamaShowEat = !(typeof SEATED_WRAP !== "undefined" && SEATED_WRAP);
+      ensureLlama(true);
+    }
+  }).catch(function () {});
+}, 600);
 
 ensureCreator().then(() => {
   try { seedCore(); } catch (e) {}
