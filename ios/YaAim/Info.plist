@@ -4,9 +4,7 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>Я</string>
-	<key>CFBundleIdentifier</key>
-	<string>io.github.rizaleon.yaaim</string>
-	<key>CFBundleName</key>
+<key>CFBundleName</key>
 	<string>YaAim</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.53</string>
