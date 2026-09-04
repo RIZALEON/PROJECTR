@@ -53,11 +53,13 @@
 
 ## Next (not shipped)
 
-1. Keep feeding the 63.6 KB gut (shelves, chats, Essence).
+1. Keep feeding the gut (shelves, chats, Essence).
 2. NativeHeart Metal seat when Rizal greenlights a small GGUF.
 3. Same `www/` on Android APK — straight install, no unzip.
 4. Mac skin last.
 5. **No store push, no GitHub release, no Pages bump** until greenlight.
+6. **AirDrop the mind, not the IPA.** Cloud-down / Essence on native iOS opens the iOS Share sheet (AirDrop). The **tile** on iPad / other iPhone / Mac still needs Xcode USB (Personal Team). iOS will not install an AirDropped `.ipa` on a stock phone. Bluetooth file-send of `.app` does not exist — AirDrop is BLE + Wi‑Fi.
+
 
 ---
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WebKit
 import UniformTypeIdentifiers
 
@@ -48,6 +49,10 @@ struct WebShell: UIViewRepresentable {
             case "pick":
                 pickKind = (body["kind"] as? String) ?? "food"
                 presentPicker()
+            case "share":
+                let name = (body["name"] as? String) ?? "ya-mind.json"
+                let text = (body["text"] as? String) ?? ""
+                presentShare(name: name, text: text)
             case "generate":
                 let prompt = (body["prompt"] as? String) ?? ""
                 let out = NativeHeart.shared.generate(prompt: prompt)
@@ -74,6 +79,25 @@ struct WebShell: UIViewRepresentable {
             picker.delegate = self
             picker.allowsMultipleSelection = true
             root.present(picker, animated: true)
+        }
+
+        func presentShare(name: String, text: String) {
+            guard let root = web?.window?.rootViewController else { return }
+            NativeVault.prepare()
+            let safe = name.replacingOccurrences(of: "/", with: "-")
+            let url = NativeVault.root.appendingPathComponent(safe)
+            do {
+                try text.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                return
+            }
+            let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            ac.excludedActivityTypes = [.addToReadingList, .assignToContact]
+            if let pop = ac.popoverPresentationController {
+                pop.sourceView = web
+                pop.sourceRect = CGRect(x: web?.bounds.midX ?? 0, y: (web?.bounds.maxY ?? 0) - 8, width: 8, height: 8)
+            }
+            root.present(ac, animated: true)
         }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {

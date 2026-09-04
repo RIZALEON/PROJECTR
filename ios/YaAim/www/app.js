@@ -2566,6 +2566,12 @@ function showDumpSheet(name, text) {
 
 async function saveFile(name, body, type) {
   const blob = new Blob([body], { type: type || "text/plain;charset=utf-8" });
+  if (isNativeSpine() && typeof body === "string") {
+    try {
+      window.webkit.messageHandlers.ya.postMessage({ op: "share", name: name, text: body });
+      return;
+    } catch (e) {}
+  }
   try {
     const file = new File([blob], name, { type: blob.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
