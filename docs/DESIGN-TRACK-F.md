@@ -63,6 +63,14 @@ Shorthand (single op object) is also accepted if it has `"op"`.
 
 ### Ping → pong (UX LOCK)
 
+**Shared display block (Product + CoS identical):**
+```
+Ping/pong
+Ping · Rizalbot · phone (Utah) · <stamp>
+Pong · Chief of Staff · Denver · <stamp>
+```
+
+
 **Product ACCEPT schema (also accepted):** `{ "op":"ping.pong", "from":"cos", "place":"Denver", "text"? }` — optional `text` overrides the bubble verbatim (NonNuclear gated). No GPS; Utah clock on departure, Denver label on pong.
 
 
@@ -82,9 +90,9 @@ EOF
 4. Phone shows assistant bubble:
 
 ```
-Pong from Chief of Staff
-Ping left: phone (Utah) · …
-Pong from: Chief of Staff · …
+Ping/pong
+Ping · Rizalbot · phone (Utah) · <stamp>
+Pong · Chief of Staff · Denver · <stamp>
 ```
 
 `ack:false` required on pong packs so the phone does not re-ping (loop guard). Pong-only feeds never trigger summary ping-back.

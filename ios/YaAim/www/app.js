@@ -1482,40 +1482,33 @@ function parseYaFeed(text) {
 
 
 function formatPingPongBubble(op, meta) {
-  // Product ACCEPT: {op:"ping.pong", from, place:"Denver", text?}
-  // CoS UX LOCK fields: pingAt, pingPlace, pongAt, pongPlace
-  // No GPS — labels only (phone/Utah departure, Denver pong).
+  // Shared Product/CoS block (exact):
+  // Ping/pong
+  // Ping · Rizalbot · phone (Utah) · <stamp>
+  // Pong · Chief of Staff · Denver · <stamp>
+  // Optional op.text overrides verbatim (NonNuclear gated). No GPS.
   if (op.text && String(op.text).trim()) {
     const custom = String(op.text).trim();
     if (nuclearBlocked(custom)) return "";
     return custom;
   }
+  const pingWho = String(op.pingWho || op.ping_who || botName() || "Rizalbot").trim();
   const pingPlace = String(op.pingPlace || op.ping_place || "phone (Utah)").trim();
   const pingAt = String(op.pingAt || op.ping_at || op.utah || "").trim();
+  const pongPlace = String(op.pongPlace || op.pong_place || op.place || "Denver").trim();
   const pongAt = String(op.pongAt || op.pong_at || "").trim();
   const from = String(op.from || "cos").trim().toLowerCase();
-  const who = from === "cos" || from === "chief" || from === "chief of staff"
+  const pongWho = (from === "cos" || from === "chief" || from === "chief of staff")
     ? "Chief of Staff"
-    : (op.fromName || op.from || "Chief");
-  // ping.ack without place/time fields: silent ack (legacy)
+    : String(op.fromName || op.from || "Chief of Staff").trim();
+  // ping.ack without place/time/text: silent
   if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace && !op.place && !op.text) {
     return "";
   }
-  // UX LOCK — match CoS chat format exactly (3 lines, no blank):
-  // Pong from Chief of Staff
-  // Ping left: {place} · {utah time}
-  // Pong from: Chief of Staff · {Denver time}
-  // Product `place` is the CoS label (default Denver); time still from pongAt when present.
-  const pongLabel = String(op.pongPlace || op.pong_place || op.place || "Denver").trim();
-  const pongTail = pongAt || pongLabel;
-  // Line 3 shows CoS name · Denver time (or place label if no clock yet)
-  const line3 = pongAt
-    ? ("Pong from: " + who + " · " + pongAt)
-    : ("Pong from: " + who + " · " + pongLabel);
   const lines = [
-    "Pong from " + who,
-    "Ping left: " + pingPlace + (pingAt ? " · " + pingAt : ""),
-    line3
+    "Ping/pong",
+    "Ping · " + pingWho + " · " + pingPlace + (pingAt ? " · " + pingAt : ""),
+    "Pong · " + pongWho + " · " + pongPlace + (pongAt ? " · " + pongAt : "")
   ];
   return lines.join("\n");
 }
@@ -2716,7 +2709,7 @@ async function answer(userText) {
     if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED.";
     if (res && res.ok) {
       const left = utahNow();
-      return "Ping left phone (Utah) · " + left + " → " + where + ". Waiting for Chief pong…";
+      return "Ping/pong\nPing · " + botName() + " · phone (Utah) · " + left + "\nWaiting for Chief pong on " + where + "…";
     }
     if (res && res.reason === "offline") return "No signal — cannot ping.";
     return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
