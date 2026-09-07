@@ -47,7 +47,8 @@ Shorthand (single op object) is also accepted if it has `"op"`.
 | `memory.upsert` / `memory.remember` | **1** | `remember(text)`; optional `id` forgets first |
 | `memory.forget` | **1** | `forgetFact(id\|text)` |
 | `ping.ack` | **1** | silent ack unless pong fields present (then same as ping.pong) |
-| `ping.pong` | **1** | appends Rizalbot chat bubble: ping departure place/time + CoS pong place/time |
+| `ping.pong` | **1** | shared Ping/pong 3-line bubble |
+| `mind.ask` | **1.5** | force `ya-mind-session` pack (size + offline session); chat note with mindSize |
 | `function.evolve` / `function.drop` | 2 | rejected `phase-later` |
 | `shelf.seat` / `www.bump` | 3 | rejected `phase-later` (GitHub URL seat) |
 | `essence.patch` | 4 | rejected `phase-later` |
@@ -110,6 +111,39 @@ Pong · Chief of Staff · Denver · <stamp>
 5. Publish `memory.forget` for that text; confirm removal.
 6. Publish a nuclear-shaped upsert; confirm refused, no fact stored.
 7. Confirm outbound `ping` still works (Track P).
+
+
+## Phase 1.5 — `mind.ask` (last offline session)
+
+CoS (or chat `share mind` / `mind share`) requests a **session pack** so Chief can read the updated mind from the last offline window — **without** silent full-gut upload or Essence blob.
+
+### Inbound
+
+```bash
+curl -d '{"kind":"ya-feed","v":1,"ack":false,"ops":[{"op":"mind.ask","from":"cos","since":null}]}' \
+  https://ntfy.sh/<topic>
+```
+
+`ack:false` required. Phone responds with **`ya-mind-session`** (Title: `Ya mind-session`), never `ya-feed` — inbound listener ignores reconnect/session kinds (loop guard).
+
+### Outbound pack fields
+
+| Field | Notes |
+|-------|--------|
+| `kind` | `ya-mind-session` |
+| `learned` | ≤40 memories |
+| `evolved` / `functions` / `pendingLearn` / `pings` | existing |
+| `chatTail` | ≤20 turns from offline window (role+text), NonNuclear scrubbed |
+| `lastAmberAt` / `lastGreenAt` / `offlineStartedAt` / `mindRev` | amber↔green stamps |
+| `offlineSession` | same stamps grouped |
+| `mindBytes` / `mindSize` | approx gut size (1024-based human string) |
+| `breakdown` | localStorageBytes, documentsBytes, essenceBytes, heartGgufBytes, chatTailBytes, learnedBytes |
+| `essence` | **seal id/hash meta only** — never full Essence |
+| `pingPlace` / `pingAt` | phone (Utah) |
+
+In-app note: `Shared last offline mind with Chief · 12.4 MB`.
+
+Hard rule: no silent full gut; no Essence upload; prefer explicit `mind.ask` / `share mind` (no auto-share on green).
 
 ## Phases (locked cut)
 

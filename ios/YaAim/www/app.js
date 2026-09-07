@@ -225,6 +225,10 @@ const defaultState = () => ({
   lastAsk: "",
   pings: [],
   lastMindBytes: 0,
+  lastAmberAt: 0,
+  lastGreenAt: 0,
+  offlineStartedAt: 0,
+  mindRev: 0,
   heart: null,
   senses: { svg: true, midi: true, sfx: true, voicePart: null },
   deadman: { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -280,6 +284,10 @@ function load() {
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
+      lastAmberAt: Number(parsed.lastAmberAt) || 0,
+      lastGreenAt: Number(parsed.lastGreenAt) || 0,
+      offlineStartedAt: Number(parsed.offlineStartedAt) || 0,
+      mindRev: Number(parsed.mindRev) || 0,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
       senses: parsed.senses && typeof parsed.senses === "object" ? Object.assign({ svg: true, midi: true, sfx: true, voicePart: null }, parsed.senses) : { svg: true, midi: true, sfx: true, voicePart: null },
       deadman: parsed.deadman && typeof parsed.deadman === "object" ? Object.assign({ enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" }, parsed.deadman) : { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -1336,12 +1344,24 @@ function tryInteractCommand(userText) {
     setPendingInteract(url);
     return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
   }
+  if (/^(share\s+mind|mind\s+share|share\s+session|mind\s+ask)$/i.test(t)) {
+    if (!signal()) return "No signal — cannot share mind on airplane.";
+    if (ISOLATED && !loadInteractChannel()) {
+      return "Isolated and no interact bound — bind an ntfy URL first, then say share mind.";
+    }
+    shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+      const sz = (res && res.mindSize) || formatBytes(mindBytes());
+      if (res && res.ok) push("ya", "Shared last offline mind with Chief · " + sz);
+      else push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ").");
+    }).catch(function () { push("ya", "Could not share mind (net)."); });
+    return "Sharing last offline mind with Chief…";
+  }
   if (/^(feed|listen|interact\s+feed)\s*(status)?\??$/i.test(t)) {
     const bound = loadInteractChannel();
     if (!bound) return "No interact bound — paste an ntfy URL first.";
     if (!state.mindOnline) return "Mind is amber — go green to listen for Chief ya-feed packs on " + interactBoundLabel() + ".";
     refreshInteractFeed();
-    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack, ping.pong.";
+    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack, ping.pong, mind.ask.";
   }
   return null;
 }
@@ -1460,7 +1480,11 @@ function handleNtfyRaw(raw) {
   }
   const body = msg.message != null ? String(msg.message) : (msg.body != null ? String(msg.body) : "");
   if (!body) return;
-  // Ignore our own outbound summary pings (plain text, not ya-feed)
+  // Loop guard: ignore our own ya-reconnect / ya-mind-session posts (never ya-feed).
+  try {
+    const peek = JSON.parse(body);
+    if (peek && (peek.kind === "ya-reconnect" || peek.kind === "ya-mind-session")) return;
+  } catch (e) {}
   applyYaFeedText(body, { ntfyId: id, title: msg.title || "" });
 }
 
@@ -1558,6 +1582,24 @@ function applyYaFeed(feed, meta) {
           pong: true,
           bubbled: !!bubble
         });
+      } else if (name === "mind.ask" || name === "mind.share" || name === "session.share") {
+        // Phase 1.5 — CoS requests last offline session pack (not ya-feed echo; loop-safe).
+        results.push({ op: name, ok: true, mindAsk: true, id: op.id || (meta && meta.ntfyId) || "" });
+        try {
+          shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+            const sz = (res && res.mindSize) || formatBytes(mindBytes());
+            if (res && res.ok) {
+              try { push("ya", "Shared last offline mind with Chief · " + sz); } catch (e) {}
+            } else {
+              try { push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ")."); } catch (e) {}
+            }
+          }).catch(function () {
+            try { push("ya", "Could not share mind (net)."); } catch (e) {}
+          });
+        } catch (e) {
+          results[results.length - 1].ok = false;
+          results[results.length - 1].reason = "share-failed";
+        }
       } else if (name === "function.evolve" || name === "function.drop" || name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
         results.push({ op: name, ok: false, reason: "phase-later" });
       } else {
@@ -1567,8 +1609,8 @@ function applyYaFeed(feed, meta) {
     save();
     try { renderPanel(); } catch (e) {}
     const okResults = results.filter(function (r) { return r.ok; });
-    const nonPongOk = okResults.filter(function (r) { return !r.pong; });
-    // Never auto-ping back on pong/ack-only feeds (would loop with CoS).
+    const nonPongOk = okResults.filter(function (r) { return !r.pong && !r.mindAsk; });
+    // Never auto-ping back on pong/ack/mind.ask-only feeds (would loop with CoS).
     if (feed.ack !== false && nonPongOk.length) {
       try { pingChief({ force: true }).catch(function () {}); } catch (e) {}
     }
@@ -1641,9 +1683,93 @@ function recordPing(rec) {
   save();
 }
 
-function reconnectPack() {
+function scrubChatTailText(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  if (nuclearBlocked(t)) return "[redacted · NonNuclear]";
+  return t.slice(0, 800);
+}
+
+function offlineChatTail(limit) {
+  const k = Math.max(1, Math.min(Number(limit) || 20, 20));
+  const msgs = Array.isArray(state.messages) ? state.messages : [];
+  const since = Number(state.offlineStartedAt) || 0;
+  let window = msgs;
+  if (since > 0) {
+    const filtered = msgs.filter((m) => m && (!m.at || Number(m.at) >= since));
+    if (filtered.length) window = filtered;
+  }
+  return window.slice(-k).map((m) => ({
+    role: m.role === "user" ? "user" : "ya",
+    text: scrubChatTailText(m.text),
+    at: m.at || 0
+  })).filter((m) => m.text);
+}
+
+function essenceSealMeta() {
+  try {
+    if (vault && vault.length && vault[0] && vault[0].body && vault[0].body.id) {
+      const b = vault[0].body;
+      return {
+        id: String(b.id),
+        mintedAt: b.mintedAt || 0,
+        companion: b.companion || botName(),
+        coreVersion: b.coreVersion || CORE_VERSION || null
+      };
+    }
+  } catch (e) {}
+  return null;
+}
+
+function mindSizeBreakdown(chatTail, learned) {
+  const utf8ish = function (s) { return (String(s || "").length) * 2; };
+  let localStorageBytes = 0;
+  try {
+    const suffix = nsSuffix(account);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      let mine = false;
+      if (suffix) mine = MIND_BASES.some((b) => k === b + suffix);
+      else mine = MIND_BASES.some((b) => k === b);
+      if (!mine) continue;
+      const v = localStorage.getItem(k) || "";
+      localStorageBytes += (k.length + v.length) * 2;
+    }
+  } catch (e) {}
+  const heartGgufBytes = (state && state.heart && Number(state.heart.bytes)) || 0;
+  let essenceBytes = 0;
+  try {
+    if (vault && vault[0]) essenceBytes = utf8ish(JSON.stringify({ id: vault[0].body && vault[0].body.id, mintedAt: vault[0].body && vault[0].body.mintedAt }));
+  } catch (e) {}
+  let documentsBytes = 0;
+  try {
+    if (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number") {
+      documentsBytes = Number(window.YA_NATIVE.vaultBytes) || 0;
+    }
+  } catch (e) {}
+  const chatTailBytes = utf8ish(JSON.stringify(chatTail || []));
+  const learnedBytes = utf8ish(JSON.stringify(learned || []));
   return {
-    kind: "ya-reconnect",
+    localStorageBytes: localStorageBytes,
+    documentsBytes: documentsBytes,
+    essenceBytes: essenceBytes,
+    heartGgufBytes: heartGgufBytes,
+    chatTailBytes: chatTailBytes,
+    learnedBytes: learnedBytes
+  };
+}
+
+function reconnectPack(opts) {
+  const o = opts || {};
+  const asSession = !!(o.session || o.kind === "ya-mind-session");
+  const learned = (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at }));
+  const chatTail = offlineChatTail(20);
+  const breakdown = mindSizeBreakdown(chatTail, learned);
+  const bytes = mindBytes();
+  const seal = essenceSealMeta();
+  const pack = {
+    kind: asSession ? "ya-mind-session" : "ya-reconnect",
     interact: interactBoundLabel(),
     tz: "Utah",
     at: Date.now(),
@@ -1651,13 +1777,55 @@ function reconnectPack() {
     pingPlace: "phone (Utah)",
     pingAt: utahNow(),
     account: nameplate(),
-    learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
+    companion: botName(),
+    mindRev: Number(state.mindRev) || 0,
+    lastAmberAt: Number(state.lastAmberAt) || 0,
+    lastGreenAt: Number(state.lastGreenAt) || 0,
+    offlineStartedAt: Number(state.offlineStartedAt) || 0,
+    offlineSession: {
+      startedAt: Number(state.offlineStartedAt) || 0,
+      lastAmberAt: Number(state.lastAmberAt) || 0,
+      lastGreenAt: Number(state.lastGreenAt) || 0,
+      mindRev: Number(state.mindRev) || 0
+    },
+    mindBytes: bytes,
+    mindSize: formatBytes(bytes),
+    breakdown: breakdown,
+    learned: learned,
     evolved: state.evolved || [],
     functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: !!f.enabled, version: f.version })),
     pendingLearn: state.pendingLearn || [],
-    pings: (state.pings || []).slice(0, 12)
+    pings: (state.pings || []).slice(0, 12),
+    chatTail: chatTail,
+    essence: seal
   };
+  return pack;
 }
+
+async function shareMindSession(opts) {
+  const o = opts || {};
+  if (!signal()) return { ok: false, reason: "offline" };
+  if (ISOLATED && !loadInteractChannel()) return { ok: false, reason: "isolated-unbound" };
+  const pack = reconnectPack({ session: true });
+  const inbox = interactInbox();
+  const body = JSON.stringify(pack);
+  const title = o.title || "Ya mind-session";
+  try {
+    const res = await fetch(inbox, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Title: title, Tags: "brain,session" },
+      body: body
+    });
+    if (res.ok) return { ok: true, inbox: inbox, pack: pack, mindSize: pack.mindSize, mindBytes: pack.mindBytes };
+  } catch (e) {}
+  try {
+    await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
+    return { ok: true, opaque: true, inbox: inbox, pack: pack, mindSize: pack.mindSize, mindBytes: pack.mindBytes };
+  } catch (e2) {
+    return { ok: false, reason: "net" };
+  }
+}
+
 
 function pingSignature(pack) {
   return JSON.stringify({
@@ -1672,30 +1840,32 @@ async function pingChief(opts) {
   const force = !!(opts && opts.force);
   const bound = loadInteractChannel();
   // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
-  // (reconnect metadata only — reconnectPack has no full gut). Unbound stays skipped under ISOLATED.
+  // (reconnect metadata only — reconnectPack has no full gut / no Essence blob). Unbound stays skipped under ISOLATED.
   if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
   const inbox = interactInbox();
-  const pack = reconnectPack();
+  const pack = reconnectPack({ session: !!(opts && opts.session) });
+  if (opts && opts.kind) pack.kind = opts.kind;
   const sig = pingSignature(pack);
   // Dedup ambient only — forced or bound interact ping always POSTs.
   if (!force && localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true, reason: "dedup" };
   const body = JSON.stringify(pack);
+  const title = (opts && opts.title) || (pack.kind === "ya-mind-session" ? "Ya mind-session" : "Ya reconnect");
   try {
     const res = await fetch(inbox, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Title: "Ya reconnect", Tags: "brain" },
+      headers: { "Content-Type": "application/json", Title: title, Tags: "brain" },
       body: body
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
-      return { ok: true, inbox: inbox };
+      return { ok: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
     }
   } catch (e) {}
   try {
     await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
-    return { ok: true, opaque: true, inbox: inbox };
+    return { ok: true, opaque: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
   } catch (e2) {
     return { ok: false, reason: "net" };
   }
@@ -3788,7 +3958,17 @@ function renderNet() {
 }
 
 function toggleMind() {
+  const goingGreen = !state.mindOnline;
   state.mindOnline = !state.mindOnline;
+  if (goingGreen) {
+    state.lastGreenAt = Date.now();
+    state.mindRev = (Number(state.mindRev) || 0) + 1;
+  } else {
+    state.lastAmberAt = Date.now();
+    if (!state.offlineStartedAt) state.offlineStartedAt = state.lastAmberAt;
+    // New offline window starts when leaving green
+    state.offlineStartedAt = state.lastAmberAt;
+  }
   save();
   renderNet();
   if (state.mindOnline) {
