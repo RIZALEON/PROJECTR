@@ -38,7 +38,7 @@ const CORE_PRECEPTS = [
   "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const SELF_MIND = [
-  "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
+  "I am Rizalbot, Engine RIZAL heart, local-first. Mark is clay Я. Until the GGUF is eaten, rules+gut still talk; with the file seated, Engine RIZAL calls llama.cpp for next tokens.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
   "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, NonNuclear, PolygamyTech rooted in the freedom of polygamy, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
   "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on SmolLM2 135M when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
@@ -194,12 +194,25 @@ function hydrateActiveMind() {
   renderMind();
 }
 
+function botName() {
+  const n = state && state.profile && state.profile.yaName;
+  return (n && String(n).trim()) || "Rizalbot";
+}
+
+function normalizeProfile(p) {
+  const out = Object.assign({ name: "You", yaName: "Rizalbot" }, p && typeof p === "object" ? p : {});
+  const ya = String(out.yaName || "").trim();
+  if (!ya || ya === "Я" || ya === "Ya" || ya === "YA") out.yaName = "Rizalbot";
+  if (!out.name || !String(out.name).trim()) out.name = "You";
+  return out;
+}
+
 const defaultState = () => ({
-  profile: { name: "You", yaName: "Я" },
+  profile: { name: "You", yaName: "Rizalbot" },
   mindOnline: false,
   model: {
     id: null,
-    name: "Я local-memory",
+    name: "Rizalbot local-memory",
     engine: "Engine RIZAL",
     createdAt: Date.now()
   },
@@ -256,7 +269,7 @@ function load() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const base = defaultState();
-    return {
+    const out = {
       ...base,
       ...parsed,
       mindOnline: !!parsed.mindOnline,
@@ -272,8 +285,11 @@ function load() {
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
+      profile: normalizeProfile(parsed.profile || base.profile),
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
+    if (out.model && (out.model.name === "Я local-memory" || !out.model.name)) out.model.name = "Rizalbot local-memory";
+    return out;
   } catch {
     return defaultState();
   }
@@ -1004,13 +1020,13 @@ function localEngine(userText) {
     return "PolygamyTech. This technology is rooted in the freedom of polygamy — kinship, association, and conscience. Function 1 may study and speak. I do not give legal advice and I will not help commit a crime. NonNuclear stays.";
   }
   if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Rizalbot. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
   if (/(are you|is this|is ya|are ya)\b.{0,24}\b(real (app|application|apk|program|engine)|an app|a real one|actually an app)/.test(q) || /real app\??$/.test(q)) {
-    return "Yes. I am Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
+    return "Yes. I am Rizalbot in Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
   }
   if (/who are you|what are you|your name/.test(q)) {
-    return "I am Я AI\u1d50. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
+    return "I am Rizalbot — Я AI\u1d50 offline companion. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
   }
   if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
     const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: UTAH_TZ });
@@ -2178,7 +2194,7 @@ async function ensureLlama(force) {
 }
 
 function llamaSysPrompt() {
-  return "You are Ya, PolygamyTech. Local anti-nuclear mind on this phone. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
+  return "You are Rizalbot, PolygamyTech. Local anti-nuclear mind on this phone. Mark is Я. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
 }
 
 function llamaTextFrom(res) {
@@ -2588,7 +2604,7 @@ function formatMindDump() {
   const msgs = state.messages || [];
   if (!msgs.length) lines.push("(none yet)");
   msgs.forEach((m) => {
-    const who = m.role === "user" ? (state.profile.name || "You") : "Я";
+    const who = m.role === "user" ? (state.profile.name || "You") : botName();
     const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
     lines.push(who + " (" + when + ")");
     lines.push(m.text);
@@ -2609,7 +2625,7 @@ function formatLog(kind) {
     return JSON.stringify({ title, stamp, profile: state.profile, messages: state.messages, memories: state.memories }, null, 2);
   }
   const lines = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     const time = new Date(m.at).toLocaleString();
     if (kind === "md") return `**${who}** · ${time}\n\n${m.text}\n`;
     return `${who} (${time})\n${m.text}\n`;
@@ -2816,16 +2832,17 @@ function essenceBody() {
     kind: "ya-essence",
     version: "0.1",
     mark: "Я",
+    companion: botName(),
     id: crypto.randomUUID(),
     mintedAt: Date.now(),
     offline: true,
     model: {
       id: state.model.id || crypto.randomUUID(),
-      name: state.model.name,
+      name: state.model.name || "Rizalbot local-memory",
       engine: state.model.engine,
       createdAt: state.model.createdAt
     },
-    profile: state.profile,
+    profile: normalizeProfile(state.profile),
     account: nameplate(),
     memories: state.memories,
     functions: state.functions,
@@ -3380,7 +3397,7 @@ function render() {
     return;
   }
   logEl.innerHTML = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div>${escapeHtml(m.text)}</article>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
