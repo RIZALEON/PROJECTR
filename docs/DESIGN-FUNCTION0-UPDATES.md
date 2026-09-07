@@ -59,3 +59,7 @@ One mental model: **Function 0 metabolizes updates** — local or from outside �
 ## Gate
 
 Implement only after full M accept (`docs/VERIFY-TRACK-M.md`). Then coordinate with D MVP (`docs/DESIGN-TRACK-D-ASTA.md`) so shelf pull and evolve pull share one ingest path.
+
+## Track U
+
+Product cut: see `docs/DESIGN-TRACK-U.md` — Cloud ↓ pull food/update, Cloud ↑ export only, auto-update opt-in, mind-card copy aligned. Implement with D after M.
