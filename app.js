@@ -520,11 +520,14 @@ function recall(query, limit) {
   const words = qFull.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
   if (!words.length && qFull.length < 4) return [];
   const k = Math.max(1, Math.min(Number(limit) || 3, 12));
+  const wantCore = /\b(core precept|precept|anti[- ]?nuclear|nonnuclear|essence|function 0|goflof)\b/i.test(qFull);
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
-    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
-    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false };
-    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false };
+    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
+    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    const core = /^core:/i.test(m.text);
+    if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
     let longHit = false;
     words.forEach((w) => {
@@ -534,9 +537,17 @@ function recall(query, limit) {
       }
     });
     if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
-    return { m, score, longHit };
+    if (!core) score += 2;
+    return { m, score, longHit, core: core };
   });
-  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, k).map((s) => s.m);
+  return scored
+    .filter((s) => s.score >= (s.longHit ? 1 : 2))
+    .sort((a, b) => {
+      if (a.core !== b.core) return a.core ? 1 : -1;
+      return b.score - a.score;
+    })
+    .slice(0, k)
+    .map((s) => s.m);
 }
 
 function forgetFact(idOrText) {
@@ -546,6 +557,14 @@ function forgetFact(idOrText) {
   if (!before.length) return { ok: false, removed: 0, reason: "missing" };
   const keyLower = key.toLowerCase();
   let removed = [];
+  if (/^(all\s+)?core(\s+echoe?s?|\s+precepts?|\s+dumps?)?$/.test(keyLower) || keyLower === "core:") {
+    removed = before.filter((m) => m && /^Core:/i.test(m.text));
+    if (!removed.length) return { ok: false, removed: 0, reason: "missing" };
+    state.memories = before.filter((m) => !(m && /^Core:/i.test(m.text)));
+    save();
+    try { renderPanel(); } catch (e) {}
+    return { ok: true, removed: removed.length, facts: removed };
+  }
   const byId = before.filter((m) => m && m.id === key);
   if (byId.length) {
     state.memories = before.filter((m) => !(m && m.id === key));
@@ -572,7 +591,7 @@ function tryForgetCommand(userText) {
   const t = String(userText || "").trim();
   if (!/^forget\b/i.test(t)) return null;
   if (/^forget\s*$/i.test(t) || /^forget\s+fact\s*$/i.test(t)) {
-    return "Tell me what to forget. Say forget … with part of the fact, or open Functions and tap Forget. Reset Essence still wipes everything.";
+    return "Tell me what to forget. Say forget … with part of the fact, forget core echoes to clear Core: precept dumps, or open Functions and tap Forget. Reset Essence still wipes everything.";
   }
   const m = t.match(/^forget(?:\s+fact)?(?:\s*[:\-]\s*|\s+)(.+)$/i);
   if (!m) return null;
@@ -2022,13 +2041,15 @@ function applyEatReply(text) {
 
 function llamaMemoriesSnippet(query) {
   // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
+  // Prefer user/fed facts; Core: precept dumps stay out of the llama inject.
   const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
   for (const m of hits) {
     if (!m || !m.text) continue;
     if (/^user said:/i.test(m.text) || /^from talk:/i.test(m.text)) continue;
-    const t = String(m.text).replace(/^Core:\s*/i, "").trim();
+    if (/^Core:/i.test(m.text)) continue;
+    const t = String(m.text).trim();
     if (!t) continue;
     if (n + t.length > 1200) break;
     out.push(t);

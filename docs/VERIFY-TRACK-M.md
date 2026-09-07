@@ -37,3 +37,9 @@ Branch: `track-m-memory` (local until Chief of Staff greenlights push).
 ## Goal One link
 
 This battery proves the offline memory substrate a Rizal bot needs (Function 0 continuity). Richer self-evolve/devour follows after M acceptance.
+
+## Live-dump hygiene (post-static)
+
+- `forget core echoes` clears all `Core:` precept dumps (law still in `CORE_PRECEPTS` / `nuclearBlocked`).
+- `recall()` prefers user/fed facts; skips `Core:` unless the ask is about precepts/anti-nuclear/Essence/Function 0/GOFLOF.
+- `llamaMemoriesSnippet` never injects `Core:` lines.
