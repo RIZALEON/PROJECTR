@@ -10,6 +10,7 @@ const PING_KEY = "ya-aim-last-ping";
 const INTERACT_KEY = "ya-aim-interact";
 const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
 const FEED_SEEN_KEY = "ya-aim-feed-seen";
+const MIND_SHARE_PENDING_KEY = "ya-aim-mind-share-pending";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
 const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
@@ -229,6 +230,7 @@ const defaultState = () => ({
   lastGreenAt: 0,
   offlineStartedAt: 0,
   mindRev: 0,
+  autoShareMind: false,
   heart: null,
   senses: { svg: true, midi: true, sfx: true, voicePart: null },
   deadman: { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -288,6 +290,7 @@ function load() {
       lastGreenAt: Number(parsed.lastGreenAt) || 0,
       offlineStartedAt: Number(parsed.offlineStartedAt) || 0,
       mindRev: Number(parsed.mindRev) || 0,
+      autoShareMind: !!parsed.autoShareMind,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
       senses: parsed.senses && typeof parsed.senses === "object" ? Object.assign({ svg: true, midi: true, sfx: true, voicePart: null }, parsed.senses) : { svg: true, midi: true, sfx: true, voicePart: null },
       deadman: parsed.deadman && typeof parsed.deadman === "object" ? Object.assign({ enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" }, parsed.deadman) : { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -1301,6 +1304,18 @@ function clearPendingInteract() {
   try { sessionStorage.removeItem(INTERACT_PENDING_KEY); } catch (e) {}
 }
 
+function setPendingMindShare(flag) {
+  try { sessionStorage.setItem(MIND_SHARE_PENDING_KEY, flag ? "1" : ""); } catch (e) {}
+}
+
+function getPendingMindShare() {
+  try { return sessionStorage.getItem(MIND_SHARE_PENDING_KEY) === "1"; } catch (e) { return false; }
+}
+
+function clearPendingMindShare() {
+  try { sessionStorage.removeItem(MIND_SHARE_PENDING_KEY); } catch (e) {}
+}
+
 function tryInteractCommand(userText) {
   const t = String(userText || "").trim();
   const low = t.toLowerCase();
@@ -1334,6 +1349,34 @@ function tryInteractCommand(userText) {
   if (pending && /^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
     clearPendingInteract();
     return "Bind cancelled. Still on " + interactBoundLabel() + ".";
+  }
+
+  // Product lock: confirm mind.ask unless Decider autoShareMind
+  if (!pending && getPendingMindShare()) {
+    if (/^(yes|y|share|confirm|ok|okay)\b/i.test(low)) {
+      clearPendingMindShare();
+      if (!signal()) return "No signal — cannot share mind on airplane.";
+      if (ISOLATED && !loadInteractChannel()) return "No interact bound — bind ntfy first.";
+      shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+        const sz = (res && res.mindSize) || formatBytes(mindBytes());
+        if (res && res.ok) push("ya", "Shared last offline mind with Chief · " + sz);
+        else push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ").");
+      }).catch(function () { push("ya", "Could not share mind (net)."); });
+      return "Sharing last offline mind with Chief…";
+    }
+    if (/^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
+      clearPendingMindShare();
+      return "Mind share cancelled. Nothing sent to Chief.";
+    }
+  }
+
+  if (/^(auto\s+share\s+mind)\s+(on|off|yes|no)\b/i.test(t)) {
+    const on = /\b(on|yes)\b/i.test(t);
+    state.autoShareMind = on;
+    save();
+    return on
+      ? "Decider auto-share ON — Chief mind.ask will share the session slice without asking."
+      : "Decider auto-share OFF — Chief mind.ask will ask yes/no first (Product lock).";
   }
 
   if (/^(set\s+reconnect|link\s+interact|bind\s+interact)\b/i.test(t) || isInteractUrl(t)) {
@@ -1583,22 +1626,30 @@ function applyYaFeed(feed, meta) {
           bubbled: !!bubble
         });
       } else if (name === "mind.ask" || name === "mind.share" || name === "session.share") {
-        // Phase 1.5 — CoS requests last offline session pack (not ya-feed echo; loop-safe).
+        // Phase 1.5 — Product lock: confirm unless Decider autoShareMind. Loop-safe (not ya-feed echo).
         results.push({ op: name, ok: true, mindAsk: true, id: op.id || (meta && meta.ntfyId) || "" });
-        try {
-          shareMindSession({ title: "Ya mind-session" }).then(function (res) {
-            const sz = (res && res.mindSize) || formatBytes(mindBytes());
-            if (res && res.ok) {
-              try { push("ya", "Shared last offline mind with Chief · " + sz); } catch (e) {}
-            } else {
-              try { push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ")."); } catch (e) {}
-            }
-          }).catch(function () {
-            try { push("ya", "Could not share mind (net)."); } catch (e) {}
-          });
-        } catch (e) {
-          results[results.length - 1].ok = false;
-          results[results.length - 1].reason = "share-failed";
+        const sz = formatBytes(mindBytes());
+        if (state.autoShareMind) {
+          try {
+            shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+              const s2 = (res && res.mindSize) || sz;
+              if (res && res.ok) {
+                try { push("ya", "Shared last offline mind with Chief · " + s2); } catch (e) {}
+              } else {
+                try { push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ")."); } catch (e) {}
+              }
+            }).catch(function () {
+              try { push("ya", "Could not share mind (net)."); } catch (e) {}
+            });
+          } catch (e) {
+            results[results.length - 1].ok = false;
+            results[results.length - 1].reason = "share-failed";
+          }
+        } else {
+          try {
+            setPendingMindShare(true);
+            push("ya", "Chief asked for last offline mind (session slice · " + sz + ").\nShare with Chief? Reply yes or no.\n(No full gut · Essence hash only.)");
+          } catch (e) {}
         }
       } else if (name === "function.evolve" || name === "function.drop" || name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
         results.push({ op: name, ok: false, reason: "phase-later" });

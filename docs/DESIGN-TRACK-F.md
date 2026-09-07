@@ -145,6 +145,8 @@ In-app note: `Shared last offline mind with Chief · 12.4 MB`.
 
 Hard rule: no silent full gut; no Essence upload; prefer explicit `mind.ask` / `share mind` (no auto-share on green).
 
+**Product lock:** inbound `mind.ask` prompts yes/no before posting the session slice, unless Decider sets `auto share mind on` (`state.autoShareMind`). Chat `share mind` remains immediate opt-in.
+
 ## Phases (locked cut)
 
 1. **NOW** — inbound SSE/poll + memory.upsert / memory.forget / ping.ack + NonNuclear + optional ack ping  
