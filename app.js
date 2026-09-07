@@ -1484,7 +1484,6 @@ function parseYaFeed(text) {
 function formatPingPongBubble(op, meta) {
   const pingPlace = String(op.pingPlace || op.ping_place || "phone (Utah)").trim();
   const pingAt = String(op.pingAt || op.ping_at || op.utah || "").trim();
-  const pongPlace = String(op.pongPlace || op.pong_place || "Denver").trim();
   const pongAt = String(op.pongAt || op.pong_at || "").trim();
   const from = String(op.from || "cos").trim().toLowerCase();
   const who = from === "cos" || from === "chief" || from === "chief of staff"
@@ -1494,12 +1493,18 @@ function formatPingPongBubble(op, meta) {
   if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace) {
     return "";
   }
-  const lines = ["Pong from " + who];
-  lines.push("");
-  lines.push("Ping left: " + pingPlace + (pingAt ? " · " + pingAt : ""));
-  lines.push("Pong: " + pongPlace + (pongAt ? " · " + pongAt : ""));
+  // UX LOCK — match CoS chat format exactly (3 lines, no blank):
+  // Pong from Chief of Staff
+  // Ping left: {place} · {utah time}
+  // Pong from: Chief of Staff · {Denver time}
+  const lines = [
+    "Pong from " + who,
+    "Ping left: " + pingPlace + (pingAt ? " · " + pingAt : ""),
+    "Pong from: " + who + (pongAt ? " · " + pongAt : "")
+  ];
   return lines.join("\n");
 }
+
 
 function applyYaFeedText(text, meta) {
   const feed = parseYaFeed(text);

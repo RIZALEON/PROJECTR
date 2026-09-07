@@ -79,9 +79,8 @@ EOF
 
 ```
 Pong from Chief of Staff
-
 Ping left: phone (Utah) · …
-Pong: Denver · …
+Pong from: Chief of Staff · …
 ```
 
 `ack:false` required on pong packs so the phone does not re-ping (loop guard). Pong-only feeds never trigger summary ping-back.
