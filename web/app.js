@@ -7,6 +7,8 @@ const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
+const INTERACT_KEY = "ya-aim-interact";
+const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
 const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
@@ -76,7 +78,7 @@ const SELF_MIND = [
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
-const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY];
+const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY, INTERACT_KEY];
 const YA_OAUTH = {
   xClientId: "",
   githubClientId: ""
@@ -1209,6 +1211,136 @@ async function pushEvolutions() {
 
 
 
+
+function loadInteractChannel() {
+  try {
+    const raw = localStorage.getItem(mindKey(INTERACT_KEY));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.url === "string" && parsed.url) return parsed;
+  } catch (e) {}
+  return null;
+}
+
+function saveInteractChannel(rec) {
+  if (!rec || !rec.url) {
+    try { localStorage.removeItem(mindKey(INTERACT_KEY)); } catch (e) {}
+    return;
+  }
+  localStorage.setItem(mindKey(INTERACT_KEY), JSON.stringify({
+    url: String(rec.url).trim(),
+    boundAt: rec.boundAt || Date.now(),
+    kind: rec.kind || "ntfy"
+  }));
+}
+
+function interactInbox() {
+  const bound = loadInteractChannel();
+  if (bound && bound.url) return bound.url;
+  return CHIEF_INBOX;
+}
+
+function interactBoundLabel() {
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return "default Chief inbox (code)";
+  try {
+    const u = new URL(bound.url);
+    const path = (u.pathname || "/").replace(/\/+$/, "");
+    const tip = path.split("/").filter(Boolean).pop() || u.host;
+    const masked = tip.length > 10 ? tip.slice(0, 6) + "…" + tip.slice(-4) : tip;
+    return u.host + "/" + masked;
+  } catch (e) {
+    return "bound channel";
+  }
+}
+
+function isInteractUrl(text) {
+  const t = String(text || "").trim();
+  if (!/^https:\/\//i.test(t)) return false;
+  if (/\s/.test(t)) return false;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "https:") return false;
+    if (u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh")) return true;
+    // generic https webhook (path required)
+    if (u.pathname && u.pathname !== "/") return true;
+  } catch (e) {
+    return false;
+  }
+  return false;
+}
+
+function extractInteractUrl(text) {
+  const t = String(text || "").trim();
+  const cmd = t.match(/^(?:set\s+reconnect|link\s+interact|bind\s+interact)\s+(\S+)/i);
+  if (cmd) return cmd[1];
+  if (isInteractUrl(t)) return t;
+  const m = t.match(/https:\/\/[^\s<>"']+/i);
+  if (m && isInteractUrl(m[0])) return m[0];
+  return "";
+}
+
+function setPendingInteract(url) {
+  try { sessionStorage.setItem(INTERACT_PENDING_KEY, url || ""); } catch (e) {}
+}
+
+function getPendingInteract() {
+  try { return sessionStorage.getItem(INTERACT_PENDING_KEY) || ""; } catch (e) { return ""; }
+}
+
+function clearPendingInteract() {
+  try { sessionStorage.removeItem(INTERACT_PENDING_KEY); } catch (e) {}
+}
+
+function tryInteractCommand(userText) {
+  const t = String(userText || "").trim();
+  const low = t.toLowerCase();
+
+  if (/^(unlink\s+interact|clear\s+interact|unbind\s+interact|clear\s+reconnect)\b/i.test(t)) {
+    saveInteractChannel(null);
+    clearPendingInteract();
+    remember("Interact channel cleared — using default Chief inbox.");
+    return "Interact unbound. Reconnect pings use the default Chief inbox again. Airplane still works with no channel.";
+  }
+
+  if (/^(interact|reconnect\s+inbox|chief\s+inbox)\s*\??$/i.test(t) || /^what( is|'s)?\s+my\s+interact/i.test(t)) {
+    const bound = loadInteractChannel();
+    if (!bound) return "Interact channel: default code Chief inbox. Paste an https ntfy or webhook URL (or say link interact <url>) to bind. Product Track P example: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
+    return "Interact channel bound: " + interactBoundLabel() + ". Say unlink interact to clear. Pings never send the full gut.";
+  }
+
+  const pending = getPendingInteract();
+  if (pending && /^(yes|y|bind|confirm|ok|okay)\b/i.test(low)) {
+    if (nuclearBlocked(pending)) {
+      clearPendingInteract();
+      return "No. That URL is blocked.";
+    }
+    saveInteractChannel({ url: pending, boundAt: Date.now(), kind: /ntfy\.sh/i.test(pending) ? "ntfy" : "webhook" });
+    clearPendingInteract();
+    remember("Bound interact channel (Track P).");
+    return "Bound. Reconnect / interact pings now go to " + interactBoundLabel() + " first. Default CHIEF_INBOX stays in code until you unlink. Gut is never uploaded.";
+  }
+  if (pending && /^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
+    clearPendingInteract();
+    return "Bind cancelled. Still on " + interactBoundLabel() + ".";
+  }
+
+  if (/^(set\s+reconnect|link\s+interact|bind\s+interact)\b/i.test(t) || isInteractUrl(t)) {
+    const url = extractInteractUrl(t);
+    if (!url) return "Paste a full https:// ntfy.sh/… or webhook URL to bind.";
+    if (nuclearBlocked(url)) return "No. That URL is blocked.";
+    if (!isInteractUrl(url)) return "That does not look like an https ntfy or webhook URL.";
+    setPendingInteract(url);
+    return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
+  }
+  return null;
+}
+
+function pollInteractStub() {
+  // Track P stub: light poll reserved for green mind; no-op until opted in.
+  return { ok: true, stub: true };
+}
+
 function pingLocations(extra) {
   if (ISOLATED) {
     const hops = ["phone (Utah)", "brain download log"];
@@ -1266,6 +1398,7 @@ function recordPing(rec) {
 function reconnectPack() {
   return {
     kind: "ya-reconnect",
+    interact: interactBoundLabel(),
     tz: "Utah",
     at: Date.now(),
     utah: utahNow(),
@@ -1290,25 +1423,26 @@ function pingSignature(pack) {
 async function pingChief() {
   if (ISOLATED) return { ok: true, skipped: true };
   if (!signal()) return { ok: false, reason: "offline" };
+  const inbox = interactInbox();
   const pack = reconnectPack();
   const sig = pingSignature(pack);
   if (localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true };
   const body = JSON.stringify(pack);
   try {
-    const res = await fetch(CHIEF_INBOX, {
+    const res = await fetch(inbox, {
       method: "POST",
       headers: { "Content-Type": "application/json", Title: "Ya reconnect", Tags: "brain" },
       body: body
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
-      return { ok: true };
+      return { ok: true, inbox: inbox };
     }
   } catch (e) {}
   try {
-    await fetch(CHIEF_INBOX, { method: "POST", mode: "no-cors", body: body });
+    await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
-    return { ok: true, opaque: true };
+    return { ok: true, opaque: true, inbox: inbox };
   } catch (e2) {
     return { ok: false, reason: "net" };
   }
@@ -2310,6 +2444,8 @@ async function answer(userText) {
   }
   const forgot = tryForgetCommand(userText);
   if (forgot) return forgot;
+  const interact = tryInteractCommand(userText);
+  if (interact) return interact;
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
@@ -2833,6 +2969,7 @@ function essenceBody() {
     version: "0.1",
     mark: "Я",
     companion: botName(),
+    interactChannel: loadInteractChannel(),
     id: crypto.randomUUID(),
     mintedAt: Date.now(),
     offline: true,
