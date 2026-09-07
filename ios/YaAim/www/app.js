@@ -513,12 +513,13 @@ function extractMemories(userText) {
   }
 }
 
-function recall(query) {
+function recall(query, limit) {
   if (!fnEnabled("memory.recall") || state.memories.length === 0) return [];
   const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we"]);
   const qFull = foldQ(query).replace(/[?!.]+/g, " ").trim();
   const words = qFull.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
   if (!words.length && qFull.length < 4) return [];
+  const k = Math.max(1, Math.min(Number(limit) || 3, 12));
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
@@ -535,7 +536,56 @@ function recall(query) {
     if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
     return { m, score, longHit };
   });
-  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
+  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, k).map((s) => s.m);
+}
+
+function forgetFact(idOrText) {
+  const key = String(idOrText || "").trim();
+  if (!key) return { ok: false, removed: 0, reason: "empty" };
+  const before = (state.memories || []).slice();
+  if (!before.length) return { ok: false, removed: 0, reason: "missing" };
+  const keyLower = key.toLowerCase();
+  let removed = [];
+  const byId = before.filter((m) => m && m.id === key);
+  if (byId.length) {
+    state.memories = before.filter((m) => !(m && m.id === key));
+    removed = byId;
+  } else {
+    const exact = before.filter((m) => m && String(m.text || "").toLowerCase() === keyLower);
+    if (exact.length) {
+      state.memories = before.filter((m) => !(m && String(m.text || "").toLowerCase() === keyLower));
+      removed = exact;
+    } else {
+      const hits = before.filter((m) => m && String(m.text || "").toLowerCase().includes(keyLower));
+      if (!hits.length) return { ok: false, removed: 0, reason: "missing" };
+      const ids = new Set(hits.map((m) => m.id));
+      state.memories = before.filter((m) => !(m && ids.has(m.id)));
+      removed = hits;
+    }
+  }
+  save();
+  try { renderPanel(); } catch (e) {}
+  return { ok: true, removed: removed.length, facts: removed };
+}
+
+function tryForgetCommand(userText) {
+  const t = String(userText || "").trim();
+  if (!/^forget\b/i.test(t)) return null;
+  if (/^forget\s*$/i.test(t) || /^forget\s+fact\s*$/i.test(t)) {
+    return "Tell me what to forget. Say forget … with part of the fact, or open Functions and tap Forget. Reset Essence still wipes everything.";
+  }
+  const m = t.match(/^forget(?:\s+fact)?(?:\s*[:\-]\s*|\s+)(.+)$/i);
+  if (!m) return null;
+  const target = m[1].replace(/[.?!]+$/, "").trim();
+  const res = forgetFact(target);
+  if (res.reason === "empty") {
+    return "Tell me what to forget. Say forget … with part of the fact, or open Functions and tap Forget.";
+  }
+  if (!res.ok) {
+    return "I could not find that in memory. Say what do you remember, or open Functions for the list.";
+  }
+  const lines = (res.facts || []).slice(0, 5).map((f) => "- " + f.text);
+  return "Forgot " + res.removed + " fact" + (res.removed === 1 ? "" : "s") + " from this body.\n" + lines.join("\n");
 }
 
 
@@ -963,7 +1013,7 @@ function localEngine(userText) {
     return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 senses — make SVG/MIDI/SFX offline, voice is a part slot, green light still opens sites. Amber can make. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
+    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember / forget facts, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
@@ -1970,11 +2020,14 @@ function applyEatReply(text) {
   push("ya", text);
 }
 
-function llamaMemoriesSnippet() {
-  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+function llamaMemoriesSnippet(query) {
+  // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
+  const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
-  for (const m of mem.slice(0, 8)) {
+  for (const m of hits) {
+    if (!m || !m.text) continue;
+    if (/^user said:/i.test(m.text) || /^from talk:/i.test(m.text)) continue;
     const t = String(m.text).replace(/^Core:\s*/i, "").trim();
     if (!t) continue;
     if (n + t.length > 1200) break;
@@ -2131,7 +2184,8 @@ async function llamaReply(userText) {
   if (Date.now() < llamaHangUntil) return null;
   const q = String(userText || "").trim();
   if (!q) return null;
-  const sys = llamaSysPrompt();
+  const mem = llamaMemoriesSnippet(q);
+  const sys = llamaSysPrompt() + (mem ? ("\n\nHeld facts (relevant):\n" + mem) : "");
   const opts = { n_predict: 48, max_tokens: 48, temperature: 0.2 };
   llamaBusy = true;
   try {
@@ -2217,6 +2271,8 @@ async function answer(userText) {
     const dm = tryDeadmanCommand(userText);
     if (dm) return dm;
   }
+  const forgot = tryForgetCommand(userText);
+  if (forgot) return forgot;
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
@@ -2316,7 +2372,11 @@ async function answer(userText) {
   if (isNativeSpine()) {
     const st = await nativeAsk("status");
     if (st && st.engine === "llama.cpp") {
-      const g = await nativeAsk("generate", { prompt: userText });
+      const mem = llamaMemoriesSnippet(userText);
+      const prompt = mem
+        ? ("Held facts (relevant):\n" + mem + "\n\nUser: " + userText)
+        : userText;
+      const g = await nativeAsk("generate", { prompt: prompt, memories: mem || "" });
       if (g && g.text) return String(g.text);
     }
   }
@@ -3315,6 +3375,27 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function renderMemList() {
+  const el = document.getElementById("mem-list");
+  if (!el) return;
+  const real = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text) && !/^from talk:/i.test(m.text) && !isWikiJunkMemory(m.text) && !isLinkJunkMemory(m.text));
+  if (!real.length) {
+    el.innerHTML = `<p class="lead">No stored facts yet. Say remember this: … Chat: forget … Reset Essence still wipes all.</p>`;
+    return;
+  }
+  const shown = real.slice(0, 40);
+  el.innerHTML = shown.map((m) => {
+    const raw = String(m.text || "");
+    const label = raw.length > 90 ? raw.slice(0, 87) + "…" : raw;
+    const idShort = (m.id || "").slice(0, 8);
+    const when = m.at ? new Date(m.at).toLocaleString() : "";
+    return `<div class="row"><div><div>${escapeHtml(label)}</div><div class="fn">${escapeHtml(idShort)}${when ? " \u00b7 " + escapeHtml(when) : ""}</div></div>
+      <button type="button" data-forget="${escapeHtml(m.id)}">Forget</button></div>`;
+  }).join("") + (real.length > 40
+    ? `<p class="lead">Showing 40 of ${real.length}. Say forget … or Reset Essence for a full wipe.</p>`
+    : "");
+}
+
 function renderPanel() {
   document.getElementById("name-input").value = state.profile.name;
   const repoEl = document.getElementById("gh-repo");
@@ -3331,12 +3412,12 @@ function renderPanel() {
         : `<span class="${f.enabled ? "on" : "off"}">${f.enabled ? "on" : "off"}</span>`}
     </div>`;
   }).join("");
+  renderMemList();
   const vaultEl = document.getElementById("vault-list");
   if (!vault.length) {
     vaultEl.innerHTML = `<p class="lead">No mints yet. Seal this model to keep a copy you can download later.</p>`;
-    return;
-  }
-  vaultEl.innerHTML = vault.map((e) => `
+  } else {
+    vaultEl.innerHTML = vault.map((e) => `
     <div class="row">
       <div>
         <div>${escapeHtml(e.body.model.name)}</div>
@@ -3344,6 +3425,7 @@ function renderPanel() {
       </div>
       <button data-dl="${e.body.id}">Download</button>
     </div>`).join("");
+  }
 }
 
 form.addEventListener("submit", (e) => {
@@ -3419,6 +3501,11 @@ panel.addEventListener("click", (e) => {
   if (fn) toggleFn(fn);
   const dl = e.target.getAttribute("data-dl");
   if (dl) downloadFromVault(dl);
+  const forgetId = e.target.getAttribute("data-forget");
+  if (forgetId) {
+    forgetFact(forgetId);
+    renderPanel();
+  }
 });
 document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
