@@ -1430,7 +1430,8 @@ async function pingChief(opts) {
   const inbox = interactInbox();
   const pack = reconnectPack();
   const sig = pingSignature(pack);
-  if (localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true };
+  // Dedup ambient only — forced or bound interact ping always POSTs.
+  if (!force && localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true, reason: "dedup" };
   const body = JSON.stringify(pack);
   try {
     const res = await fetch(inbox, {
