@@ -63,6 +63,10 @@ Shorthand (single op object) is also accepted if it has `"op"`.
 
 ### Ping → pong (UX LOCK)
 
+**Product ACCEPT schema (also accepted):** `{ "op":"ping.pong", "from":"cos", "place":"Denver", "text"? }` — optional `text` overrides the bubble verbatim (NonNuclear gated). No GPS; Utah clock on departure, Denver label on pong.
+
+
+
 1. On phone (green + bound): chat `ping` → sees departure line (`phone (Utah) · <Utah time>`).
 2. Outbound `ya-reconnect` includes `pingPlace` / `pingAt` (+ existing `utah` / `at`).
 3. CoS replies on the same topic (until automation, curl is fine):

@@ -1482,6 +1482,14 @@ function parseYaFeed(text) {
 
 
 function formatPingPongBubble(op, meta) {
+  // Product ACCEPT: {op:"ping.pong", from, place:"Denver", text?}
+  // CoS UX LOCK fields: pingAt, pingPlace, pongAt, pongPlace
+  // No GPS — labels only (phone/Utah departure, Denver pong).
+  if (op.text && String(op.text).trim()) {
+    const custom = String(op.text).trim();
+    if (nuclearBlocked(custom)) return "";
+    return custom;
+  }
   const pingPlace = String(op.pingPlace || op.ping_place || "phone (Utah)").trim();
   const pingAt = String(op.pingAt || op.ping_at || op.utah || "").trim();
   const pongAt = String(op.pongAt || op.pong_at || "").trim();
@@ -1490,17 +1498,24 @@ function formatPingPongBubble(op, meta) {
     ? "Chief of Staff"
     : (op.fromName || op.from || "Chief");
   // ping.ack without place/time fields: silent ack (legacy)
-  if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace) {
+  if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace && !op.place && !op.text) {
     return "";
   }
   // UX LOCK — match CoS chat format exactly (3 lines, no blank):
   // Pong from Chief of Staff
   // Ping left: {place} · {utah time}
   // Pong from: Chief of Staff · {Denver time}
+  // Product `place` is the CoS label (default Denver); time still from pongAt when present.
+  const pongLabel = String(op.pongPlace || op.pong_place || op.place || "Denver").trim();
+  const pongTail = pongAt || pongLabel;
+  // Line 3 shows CoS name · Denver time (or place label if no clock yet)
+  const line3 = pongAt
+    ? ("Pong from: " + who + " · " + pongAt)
+    : ("Pong from: " + who + " · " + pongLabel);
   const lines = [
     "Pong from " + who,
     "Ping left: " + pingPlace + (pingAt ? " · " + pingAt : ""),
-    "Pong from: " + who + (pongAt ? " · " + pongAt : "")
+    line3
   ];
   return lines.join("\n");
 }
