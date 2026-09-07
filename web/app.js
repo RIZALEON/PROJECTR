@@ -1341,7 +1341,7 @@ function tryInteractCommand(userText) {
     if (!bound) return "No interact bound — paste an ntfy URL first.";
     if (!state.mindOnline) return "Mind is amber — go green to listen for Chief ya-feed packs on " + interactBoundLabel() + ".";
     refreshInteractFeed();
-    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack.";
+    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack, ping.pong.";
   }
   return null;
 }
@@ -1480,6 +1480,27 @@ function parseYaFeed(text) {
   return null;
 }
 
+
+function formatPingPongBubble(op, meta) {
+  const pingPlace = String(op.pingPlace || op.ping_place || "phone (Utah)").trim();
+  const pingAt = String(op.pingAt || op.ping_at || op.utah || "").trim();
+  const pongPlace = String(op.pongPlace || op.pong_place || "Denver").trim();
+  const pongAt = String(op.pongAt || op.pong_at || "").trim();
+  const from = String(op.from || "cos").trim().toLowerCase();
+  const who = from === "cos" || from === "chief" || from === "chief of staff"
+    ? "Chief of Staff"
+    : (op.fromName || op.from || "Chief");
+  // ping.ack without place/time fields: silent ack (legacy)
+  if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace) {
+    return "";
+  }
+  const lines = ["Pong from " + who];
+  lines.push("");
+  lines.push("Ping left: " + pingPlace + (pingAt ? " · " + pingAt : ""));
+  lines.push("Pong: " + pongPlace + (pongAt ? " · " + pongAt : ""));
+  return lines.join("\n");
+}
+
 function applyYaFeedText(text, meta) {
   const feed = parseYaFeed(text);
   if (!feed) return { ok: false, reason: "not-ya-feed" };
@@ -1512,8 +1533,18 @@ function applyYaFeed(feed, meta) {
         const key = op.id || op.text || op.fact || "";
         const res = forgetFact(key);
         results.push({ op: name, ok: !!res.ok, removed: res.removed || 0 });
-      } else if (name === "ping.ack") {
-        results.push({ op: name, ok: true, id: op.id || (meta && meta.ntfyId) || "" });
+      } else if (name === "ping.pong" || name === "ping.ack") {
+        const bubble = formatPingPongBubble(op, meta);
+        if (bubble) {
+          try { push("ya", bubble); } catch (e) {}
+        }
+        results.push({
+          op: name,
+          ok: true,
+          id: op.id || (meta && meta.ntfyId) || "",
+          pong: true,
+          bubbled: !!bubble
+        });
       } else if (name === "function.evolve" || name === "function.drop" || name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
         results.push({ op: name, ok: false, reason: "phase-later" });
       } else {
@@ -1522,12 +1553,14 @@ function applyYaFeed(feed, meta) {
     }
     save();
     try { renderPanel(); } catch (e) {}
-    if (feed.ack !== false && results.some(function (r) { return r.ok; })) {
+    const okResults = results.filter(function (r) { return r.ok; });
+    const nonPongOk = okResults.filter(function (r) { return !r.pong; });
+    // Never auto-ping back on pong/ack-only feeds (would loop with CoS).
+    if (feed.ack !== false && nonPongOk.length) {
       try { pingChief({ force: true }).catch(function () {}); } catch (e) {}
     }
-    const okN = results.filter(function (r) { return r.ok; }).length;
-    if (okN) {
-      try { applyEatReply("Chief feed applied · " + okN + " op" + (okN === 1 ? "" : "s") + "."); } catch (e) {}
+    if (nonPongOk.length) {
+      try { applyEatReply("Chief feed applied · " + nonPongOk.length + " op" + (nonPongOk.length === 1 ? "" : "s") + "."); } catch (e) {}
     }
     return { ok: true, results: results };
   } finally {
@@ -1602,6 +1635,8 @@ function reconnectPack() {
     tz: "Utah",
     at: Date.now(),
     utah: utahNow(),
+    pingPlace: "phone (Utah)",
+    pingAt: utahNow(),
     account: nameplate(),
     learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
     evolved: state.evolved || [],
@@ -2659,7 +2694,10 @@ async function answer(userText) {
     const res = await pingChief({ force: true });
     const where = interactBoundLabel();
     if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED.";
-    if (res && res.ok) return "Ping sent to " + where + " (summary only — no gut). Check ntfy.";
+    if (res && res.ok) {
+      const left = utahNow();
+      return "Ping left phone (Utah) · " + left + " → " + where + ". Waiting for Chief pong…";
+    }
     if (res && res.reason === "offline") return "No signal — cannot ping.";
     return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
   }
