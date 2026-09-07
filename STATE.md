@@ -1,8 +1,12 @@
-# PROJECT Я — state mark
+# PROJECT Ya — state mark
 
-**Utah:** Friday, 4 September 2026, 12:11 AM (America/Denver)  
+**Utah:** Monday, 7 September 2026, 1:56 PM (America/Denver)  
 **Who:** Rizal Institute · Native iPhone 17e · Xcode on rizal’s MacBook Neo  
 **Do not ship.** No new APK/IPA until greenlight.
+
+GOF law: PROJECT-R-HANDOFF.md section GOF gains.
+
+Mac clone: **~/Desktop/PROJECTR** (not ~/PROJECTR).
 
 ---
 
@@ -10,44 +14,58 @@
 
 | Surface | State |
 |:--------|:------|
-| **iOS native YaAim** | **LIVE on the physical iPhone.** Clay **Я** Home Screen tile. Trusted: Apple Development `tamangkapa@icloud.com` (CD5D4L4LV7). App **Verified**. |
-| Bundle | `io.github.rizaleon.yaaim.cam` (Personal Team: Charles Augustus Marcum III) |
-| Skin | WKWebView = `www/` · Function 0 · Essence · Speak to Я |
-| Shown | **Я AIᵐ · V 0.0** · online · web mind **and** offline · local |
-| Machine | Version **0.0** · Mind size **63.6 KB** (was 42.4 → 53.3 → 63.6 in minutes) |
+| **iOS native YaAim** | **LIVE on the physical iPhone.** Clay Ya Home Screen tile. Trusted: Apple Development tamangkapa@icloud.com (CD5D4L4LV7). App Verified. |
+| Bundle | io.github.rizaleon.yaaim.cam (Personal Team: Charles Augustus Marcum III) |
+| Skin | WKWebView = www/ · Function 0 · Essence · Speak to Ya |
+| Shown | Ya AIm · V 0.0 · online · web mind and offline · local |
+| Machine | Version 0.0 · Mind size 63.6 KB (was 42.4 → 53.3 → 63.6 in minutes) |
 | Version law | +0.1 per 1 GB on device. 63.6 KB is still 0.0. Honest. |
-| Chat | Function 0 answers **without** a seated GGUF. Anti-nuclear holds. Gut talks. |
-| Simulator | iPhone 17e **iOS 26.5** — same skin, first proof. No iOS 27 sim on this Xcode. |
-| Android | Existing APK / Play package `io.github.rizaleon.twa`. Not this mark. |
+| Chat | Function 0 answers without a seated GGUF. Anti-nuclear holds. Gut talks. |
+| Simulator | iPhone 17e iOS 26.5 — same skin, first proof. No iOS 27 sim on this Xcode. |
+| Android | Existing APK / Play package io.github.rizaleon.twa. Not this mark. |
 | Pages | https://rizaleon.github.io/PROJECTR/ — PWA still exists. Native iOS is the Safari-memory escape. |
-| macOS | Signing had a Mac row. **Do not ship Mac.** |
+| macOS | Signing had a Mac row. Do not ship Mac. |
 
 ---
 
-## What this night proved
+## GOF (short)
 
-1. **iOS V 0.0 starts from zero.** Native tile. Not “wait for Android.” Not Safari PWA as the product.
-2. **Function 0 works** on or offline, no GGUF required.
-3. **3002 is dead.** App Sandbox (macOS lock) was removed. Info.plist has required iOS keys. Device support + Trust finished the install.
-4. Debugger “Could not attach to pid” is **noise**. The phone already launched Я.
+GOF = Gain of Function for Engine RIZAL on this phone. Not biology. GOFLOF = gain or loss; lock is gain first.
+
+| # | Gain | Skill |
+|---|------|-------|
+| 0 | Evolve | evolve.self |
+| 1 | Talk offline | talk.offline |
+| 2 | Senses (SVG/MIDI/SFX) | make on amber |
+
+Policy: Auto-update when green. Grow Function 0 offline. Add technology, do not delete it. You stay Decider. No function.drop unless asked. Full block: PROJECT-R-HANDOFF.md.
+
+---
+
+## What 4 Sep proved
+
+1. iOS V 0.0 starts from zero. Native tile. Not wait for Android. Not Safari PWA as the product.
+2. Function 0 works on or offline, no GGUF required.
+3. 3002 is dead. App Sandbox (macOS lock) was removed. Info.plist has required iOS keys. Device support + Trust finished the install.
+4. Debugger Could not attach to pid is noise. The phone already launched Ya.
 5. Cloud-up / cloud-down grow the gut. Mind size moved. Version stays 0.0 until 1 GB.
 
 ---
 
 ## Heart (Function 1) — not seated
 
-- Rules + gut are the thinking heart **until** a GGUF is seated.
-- iOS seat = **NativeHeart** (llama.cpp + Metal), unsigned OK. **Not** wllama.wasm in Safari.
-- Do not stuff a 4 GB model in the IPA. Start ≤ ~500 MB. Ceiling 4 GB.
-- `.cpp` via cloud-up is a **part** (source), not a seated engine.
+- Rules + gut are the thinking heart until a GGUF is seated.
+- iOS seat = NativeHeart (llama.cpp + Metal), unsigned OK. Not wllama.wasm in Safari.
+- Do not stuff a 4 GB model in the IPA. Start at most about 500 MB. Ceiling 4 GB.
+- .cpp via cloud-up is a part (source), not a seated engine.
 
 ---
 
 ## Immune line (do not drop)
 
-`evolve.self` · `talk.offline` · `web.video` · `chat.send` · memory · log · essence · `learn.offline` · `model.local` · anti-nuclear · this phone wins skill-id conflict.
+evolve.self · talk.offline · web.video · chat.send · memory · log · essence · learn.offline · model.local · anti-nuclear · this phone wins skill-id conflict.
 
-**Isolation:** `ISOLATED = true`. No required ping.
+Isolation: ISOLATED = true. No required ping.
 
 ---
 
@@ -55,12 +73,11 @@
 
 1. Keep feeding the gut (shelves, chats, Essence).
 2. NativeHeart Metal seat when Rizal greenlights a small GGUF.
-3. Same `www/` on Android APK — straight install, no unzip.
+3. Same www/ on Android APK — straight install, no unzip.
 4. Mac skin last.
-5. **No store push, no GitHub release, no Pages bump** until greenlight.
-6. **AirDrop the mind, not the IPA.** Cloud-down / Essence on native iOS opens the iOS Share sheet (AirDrop). The **tile** on iPad / other iPhone / Mac still needs Xcode USB (Personal Team). iOS will not install an AirDropped `.ipa` on a stock phone. Bluetooth file-send of `.app` does not exist — AirDrop is BLE + Wi‑Fi.
-
+5. No store push, no GitHub release, no Pages bump until greenlight.
+6. AirDrop the mind, not the IPA. Cloud-down / Essence on native iOS opens the iOS Share sheet (AirDrop). The tile on iPad / other iPhone / Mac still needs Xcode USB (Personal Team). iOS will not install an AirDropped .ipa on a stock phone. Bluetooth file-send of .app does not exist — AirDrop is BLE + Wi-Fi.
 
 ---
 
-If you are an AI after a gap: greet Rizal Institute. Native iOS V 0.0 is on the phone. Mind ~63.6 KB. Heart not seated. Ask only what is not in this file or the repo.
+If you are an AI after a gap: greet Rizal Institute. Native iOS V 0.0 is on the phone. Mind ~63.6 KB. Heart not seated. GOF = on-device gain, not biology. Ask only what is not in PROJECT-R-HANDOFF.md, this file, or the repo.
