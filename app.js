@@ -9,6 +9,7 @@ const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
 const INTERACT_KEY = "ya-aim-interact";
 const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
+const FEED_SEEN_KEY = "ya-aim-feed-seen";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
 const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
@@ -78,7 +79,7 @@ const SELF_MIND = [
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
-const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY, INTERACT_KEY];
+const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY, INTERACT_KEY, FEED_SEEN_KEY];
 const YA_OAUTH = {
   xClientId: "",
   githubClientId: ""
@@ -1300,6 +1301,7 @@ function tryInteractCommand(userText) {
     saveInteractChannel(null);
     clearPendingInteract();
     remember("Interact channel cleared — using default Chief inbox.");
+    try { stopInteractFeed(); } catch (e) {}
     return "Interact unbound. Reconnect pings use the default Chief inbox again. Airplane still works with no channel.";
   }
 
@@ -1318,6 +1320,7 @@ function tryInteractCommand(userText) {
     saveInteractChannel({ url: pending, boundAt: Date.now(), kind: /ntfy\.sh/i.test(pending) ? "ntfy" : "webhook" });
     clearPendingInteract();
     remember("Bound interact channel (Track P).");
+    try { refreshInteractFeed(); } catch (e) {}
     return "Bound. Reconnect / interact pings now go to " + interactBoundLabel() + " first. Default CHIEF_INBOX stays in code until you unlink. Gut is never uploaded.";
   }
   if (pending && /^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
@@ -1333,13 +1336,210 @@ function tryInteractCommand(userText) {
     setPendingInteract(url);
     return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
   }
+  if (/^(feed|listen|interact\s+feed)\s*(status)?\??$/i.test(t)) {
+    const bound = loadInteractChannel();
+    if (!bound) return "No interact bound — paste an ntfy URL first.";
+    if (!state.mindOnline) return "Mind is amber — go green to listen for Chief ya-feed packs on " + interactBoundLabel() + ".";
+    refreshInteractFeed();
+    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack.";
+  }
   return null;
 }
 
-function pollInteractStub() {
-  // Track P stub: light poll reserved for green mind; no-op until opted in.
-  return { ok: true, stub: true };
+let interactEs = null;
+let interactPollTimer = 0;
+let interactSince = "";
+let feedApplying = false;
+
+function ntfyTopicFromInbox(url) {
+  try {
+    const u = new URL(String(url || ""));
+    if (u.protocol !== "https:") return null;
+    if (!(u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh"))) return null;
+    const parts = u.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    if (!parts.length) return null;
+    let topic = parts[parts.length - 1];
+    if (topic === "sse" || topic === "json" || topic === "ws") {
+      topic = parts[parts.length - 2] || parts[0];
+    }
+    return { origin: u.origin, topic: topic };
+  } catch (e) {
+    return null;
+  }
 }
+
+function loadFeedSeen() {
+  try {
+    const raw = localStorage.getItem(mindKey(FEED_SEEN_KEY));
+    const arr = JSON.parse(raw || "[]");
+    return Array.isArray(arr) ? arr.slice(0, 80) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function markFeedSeen(id) {
+  if (!id) return;
+  const seen = loadFeedSeen().filter((x) => x !== id);
+  seen.unshift(String(id));
+  try { localStorage.setItem(mindKey(FEED_SEEN_KEY), JSON.stringify(seen.slice(0, 80))); } catch (e) {}
+}
+
+function feedSeen(id) {
+  if (!id) return false;
+  return loadFeedSeen().indexOf(String(id)) >= 0;
+}
+
+function stopInteractFeed() {
+  if (interactEs) {
+    try { interactEs.close(); } catch (e) {}
+    interactEs = null;
+  }
+  if (interactPollTimer) {
+    clearInterval(interactPollTimer);
+    interactPollTimer = 0;
+  }
+}
+
+function startInteractFeed() {
+  stopInteractFeed();
+  if (!state.mindOnline || !signal()) return { ok: false, reason: "offline" };
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return { ok: false, reason: "unbound" };
+  const meta = ntfyTopicFromInbox(bound.url);
+  if (!meta) return { ok: false, reason: "not-ntfy" };
+
+  const sseUrl = meta.origin + "/" + encodeURIComponent(meta.topic) + "/sse";
+  try {
+    interactEs = new EventSource(sseUrl);
+    interactEs.onmessage = function (ev) {
+      try { handleNtfyRaw(ev.data); } catch (e) {}
+    };
+    interactEs.onerror = function () {
+      try { if (interactEs) interactEs.close(); } catch (e) {}
+      interactEs = null;
+    };
+  } catch (e) {}
+  ensureInteractPoll(meta);
+  return { ok: true, topic: meta.topic };
+}
+
+function ensureInteractPoll(meta) {
+  if (interactPollTimer) return;
+  const base = meta.origin + "/" + encodeURIComponent(meta.topic) + "/json?poll=1";
+  interactPollTimer = setInterval(async function () {
+    if (!state.mindOnline || !signal() || !loadInteractChannel()) {
+      stopInteractFeed();
+      return;
+    }
+    try {
+      let url = base;
+      if (interactSince) url += "&since=" + encodeURIComponent(interactSince);
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) return;
+      const text = await res.text();
+      const lines = String(text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+      for (let i = 0; i < lines.length; i++) {
+        try { handleNtfyRaw(lines[i]); } catch (e) {}
+      }
+    } catch (e) {}
+  }, 12000);
+}
+
+function handleNtfyRaw(raw) {
+  if (!raw) return;
+  let msg;
+  try { msg = JSON.parse(raw); } catch (e) { return; }
+  if (!msg || typeof msg !== "object") return;
+  if (msg.event && msg.event !== "message") return;
+  const id = msg.id != null ? String(msg.id) : (msg.time != null ? String(msg.time) : "");
+  if (id && feedSeen(id)) return;
+  if (id) {
+    interactSince = id;
+    markFeedSeen(id);
+  }
+  const body = msg.message != null ? String(msg.message) : (msg.body != null ? String(msg.body) : "");
+  if (!body) return;
+  // Ignore our own outbound summary pings (plain text, not ya-feed)
+  applyYaFeedText(body, { ntfyId: id, title: msg.title || "" });
+}
+
+function parseYaFeed(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+  let obj = null;
+  try { obj = JSON.parse(t); } catch (e) {
+    const m = t.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    try { obj = JSON.parse(m[0]); } catch (e2) { return null; }
+  }
+  if (!obj || typeof obj !== "object") return null;
+  if (obj.kind && String(obj.kind) !== "ya-feed") return null;
+  if (Array.isArray(obj.ops)) return obj;
+  if (obj.op) return { kind: "ya-feed", v: 1, ops: [obj] };
+  return null;
+}
+
+function applyYaFeedText(text, meta) {
+  const feed = parseYaFeed(text);
+  if (!feed) return { ok: false, reason: "not-ya-feed" };
+  return applyYaFeed(feed, meta || {});
+}
+
+function applyYaFeed(feed, meta) {
+  if (feedApplying) return { ok: false, reason: "busy" };
+  feedApplying = true;
+  const results = [];
+  try {
+    const ops = Array.isArray(feed.ops) ? feed.ops : [];
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i] || {};
+      const name = String(op.op || op.type || "").trim();
+      if (nuclearBlocked(JSON.stringify(op))) {
+        results.push({ op: name, ok: false, reason: "nonnuclear" });
+        continue;
+      }
+      if (name === "memory.upsert" || name === "memory.remember") {
+        const text = String(op.text || op.fact || "").trim();
+        if (!text) { results.push({ op: name, ok: false, reason: "empty" }); continue; }
+        if (nuclearBlocked(text)) { results.push({ op: name, ok: false, reason: "nonnuclear" }); continue; }
+        if (op.id) {
+          try { forgetFact(String(op.id)); } catch (e) {}
+        }
+        remember(text);
+        results.push({ op: name, ok: true, text: text.slice(0, 80) });
+      } else if (name === "memory.forget") {
+        const key = op.id || op.text || op.fact || "";
+        const res = forgetFact(key);
+        results.push({ op: name, ok: !!res.ok, removed: res.removed || 0 });
+      } else if (name === "ping.ack") {
+        results.push({ op: name, ok: true, id: op.id || (meta && meta.ntfyId) || "" });
+      } else if (name === "function.evolve" || name === "function.drop" || name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
+        results.push({ op: name, ok: false, reason: "phase-later" });
+      } else {
+        results.push({ op: name || "unknown", ok: false, reason: "unsupported" });
+      }
+    }
+    save();
+    try { renderPanel(); } catch (e) {}
+    if (feed.ack !== false && results.some(function (r) { return r.ok; })) {
+      try { pingChief({ force: true }).catch(function () {}); } catch (e) {}
+    }
+    const okN = results.filter(function (r) { return r.ok; }).length;
+    if (okN) {
+      try { applyEatReply("Chief feed applied · " + okN + " op" + (okN === 1 ? "" : "s") + "."); } catch (e) {}
+    }
+    return { ok: true, results: results };
+  } finally {
+    feedApplying = false;
+  }
+}
+
+function refreshInteractFeed() {
+  if (state.mindOnline && signal() && loadInteractChannel()) startInteractFeed();
+  else stopInteractFeed();
+}
+
 
 function pingLocations(extra) {
   if (ISOLATED) {
@@ -3540,7 +3740,12 @@ function toggleMind() {
   state.mindOnline = !state.mindOnline;
   save();
   renderNet();
-  if (state.mindOnline) harvestOnline();
+  if (state.mindOnline) {
+    harvestOnline();
+    refreshInteractFeed();
+  } else {
+    stopInteractFeed();
+  }
 }
 
 function render() {
@@ -3806,8 +4011,8 @@ if (statusEl) {
   statusEl.title = "Tap to take the mind online or offline";
   statusEl.addEventListener("click", toggleMind);
 }
-window.addEventListener("online", () => { onCommsBack(); });
-window.addEventListener("offline", renderNet);
+window.addEventListener("online", () => { onCommsBack(); refreshInteractFeed(); });
+window.addEventListener("offline", () => { renderNet(); stopInteractFeed(); });
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
@@ -3829,7 +4034,7 @@ ensureCreator().then(() => {
   renderPanel();
   renderMind();
   finishXReturn();
-  if (signal()) setTimeout(() => { onCommsBack(); }, 800);
+  if (signal()) setTimeout(() => { onCommsBack(); refreshInteractFeed(); }, 800);
 });
 render();
 renderMind();

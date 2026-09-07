@@ -1,0 +1,87 @@
+# Track F — Remote Control / Feeds (ya-feed)
+
+**Status:** Phase 1 implemented on `track-f-feed` (off Track P tip).  
+**Companion:** Rizalbot · Я AIᵐ  
+**Depends on:** Track P bound interact channel (ntfy.sh preferred).
+
+## Goal
+
+Let Chief of Staff (or creator) push **structured packs** onto the bound interact topic so a green-mind Rizalbot can apply them on-device — without a cloud brain and without silent gut upload.
+
+Outbound Track P pings stay intact. Inbound is opt-in: mind green + interact bound + https ntfy.
+
+## Transport
+
+| Direction | Mechanism |
+|-----------|-----------|
+| Out (P) | `pingChief({ force })` POST to bound URL / default `CHIEF_INBOX` |
+| In (F) | SSE `/{topic}/sse` + poll fallback `/{topic}/json?poll=1&since=` every ~12s |
+
+Listener starts when mind goes green (or online + already green) and an interact URL is bound. Stops on amber / offline / unlink.
+
+Dedup: ntfy message `id` stored in `ya-aim-feed-seen` (per mind, capped).
+
+Non-ntfy webhooks: Phase 1 listen is ntfy-only (`not-ntfy`); bind still works for outbound POST.
+
+## Pack format (`ya-feed`)
+
+Publish the JSON as the ntfy **message body** (title optional):
+
+```json
+{
+  "kind": "ya-feed",
+  "v": 1,
+  "ack": true,
+  "ops": [
+    { "op": "memory.upsert", "text": "User prefers dark mode." },
+    { "op": "memory.forget", "text": "obsolete fact" },
+    { "op": "ping.ack", "id": "optional" }
+  ]
+}
+```
+
+Shorthand (single op object) is also accepted if it has `"op"`.
+
+| Op | Phase | Behavior |
+|----|-------|----------|
+| `memory.upsert` / `memory.remember` | **1** | `remember(text)`; optional `id` forgets first |
+| `memory.forget` | **1** | `forgetFact(id\|text)` |
+| `ping.ack` | **1** | records ack in results (no gut change) |
+| `function.evolve` / `function.drop` | 2 | rejected `phase-later` |
+| `shelf.seat` / `www.bump` | 3 | rejected `phase-later` (GitHub URL seat) |
+| `essence.patch` | 4 | rejected `phase-later` |
+
+`ack: false` skips the optional summary outbound ping after successful ops. Default is to ping back when any op succeeds.
+
+## Policy
+
+- Every op JSON + upsert text runs through `nuclearBlocked` — NonNuclear / anti-nuclear gate. Blocked ops return `reason: "nonnuclear"` and are not applied.
+- No silent gut upload. Summary ping is the same Track P reconnect body (bytes / hops), not a memory dump.
+- Chat: `feed` / `listen` / `interact feed` shows listen status.
+
+## Device smoke (Phase 1)
+
+1. Rebuild from this branch (iOS bundle id `io.github.rizaleon.yaaim.cam`).
+2. Bind CoS ntfy (or any topic), go **green** mind, say `feed`.
+3. From outside, publish:
+   ```bash
+   curl -d '{"kind":"ya-feed","v":1,"ops":[{"op":"memory.upsert","text":"Track F smoke fact from Chief."}]}' \
+     https://ntfy.sh/<topic>
+   ```
+4. Expect chat note “Chief feed applied · 1 op”, fact in Memories, optional summary ping on the topic.
+5. Publish `memory.forget` for that text; confirm removal.
+6. Publish a nuclear-shaped upsert; confirm refused, no fact stored.
+7. Confirm outbound `ping` still works (Track P).
+
+## Phases (locked cut)
+
+1. **NOW** — inbound SSE/poll + memory.upsert / memory.forget / ping.ack + NonNuclear + optional ack ping  
+2. function.evolve / drop  
+3. shelf.seat + www.bump (GitHub URL)  
+4. essence.patch  
+
+## Out of scope (Phase 1)
+
+- Applying later-phase ops  
+- Polling non-ntfy webhooks  
+- Uploading Essence or memory lists to the channel  
