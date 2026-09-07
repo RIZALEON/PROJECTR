@@ -897,9 +897,9 @@ function coreReply(userText, hits) {
 }
 
 function seedCore() {
+  // Constitution lives in CORE_PRECEPTS / SELF_MIND / Essence — do NOT dump into state.memories as Core: rows.
+  // Existing Core: junk on devices can still be scrubbed via forget core echoes / Memories list.
   if (state.coreSeeded === CORE_VERSION) return;
-  CORE_PRECEPTS.forEach((p) => remember("Core: " + p));
-  SELF_MIND.forEach((p) => remember("Core: " + p));
   state.coreSeeded = CORE_VERSION;
   save();
 }

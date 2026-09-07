@@ -57,3 +57,7 @@ M = gut substrate for offline self-evolve + Rizal bot in-app. After M: **D** AST
 - `recall()` prefers user/fed facts; skips `Core:` unless ask is about precepts/anti-nuclear/Essence/Function 0/GOFLOF.
 - `llamaMemoriesSnippet` never injects `Core:` lines.
 - Jose Rizal vs Engine RIZAL naming = Q/hotfix unless CoS expands M.
+
+## No Core: seeding (hotfix)
+
+`seedCore()` no longer writes `CORE_PRECEPTS` / `SELF_MIND` into `state.memories`. Constitution stays in precepts + Essence seal paths. Use `forget core echoes` to scrub legacy Core: junk already on devices.
