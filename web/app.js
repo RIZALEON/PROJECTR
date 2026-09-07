@@ -1422,8 +1422,10 @@ function pingSignature(pack) {
 
 async function pingChief(opts) {
   const force = !!(opts && opts.force);
-  // ISOLATED skips ambient reconnect; explicit user "ping" may force-send to bound/default inbox.
-  if (ISOLATED && !force) return { ok: true, skipped: true };
+  const bound = loadInteractChannel();
+  // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
+  // (reconnect metadata only — reconnectPack has no full gut). Unbound stays skipped under ISOLATED.
+  if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
   const inbox = interactInbox();
   const pack = reconnectPack();
@@ -2450,9 +2452,12 @@ async function answer(userText) {
   if (interact) return interact;
   if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline.";
+    if (ISOLATED && !loadInteractChannel()) {
+      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again.";
+    }
     const res = await pingChief({ force: true });
     const where = interactBoundLabel();
-    if (res && res.skipped && !res.force) return "Ping skipped.";
+    if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED.";
     if (res && res.ok) return "Ping sent to " + where + " (summary only — no gut). Check ntfy.";
     if (res && res.reason === "offline") return "No signal — cannot ping.";
     return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
