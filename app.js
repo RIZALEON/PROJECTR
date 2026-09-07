@@ -1420,8 +1420,10 @@ function pingSignature(pack) {
   });
 }
 
-async function pingChief() {
-  if (ISOLATED) return { ok: true, skipped: true };
+async function pingChief(opts) {
+  const force = !!(opts && opts.force);
+  // ISOLATED skips ambient reconnect; explicit user "ping" may force-send to bound/default inbox.
+  if (ISOLATED && !force) return { ok: true, skipped: true };
   if (!signal()) return { ok: false, reason: "offline" };
   const inbox = interactInbox();
   const pack = reconnectPack();
@@ -2446,6 +2448,15 @@ async function answer(userText) {
   if (forgot) return forgot;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline.";
+    const res = await pingChief({ force: true });
+    const where = interactBoundLabel();
+    if (res && res.skipped && !res.force) return "Ping skipped.";
+    if (res && res.ok) return "Ping sent to " + where + " (summary only — no gut). Check ntfy.";
+    if (res && res.reason === "offline") return "No signal — cannot ping.";
+    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
+  }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
