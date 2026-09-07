@@ -159,3 +159,14 @@ Hard rule: no silent full gut; no Essence upload; prefer explicit `mind.ask` / `
 - Applying later-phase ops  
 - Polling non-ntfy webhooks  
 - Uploading Essence or memory lists to the channel  
+
+
+## Offline mind card size
+
+Mind card **MIND SIZE** / VERSION recompute **fully offline** (amber · local) — same `mindBytes()` / `formatBytes()` / `mindVersion()` used by `mind.ask` packs.
+
+- iOS: `nativeAsk("status")` → `documentsBytes` / `vaultBytes` (all Documents files incl. gut + ya-mind-*.txt + heart.gguf) + localStorage gut
+- Web/fallback: localStorage + `state.fed` parts + `state.heart`
+- Triggers: save, vault keep/pick, Essence mint path via save, foreground/pageshow, ~3s while app open, offline/online events
+- No network required; no silent gut upload
+- VERSION still `floor(bytes / 1GB) / 10` → 0.0 below 1 GB

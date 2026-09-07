@@ -328,6 +328,7 @@ function mergeFunctions(base, saved) {
 
 function save() {
   localStorage.setItem(mindKey(STORE_KEY), JSON.stringify(state));
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function loadVault() {
@@ -340,6 +341,7 @@ function loadVault() {
 
 function saveVault() {
   localStorage.setItem(mindKey(VAULT_KEY), JSON.stringify(vault));
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function loadGithub() {
@@ -1774,31 +1776,14 @@ function essenceSealMeta() {
 
 function mindSizeBreakdown(chatTail, learned) {
   const utf8ish = function (s) { return (String(s || "").length) * 2; };
-  let localStorageBytes = 0;
-  try {
-    const suffix = nsSuffix(account);
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      let mine = false;
-      if (suffix) mine = MIND_BASES.some((b) => k === b + suffix);
-      else mine = MIND_BASES.some((b) => k === b);
-      if (!mine) continue;
-      const v = localStorage.getItem(k) || "";
-      localStorageBytes += (k.length + v.length) * 2;
-    }
-  } catch (e) {}
-  const heartGgufBytes = (state && state.heart && Number(state.heart.bytes)) || 0;
+  const localStorageBytes = localStorageMindBytes();
+  const heartGgufBytes = nativeHeartBytesCached() || ((state && state.heart && Number(state.heart.bytes)) || 0);
   let essenceBytes = 0;
   try {
     if (vault && vault[0]) essenceBytes = utf8ish(JSON.stringify({ id: vault[0].body && vault[0].body.id, mintedAt: vault[0].body && vault[0].body.mintedAt }));
   } catch (e) {}
-  let documentsBytes = 0;
-  try {
-    if (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number") {
-      documentsBytes = Number(window.YA_NATIVE.vaultBytes) || 0;
-    }
-  } catch (e) {}
+  let documentsBytes = nativeVaultBytesCached();
+  if (!documentsBytes) documentsBytes = fedDocsBytes();
   const chatTailBytes = utf8ish(JSON.stringify(chatTail || []));
   const learnedBytes = utf8ish(JSON.stringify(learned || []));
   return {
@@ -1857,6 +1842,7 @@ async function shareMindSession(opts) {
   const o = opts || {};
   if (!signal()) return { ok: false, reason: "offline" };
   if (ISOLATED && !loadInteractChannel()) return { ok: false, reason: "isolated-unbound" };
+  try { await refreshMindSize({ silent: true }); } catch (e) {}
   const pack = reconnectPack({ session: true });
   const inbox = interactInbox();
   const body = JSON.stringify(pack);
@@ -3265,6 +3251,7 @@ function noteFed(rec) {
   state.fed = Array.isArray(state.fed) ? state.fed : [];
   state.fed.unshift(rec);
   if (state.fed.length > 80) state.fed = state.fed.slice(0, 80);
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function showDumpSheet(name, text) {
@@ -3545,7 +3532,10 @@ function toggleFn(id) {
   renderPanel();
 }
 
-function mindBytes() {
+let mindSizeTimer = 0;
+let mindSizeRefreshing = false;
+
+function localStorageMindBytes() {
   let n = 0;
   const suffix = nsSuffix(account);
   try {
@@ -3563,10 +3553,119 @@ function mindBytes() {
       n += k.length + v.length;
     }
   } catch (e) {}
-  n = n * 2;
-  if (state && state.heart && state.heart.bytes) n += Number(state.heart.bytes) || 0;
+  return n * 2;
+}
+
+function fedDocsBytes() {
+  const fed = (state && state.fed) || [];
+  let n = 0;
+  const seen = {};
+  for (let i = 0; i < fed.length; i++) {
+    const f = fed[i];
+    if (!f) continue;
+    const name = String(f.name || "");
+    const bytes = Number(f.bytes) || 0;
+    if (!bytes) continue;
+    if (f.kind === "gguf" || /\.gguf$/i.test(name)) continue; // counted via heart
+    const key = name + ":" + bytes;
+    if (seen[key]) continue;
+    seen[key] = true;
+    n += bytes;
+  }
   return n;
 }
+
+function nativeVaultBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.vaultBytes === "number") {
+      return Number(window.YA_NATIVE.vaultBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function nativeHeartBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.heartBytes === "number") {
+      return Number(window.YA_NATIVE.heartBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask. */
+function mindBytes() {
+  const ls = localStorageMindBytes();
+  const nativeDocs = nativeVaultBytesCached();
+  const heartNative = nativeHeartBytesCached();
+  const heartState = (state && state.heart && Number(state.heart.bytes)) || 0;
+  // Prefer live Documents total from native spine when present (includes gut + root txt + heart).
+  if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
+    // documentsBytes from native already includes heart.gguf on disk — don't add heart again.
+    return ls + nativeDocs;
+  }
+  const heart = heartNative || heartState;
+  return ls + fedDocsBytes() + heart;
+}
+
+function applyNativeVaultStatus(msg) {
+  if (!msg || typeof msg !== "object") return;
+  try {
+    window.YA_NATIVE = window.YA_NATIVE || {};
+    if (typeof msg.vaultBytes === "number") window.YA_NATIVE.vaultBytes = msg.vaultBytes;
+    else if (typeof msg.documentsBytes === "number") window.YA_NATIVE.vaultBytes = msg.documentsBytes;
+    if (typeof msg.heartBytes === "number") window.YA_NATIVE.heartBytes = msg.heartBytes;
+    if (typeof msg.gutBytes === "number") window.YA_NATIVE.gutBytes = msg.gutBytes;
+  } catch (e) {}
+}
+
+async function refreshMindSize(opts) {
+  const forceRender = !(opts && opts.silent);
+  if (mindSizeRefreshing) {
+    if (forceRender) try { renderMind(); } catch (e) {}
+    return mindBytes();
+  }
+  mindSizeRefreshing = true;
+  try {
+    if (isNativeSpine()) {
+      const st = await nativeAsk("status", {});
+      if (st) applyNativeVaultStatus(st);
+    }
+  } catch (e) {}
+  mindSizeRefreshing = false;
+  if (forceRender) try { renderMind(); } catch (e) {}
+  return mindBytes();
+}
+
+let mindSizeSched = 0;
+function scheduleMindSizeRefresh() {
+  try { renderMind(); } catch (e) {}
+  if (mindSizeSched) clearTimeout(mindSizeSched);
+  mindSizeSched = setTimeout(function () {
+    mindSizeSched = 0;
+    try { refreshMindSize({ silent: false }); } catch (e) {}
+  }, 280);
+}
+
+function startMindSizeWatch() {
+  if (mindSizeTimer) return;
+  mindSizeTimer = setInterval(function () {
+    try {
+      const card = document.getElementById("mind-size") || document.getElementById("mind-card") || document.getElementById("panel-mind");
+      if (!card) return;
+      // Refresh while mind UI is in DOM (offline-safe).
+      refreshMindSize({ silent: false });
+    } catch (e) {}
+  }, 3000);
+}
+
+function stopMindSizeWatch() {
+  if (mindSizeTimer) {
+    clearInterval(mindSizeTimer);
+    mindSizeTimer = 0;
+  }
+}
+
 
 function formatBytes(n) {
   if (n < 1024) return n + " B";
@@ -4225,7 +4324,7 @@ window.yaNativeReply = function (msg) {
       if (f.kind === "gguf") applyEatReply("Heart landed in native Documents (not Safari). " + (f.name || "heart.gguf") + " · " + formatBytes(f.bytes || 0) + ". NativeHeart seats Metal when llama.xcframework is linked.");
       else applyEatReply("Kept " + (f.name || "file") + " in native Documents.");
     });
-    try { save(); renderMind(); } catch (e) {}
+    try { save(); scheduleMindSizeRefresh(); } catch (e) {}
   }
 };
 
@@ -4293,8 +4392,12 @@ if (statusEl) {
   statusEl.title = "Tap to take the mind online or offline";
   statusEl.addEventListener("click", toggleMind);
 }
-window.addEventListener("online", () => { onCommsBack(); refreshInteractFeed(); });
-window.addEventListener("offline", () => { renderNet(); stopInteractFeed(); });
+window.addEventListener("online", () => { onCommsBack(); refreshInteractFeed(); scheduleMindSizeRefresh(); });
+window.addEventListener("offline", () => { renderNet(); stopInteractFeed(); scheduleMindSizeRefresh(); });
+window.addEventListener("pageshow", () => { scheduleMindSizeRefresh(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") scheduleMindSizeRefresh();
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
@@ -4317,6 +4420,7 @@ ensureCreator().then(() => {
   renderMind();
   finishXReturn();
   if (signal()) setTimeout(() => { onCommsBack(); refreshInteractFeed(); }, 800);
+setTimeout(function () { scheduleMindSizeRefresh(); startMindSizeWatch(); }, 400);
 });
 render();
 renderMind();

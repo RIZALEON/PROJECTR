@@ -44,4 +44,23 @@ enum NativeVault {
             acc + ((try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         }
     }
+
+    /// All regular files under Documents (root + gut + heart) — offline mind size substrate.
+    static func documentsBytes() -> Int {
+        let fm = FileManager.default
+        prepare()
+        var total = 0
+        guard let enumerator = fm.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else { return heartBytes() + gutBytes() }
+        for case let url as URL in enumerator {
+            let vals = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+            if vals?.isRegularFile == true {
+                total += vals?.fileSize ?? 0
+            }
+        }
+        return total
+    }
 }
