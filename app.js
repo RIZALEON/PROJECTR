@@ -1305,7 +1305,7 @@ function tryInteractCommand(userText) {
 
   if (/^(interact|reconnect\s+inbox|chief\s+inbox)\s*\??$/i.test(t) || /^what( is|'s)?\s+my\s+interact/i.test(t)) {
     const bound = loadInteractChannel();
-    if (!bound) return "Interact channel: default code Chief inbox. Paste an https ntfy or webhook URL (or say link interact <url>) to bind. Product Track P example: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
+    if (!bound) return "Interact channel: default Chief inbox (https://ntfy.sh/ya-rizaleon-ae59add8-reconnect). Paste an https ntfy/webhook or say link interact <url> to override. Optional CoS mint: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
     return "Interact channel bound: " + interactBoundLabel() + ". Say unlink interact to clear. Pings never send the full gut.";
   }
 
