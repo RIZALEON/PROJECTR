@@ -189,7 +189,8 @@ function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
-  try { seedCore(); } catch (e) {}
+  try { seedCore();
+try { const n = scrubCoreEchoesFromMemories(); if (n) remember("Track B: scrubbed " + n + " Core: echo(s) from Learned."); } catch (e) {} } catch (e) {}
   vault = loadVault();
   github = loadGithub();
   creator = null;
@@ -2935,6 +2936,28 @@ async function llamaReply(userText) {
   }
 }
 
+
+function isJoseRizalPersonAsk(text) {
+  const q = String(text || "").toLowerCase();
+  // Historical person José Rizal — never collapse into Engine RIZAL / Rizalbot.
+  if (/\bjose\s+rizal\b/.test(q) || /\bjos[eé]\s+rizal\b/.test(q)) return true;
+  if (/\brizal\b/.test(q) && /\b(who|was|person|hero|writer|novelist|filipino|philippines|philippin)\b/.test(q) && !/\bengine\b/.test(q) && !/\brizalbot\b/.test(q)) return true;
+  return false;
+}
+
+function explainJoseRizalPerson() {
+  return "José Rizal was a Filipino writer and reformist (1861–1896), not this app's heart. My companion name is Rizalbot; my thinking heart is Engine RIZAL (on-device llama.cpp / rules+gut). Different things.";
+}
+
+function scrubCoreEchoesFromMemories() {
+  const before = state.memories || [];
+  const kept = before.filter((m) => !(m && /^Core:/i.test(String(m.text || ""))));
+  if (kept.length === before.length) return 0;
+  state.memories = kept;
+  try { save(); } catch (e) {}
+  return before.length - kept.length;
+}
+
 function personNameFromAsk(t) {
   const s = String(t || "").trim();
   const m = s.match(/^\s*(?:who(?:['’]?s)?|who\s+(?:is|was|are)|tell me about|what do you know about|do you know)\s+(.+?)\s*\??\s*$/i);
@@ -2949,17 +2972,32 @@ function isPersonAsk(t) {
 }
 
 function knowsPerson(t) {
+  if (isJoseRizalPersonAsk(t)) return false; // never treat Engine RIZAL / Rizalbot gut hits as knowing José Rizal
   const name = personNameFromAsk(t);
   const raw = (name || String(t || "")).toLowerCase().replace(/[^a-z0-9\s]/g, " ");
   const tokens = raw.split(/\s+/).filter((w) => w.length > 2 && !/^(who|was|are|the|about|know|tell|you|what)$/.test(w));
   if (!tokens.length) return false;
-  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n"))).toLowerCase();
+  // Strip companion/engine branding so "Rizal" token alone cannot false-match.
+  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n")))
+    .toLowerCase()
+    .replace(/engine\s*rizal/g, " ")
+    .replace(/\brizalbot\b/g, " ")
+    .replace(/rizaleon/g, " ");
   const hits = tokens.filter((w) => hay.includes(w));
   return hits.length >= Math.min(2, tokens.length);
 }
 
 async function lookupUnknownPerson(userText) {
   if (!isPersonAsk(userText)) return null;
+  if (isJoseRizalPersonAsk(userText)) {
+    // Track B hygiene: person José Rizal ≠ Engine RIZAL / Rizalbot
+    if (!signal() || !fnEnabled("web.search")) return explainJoseRizalPerson();
+    try {
+      const enriched = await lookUpAndKeep("José Rizal Filipino writer");
+      if (enriched) return explainJoseRizalPerson() + "\n\n" + enriched;
+    } catch (e) {}
+    return explainJoseRizalPerson();
+  }
   if (knowsPerson(userText)) return null;
   if (nuclearBlocked(userText)) return null;
   if (state.immune && state.immune.tripped) {
@@ -2994,7 +3032,7 @@ async function answer(userText) {
   if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
     return pingStatusLine();
   }
-if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
     const healedPing = healInteractBindIfNeeded();
     const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
