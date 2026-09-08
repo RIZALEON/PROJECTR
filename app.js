@@ -525,16 +525,30 @@ function scrubLinkJunk() {
   if (state.memories.length !== before) save();
 }
 
+const MIND_HARD_CAP_BYTES = 80 * 1024 * 1024; // 80 MB hard cap (status reports size; trim Learned when over)
+
+function mindOverHardCap() {
+  try {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return b > MIND_HARD_CAP_BYTES;
+  } catch (e) { return false; }
+}
+
 function remember(text) {
   if (!fnEnabled("memory.remember")) return;
   const clean = text.trim();
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
   if (isLinkJunkMemory(clean)) return;
+  if (mindOverHardCap()) {
+    // Battery/size: drop oldest Learned before adding; never grow past hard cap unchecked.
+    state.memories = (state.memories || []).slice(0, 80);
+  }
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
-  state.memories = state.memories.slice(0, 200);
+  state.memories = state.memories.slice(0, mindOverHardCap() ? 80 : 200);
   save();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
 }
 
 function extractMemories(userText) {
@@ -1598,7 +1612,7 @@ function ensureInteractPoll(meta) {
         try { handleNtfyRaw(lines[i]); } catch (e) {}
       }
     } catch (e) {}
-  }, 12000);
+  }, 30000);
 }
 
 function handleNtfyRaw(raw) {
@@ -1920,6 +1934,23 @@ function mindSizeBreakdown(chatTail, learned) {
 function reconnectPack(opts) {
   const o = opts || {};
   const asSession = !!(o.session || o.kind === "ya-mind-session");
+  // Coordinator off-device: ambient reconnect = small handoff blob only (no gut / chat / evolved list).
+  if (!asSession && o.slim !== false) {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return {
+      kind: "ya-reconnect",
+      interact: interactBoundLabel(),
+      tz: "Utah",
+      at: Date.now(),
+      utah: utahNow(),
+      companion: botName(),
+      mindRev: Number(state.mindRev) || 0,
+      mindBytes: b,
+      mindSize: state.cachedMindLabel || formatBytes(b),
+      evolvedCount: (state.evolved || []).length,
+      account: nameplate()
+    };
+  }
   const learned = (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at }));
   const chatTail = offlineChatTail(20);
   const breakdown = mindSizeBreakdown(chatTail, learned);
@@ -1996,14 +2027,23 @@ function pingSignature(pack) {
 
 async function pingChief(opts) {
   const force = !!(opts && opts.force);
-  healInteractBindIfNeeded();
   const bound = loadInteractChannel();
   // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
   // (reconnect metadata only — reconnectPack has no full gut / no Essence blob). Unbound stays skipped under ISOLATED.
   if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
+  // Battery: ambient ping on-demand or ≤20m heartbeat (forced user ping always fires).
+  if (!force) {
+    try {
+      const lastAt = Number(localStorage.getItem(mindKey("PING_AT")) || 0);
+      if (lastAt && (Date.now() - lastAt) < (20 * 60 * 1000)) {
+        return { ok: true, skipped: true, reason: "throttle-20m" };
+      }
+    } catch (e) {}
+  }
+  healInteractBindIfNeeded();
   const inbox = interactInbox();
-  const pack = reconnectPack({ session: !!(opts && opts.session) });
+  const pack = reconnectPack({ session: !!(opts && opts.session), slim: !(opts && opts.session) });
   if (opts && opts.kind) pack.kind = opts.kind;
   const sig = pingSignature(pack);
   // Dedup ambient only — forced or bound interact ping always POSTs.
@@ -2018,12 +2058,14 @@ async function pingChief(opts) {
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
+      try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
       return { ok: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
     }
   } catch (e) {}
   try {
     await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
+    try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
     return { ok: true, opaque: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
   } catch (e2) {
     return { ok: false, reason: "net" };
@@ -3079,11 +3121,12 @@ async function answer(userText) {
   }
   const forgot = tryForgetCommand(userText);
   if (forgot) return forgot;
-  const interact = tryInteractCommand(userText);
-  if (interact) return interact;
+  // Battery: status before any interact/heal/feed/evolve work.
   if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
     return pingStatusLine();
   }
+  const interact = tryInteractCommand(userText);
+  if (interact) return interact;
   if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
     const healedPing = healInteractBindIfNeeded();
