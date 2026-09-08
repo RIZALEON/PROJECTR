@@ -187,9 +187,14 @@ function persistActiveMind() {
 
 function hydrateActiveMind() {
   state = load();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
+  try {
+    const n = scrubCoreEchoesFromMemories();
+    if (n) remember("Track B: scrubbed " + n + " Core: echo(s) from Learned.");
+  } catch (e) {}
   vault = loadVault();
   github = loadGithub();
   creator = null;
@@ -520,16 +525,30 @@ function scrubLinkJunk() {
   if (state.memories.length !== before) save();
 }
 
+const MIND_HARD_CAP_BYTES = 80 * 1024 * 1024; // 80 MB hard cap (status reports size; trim Learned when over)
+
+function mindOverHardCap() {
+  try {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return b > MIND_HARD_CAP_BYTES;
+  } catch (e) { return false; }
+}
+
 function remember(text) {
   if (!fnEnabled("memory.remember")) return;
   const clean = text.trim();
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
   if (isLinkJunkMemory(clean)) return;
+  if (mindOverHardCap()) {
+    // Battery/size: drop oldest Learned before adding; never grow past hard cap unchecked.
+    state.memories = (state.memories || []).slice(0, 80);
+  }
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
-  state.memories = state.memories.slice(0, 200);
+  state.memories = state.memories.slice(0, mindOverHardCap() ? 80 : 200);
   save();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
 }
 
 function extractMemories(userText) {
@@ -667,6 +686,7 @@ function registerEvolved(name, trigger, action) {
   };
   state.evolved = (state.evolved || []).filter((s) => s.id !== id);
   state.evolved.unshift(skill);
+  state.lastGain = true;
   if (!state.functions.some((f) => f.id === id)) {
     state.functions.push({ id: id, name: "Evolved: " + skill.name, enabled: true, version: "0.0" });
   }
@@ -940,14 +960,40 @@ function seedCore() {
 }
 
 
+function mindBytesCachedOnly() {
+  // No nativeAsk / no UI — read last-known vault bytes + localStorage only.
+  try {
+    const ls = localStorageMindBytes();
+    const nativeDocs = nativeVaultBytesCached();
+    if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
+      return ls + nativeDocs;
+    }
+    const heart = nativeHeartBytesCached() || ((state && state.heart && Number(state.heart.bytes)) || 0);
+    let fed = 0;
+    try { fed = fedDocsBytes(); } catch (e) {}
+    return ls + fed + heart;
+  } catch (e) {
+    return Number(state && state.cachedMindBytes) || 0;
+  }
+}
+
+function cacheMindSizeSnapshot() {
+  try {
+    const b = mindBytesCachedOnly();
+    state.cachedMindBytes = b;
+    state.cachedMindLabel = formatBytes(b);
+  } catch (e) {}
+}
+
 function pingStatusLine() {
-  try { renderMind(); } catch (e) {}
-  const mind = state.mindOnline
-    ? (signal() ? "online · green" : "online · no signal")
-    : "amber · offline · local";
-  const sz = formatBytes(mindBytes());
+  // Function 0 battery budget: one-liner from cached flags only.
+  // No renderMind, no model load, no evolve, no feed, no nativeAsk.
+  const mode = !signal() ? "offline" : (state.mindOnline ? "online" : "amber");
+  const sz = state.cachedMindLabel || formatBytes(Number(state.cachedMindBytes) || mindBytesCachedOnly());
   const nEv = (state.evolved || []).length;
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv;
+  const lastGain = state.lastGain ? 1 : 0;
+  if (state.lastGain) state.lastGain = false; // no save() on status path — next normal save persists
+  return mode + " · mind:" + sz + " · evolved:" + nEv + " · last_gain:" + lastGain;
 }
 
 function ensureDemoPingStatusSkill() {
@@ -1566,7 +1612,7 @@ function ensureInteractPoll(meta) {
         try { handleNtfyRaw(lines[i]); } catch (e) {}
       }
     } catch (e) {}
-  }, 12000);
+  }, 30000);
 }
 
 function handleNtfyRaw(raw) {
@@ -1760,8 +1806,13 @@ function applyYaFeed(feed, meta) {
 }
 
 function refreshInteractFeed() {
+  // Battery: never spin feed/URLSession work on airplane / no signal.
+  if (!signal()) {
+    try { stopInteractFeed(); } catch (e) {}
+    return;
+  }
   healInteractBindIfNeeded();
-  if (state.mindOnline && signal() && loadInteractChannel()) startInteractFeed();
+  if (state.mindOnline && loadInteractChannel()) startInteractFeed();
   else stopInteractFeed();
 }
 
@@ -1883,6 +1934,23 @@ function mindSizeBreakdown(chatTail, learned) {
 function reconnectPack(opts) {
   const o = opts || {};
   const asSession = !!(o.session || o.kind === "ya-mind-session");
+  // Coordinator off-device: ambient reconnect = small handoff blob only (no gut / chat / evolved list).
+  if (!asSession && o.slim !== false) {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return {
+      kind: "ya-reconnect",
+      interact: interactBoundLabel(),
+      tz: "Utah",
+      at: Date.now(),
+      utah: utahNow(),
+      companion: botName(),
+      mindRev: Number(state.mindRev) || 0,
+      mindBytes: b,
+      mindSize: state.cachedMindLabel || formatBytes(b),
+      evolvedCount: (state.evolved || []).length,
+      account: nameplate()
+    };
+  }
   const learned = (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at }));
   const chatTail = offlineChatTail(20);
   const breakdown = mindSizeBreakdown(chatTail, learned);
@@ -1959,14 +2027,23 @@ function pingSignature(pack) {
 
 async function pingChief(opts) {
   const force = !!(opts && opts.force);
-  healInteractBindIfNeeded();
   const bound = loadInteractChannel();
   // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
   // (reconnect metadata only — reconnectPack has no full gut / no Essence blob). Unbound stays skipped under ISOLATED.
   if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
+  // Battery: ambient ping on-demand or ≤20m heartbeat (forced user ping always fires).
+  if (!force) {
+    try {
+      const lastAt = Number(localStorage.getItem(mindKey("PING_AT")) || 0);
+      if (lastAt && (Date.now() - lastAt) < (20 * 60 * 1000)) {
+        return { ok: true, skipped: true, reason: "throttle-20m" };
+      }
+    } catch (e) {}
+  }
+  healInteractBindIfNeeded();
   const inbox = interactInbox();
-  const pack = reconnectPack({ session: !!(opts && opts.session) });
+  const pack = reconnectPack({ session: !!(opts && opts.session), slim: !(opts && opts.session) });
   if (opts && opts.kind) pack.kind = opts.kind;
   const sig = pingSignature(pack);
   // Dedup ambient only — forced or bound interact ping always POSTs.
@@ -1981,12 +2058,14 @@ async function pingChief(opts) {
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
+      try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
       return { ok: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
     }
   } catch (e) {}
   try {
     await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
+    try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
     return { ok: true, opaque: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
   } catch (e2) {
     return { ok: false, reason: "net" };
@@ -2662,6 +2741,22 @@ function hideEat() {
 
 let llamaShowEat = false;
 let llamaBusy = false;
+let llamaIdleTimer = 0;
+function bumpLlamaIdleUnload() {
+  try { if (llamaIdleTimer) clearTimeout(llamaIdleTimer); } catch (e) {}
+  llamaIdleTimer = setTimeout(function () {
+    llamaIdleTimer = 0;
+    try {
+      if (!llamaInst || llamaBusy) return;
+      if (typeof llamaInst.exit === "function") llamaInst.exit();
+      else if (typeof llamaInst.destroy === "function") llamaInst.destroy();
+    } catch (e) {}
+    llamaInst = null;
+    llamaReady = false;
+    llamaLoadPromise = null;
+  }, 45000);
+}
+
 let llamaHangUntil = 0;
 
 function showEat(pct, done) {
@@ -2935,6 +3030,28 @@ async function llamaReply(userText) {
   }
 }
 
+
+function isJoseRizalPersonAsk(text) {
+  const q = String(text || "").toLowerCase();
+  // Historical person José Rizal — never collapse into Engine RIZAL / Rizalbot.
+  if (/\bjose\s+rizal\b/.test(q) || /\bjos[eé]\s+rizal\b/.test(q)) return true;
+  if (/\brizal\b/.test(q) && /\b(who|was|person|hero|writer|novelist|filipino|philippines|philippin)\b/.test(q) && !/\bengine\b/.test(q) && !/\brizalbot\b/.test(q)) return true;
+  return false;
+}
+
+function explainJoseRizalPerson() {
+  return "José Rizal was a Filipino writer and reformist (1861–1896), not this app's heart. My companion name is Rizalbot; my thinking heart is Engine RIZAL (on-device llama.cpp / rules+gut). Different things.";
+}
+
+function scrubCoreEchoesFromMemories() {
+  const before = state.memories || [];
+  const kept = before.filter((m) => !(m && /^Core:/i.test(String(m.text || ""))));
+  if (kept.length === before.length) return 0;
+  state.memories = kept;
+  try { save(); } catch (e) {}
+  return before.length - kept.length;
+}
+
 function personNameFromAsk(t) {
   const s = String(t || "").trim();
   const m = s.match(/^\s*(?:who(?:['’]?s)?|who\s+(?:is|was|are)|tell me about|what do you know about|do you know)\s+(.+?)\s*\??\s*$/i);
@@ -2949,17 +3066,32 @@ function isPersonAsk(t) {
 }
 
 function knowsPerson(t) {
+  if (isJoseRizalPersonAsk(t)) return false; // never treat Engine RIZAL / Rizalbot gut hits as knowing José Rizal
   const name = personNameFromAsk(t);
   const raw = (name || String(t || "")).toLowerCase().replace(/[^a-z0-9\s]/g, " ");
   const tokens = raw.split(/\s+/).filter((w) => w.length > 2 && !/^(who|was|are|the|about|know|tell|you|what)$/.test(w));
   if (!tokens.length) return false;
-  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n"))).toLowerCase();
+  // Strip companion/engine branding so "Rizal" token alone cannot false-match.
+  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n")))
+    .toLowerCase()
+    .replace(/engine\s*rizal/g, " ")
+    .replace(/\brizalbot\b/g, " ")
+    .replace(/rizaleon/g, " ");
   const hits = tokens.filter((w) => hay.includes(w));
   return hits.length >= Math.min(2, tokens.length);
 }
 
 async function lookupUnknownPerson(userText) {
   if (!isPersonAsk(userText)) return null;
+  if (isJoseRizalPersonAsk(userText)) {
+    // Track B hygiene: person José Rizal ≠ Engine RIZAL / Rizalbot
+    if (!signal() || !fnEnabled("web.search")) return explainJoseRizalPerson();
+    try {
+      const enriched = await lookUpAndKeep("José Rizal Filipino writer");
+      if (enriched) return explainJoseRizalPerson() + "\n\n" + enriched;
+    } catch (e) {}
+    return explainJoseRizalPerson();
+  }
   if (knowsPerson(userText)) return null;
   if (nuclearBlocked(userText)) return null;
   if (state.immune && state.immune.tripped) {
@@ -2989,12 +3121,13 @@ async function answer(userText) {
   }
   const forgot = tryForgetCommand(userText);
   if (forgot) return forgot;
-  const interact = tryInteractCommand(userText);
-  if (interact) return interact;
+  // Battery: status before any interact/heal/feed/evolve work.
   if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
     return pingStatusLine();
   }
-if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+  const interact = tryInteractCommand(userText);
+  if (interact) return interact;
+  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
     const healedPing = healInteractBindIfNeeded();
     const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
@@ -3727,6 +3860,7 @@ async function refreshMindSize(opts) {
     }
   } catch (e) {}
   mindSizeRefreshing = false;
+  try { cacheMindSizeSnapshot(); } catch (e) {}
   if (forceRender) try { renderMind(); } catch (e) {}
   return mindBytes();
 }
@@ -3747,10 +3881,10 @@ function startMindSizeWatch() {
     try {
       const card = document.getElementById("mind-size") || document.getElementById("mind-card") || document.getElementById("panel-mind");
       if (!card) return;
-      // Refresh while mind UI is in DOM (offline-safe).
+      // Battery: ≤30s refresh while mind UI visible — never on ping status path.
       refreshMindSize({ silent: false });
     } catch (e) {}
-  }, 3000);
+  }, 30000);
 }
 
 function stopMindSizeWatch() {
