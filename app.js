@@ -6,6 +6,7 @@ const GH_KEY = "ya-aim-github";
 const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
+const DEFAULT_INTERACT_NTFY = "https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
 const PING_KEY = "ya-aim-last-ping";
 const INTERACT_KEY = "ya-aim-interact";
 const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
@@ -1268,20 +1269,38 @@ function interactBoundLabel() {
   }
 }
 
-function isInteractUrl(text) {
+function isDriveOrDumpUrl(text) {
+  const t = String(text || "").trim().toLowerCase();
+  return /drive\.google\.com|docs\.google\.com|dropbox\.com|icloud\.com|onedrive\.live\.com|sharepoint\.com/.test(t);
+}
+
+function isNtfyInteractUrl(text) {
   const t = String(text || "").trim();
-  if (!/^https:\/\//i.test(t)) return false;
-  if (/\s/.test(t)) return false;
+  if (!/^https:\/\//i.test(t) || /\s/.test(t)) return false;
   try {
     const u = new URL(t);
     if (u.protocol !== "https:") return false;
-    if (u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh")) return true;
-    // generic https webhook (path required)
-    if (u.pathname && u.pathname !== "/") return true;
+    return u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh");
   } catch (e) {
     return false;
   }
-  return false;
+}
+
+function isInteractUrl(text) {
+  // Interact / ping / feed bind: ntfy only. Drive = dump-drop, never interact.
+  if (isDriveOrDumpUrl(text)) return false;
+  return isNtfyInteractUrl(text);
+}
+
+function healInteractBindIfNeeded() {
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return { healed: false, bound: null };
+  if (isNtfyInteractUrl(bound.url)) return { healed: false, bound: bound };
+  const from = bound.url;
+  saveInteractChannel({ url: DEFAULT_INTERACT_NTFY, boundAt: Date.now(), kind: "ntfy", healedFrom: from });
+  try { refreshInteractFeed(); } catch (e) {}
+  remember("Auto-healed interact bind to default ntfy (was non-ntfy/Drive).");
+  return { healed: true, bound: loadInteractChannel(), from: from };
 }
 
 function extractInteractUrl(text) {
@@ -1332,7 +1351,7 @@ function tryInteractCommand(userText) {
 
   if (/^(interact|reconnect\s+inbox|chief\s+inbox)\s*\??$/i.test(t) || /^what( is|'s)?\s+my\s+interact/i.test(t)) {
     const bound = loadInteractChannel();
-    if (!bound) return "Interact channel: default Chief inbox (https://ntfy.sh/ya-rizaleon-ae59add8-reconnect). Paste an https ntfy/webhook or say link interact <url> to override. Optional CoS mint: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
+    if (!bound) return "Interact channel: default Chief inbox (https://ntfy.sh/ya-rizaleon-ae59add8-reconnect). Paste an https ntfy URL or say link interact <url> to override. Default mint: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2. Drive is dump-only.";
     return "Interact channel bound: " + interactBoundLabel() + ". Say unlink interact to clear. Pings never send the full gut.";
   }
 
@@ -1342,7 +1361,11 @@ function tryInteractCommand(userText) {
       clearPendingInteract();
       return "No. That URL is blocked.";
     }
-    saveInteractChannel({ url: pending, boundAt: Date.now(), kind: /ntfy\.sh/i.test(pending) ? "ntfy" : "webhook" });
+    if (!isNtfyInteractUrl(pending)) {
+      clearPendingInteract();
+      return "Interact bind is ntfy only. Drive/folders are dump-drop — not an interact channel. Paste https://ntfy.sh/… (default " + DEFAULT_INTERACT_NTFY + ").";
+    }
+    saveInteractChannel({ url: pending, boundAt: Date.now(), kind: "ntfy" });
     clearPendingInteract();
     remember("Bound interact channel (Track P).");
     try { refreshInteractFeed(); } catch (e) {}
@@ -1383,9 +1406,10 @@ function tryInteractCommand(userText) {
 
   if (/^(set\s+reconnect|link\s+interact|bind\s+interact)\b/i.test(t) || isInteractUrl(t)) {
     const url = extractInteractUrl(t);
-    if (!url) return "Paste a full https:// ntfy.sh/… or webhook URL to bind.";
+    if (!url) return "Paste a full https://ntfy.sh/… URL to bind interact (Drive is dump-only).";
     if (nuclearBlocked(url)) return "No. That URL is blocked.";
-    if (!isInteractUrl(url)) return "That does not look like an https ntfy or webhook URL.";
+    if (isDriveOrDumpUrl(url)) return "Drive/folders are dump-drop only — not an interact bind. Use " + DEFAULT_INTERACT_NTFY + " (or another ntfy topic).";
+    if (!isInteractUrl(url)) return "Interact bind needs an https ntfy.sh URL.";
     setPendingInteract(url);
     return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
   }
@@ -1467,6 +1491,7 @@ function stopInteractFeed() {
 }
 
 function startInteractFeed() {
+  healInteractBindIfNeeded();
   stopInteractFeed();
   if (!state.mindOnline || !signal()) return { ok: false, reason: "offline" };
   const bound = loadInteractChannel();
@@ -1616,6 +1641,7 @@ function applyYaFeed(feed, meta) {
         const res = forgetFact(key);
         results.push({ op: name, ok: !!res.ok, removed: res.removed || 0 });
       } else if (name === "ping.pong" || name === "ping.ack") {
+        healInteractBindIfNeeded();
         const bubble = formatPingPongBubble(op, meta);
         if (bubble) {
           try { push("ya", bubble); } catch (e) {}
@@ -1677,6 +1703,7 @@ function applyYaFeed(feed, meta) {
 }
 
 function refreshInteractFeed() {
+  healInteractBindIfNeeded();
   if (state.mindOnline && signal() && loadInteractChannel()) startInteractFeed();
   else stopInteractFeed();
 }
@@ -1875,6 +1902,7 @@ function pingSignature(pack) {
 
 async function pingChief(opts) {
   const force = !!(opts && opts.force);
+  healInteractBindIfNeeded();
   const bound = loadInteractChannel();
   // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
   // (reconnect metadata only — reconnectPack has no full gut / no Essence blob). Unbound stays skipped under ISOLATED.
@@ -2907,19 +2935,22 @@ async function answer(userText) {
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
   if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
-    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline.";
+    // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
+    const healedPing = healInteractBindIfNeeded();
+    const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
+    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline." + healNote;
     if (ISOLATED && !loadInteractChannel()) {
-      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again.";
+      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again." + healNote;
     }
     const res = await pingChief({ force: true });
     const where = interactBoundLabel();
-    if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED.";
+    if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED." + healNote;
     if (res && res.ok) {
       const left = utahNow();
-      return "Ping/pong\nPing · " + botName() + " · phone (Utah) · " + left + "\nWaiting for Chief pong on " + where + "…";
+      return "Ping/pong\nPing · " + botName() + " · phone (Utah) · " + left + "\nWaiting for Chief pong on " + where + "…" + healNote;
     }
-    if (res && res.reason === "offline") return "No signal — cannot ping.";
-    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
+    if (res && res.reason === "offline") return "No signal — cannot ping." + healNote;
+    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + "." + healNote;
   }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
