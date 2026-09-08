@@ -187,6 +187,7 @@ function persistActiveMind() {
 
 function hydrateActiveMind() {
   state = load();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
@@ -671,6 +672,7 @@ function registerEvolved(name, trigger, action) {
   };
   state.evolved = (state.evolved || []).filter((s) => s.id !== id);
   state.evolved.unshift(skill);
+  state.lastGain = true;
   if (!state.functions.some((f) => f.id === id)) {
     state.functions.push({ id: id, name: "Evolved: " + skill.name, enabled: true, version: "0.0" });
   }
@@ -944,14 +946,40 @@ function seedCore() {
 }
 
 
+function mindBytesCachedOnly() {
+  // No nativeAsk / no UI — read last-known vault bytes + localStorage only.
+  try {
+    const ls = localStorageMindBytes();
+    const nativeDocs = nativeVaultBytesCached();
+    if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
+      return ls + nativeDocs;
+    }
+    const heart = nativeHeartBytesCached() || ((state && state.heart && Number(state.heart.bytes)) || 0);
+    let fed = 0;
+    try { fed = fedDocsBytes(); } catch (e) {}
+    return ls + fed + heart;
+  } catch (e) {
+    return Number(state && state.cachedMindBytes) || 0;
+  }
+}
+
+function cacheMindSizeSnapshot() {
+  try {
+    const b = mindBytesCachedOnly();
+    state.cachedMindBytes = b;
+    state.cachedMindLabel = formatBytes(b);
+  } catch (e) {}
+}
+
 function pingStatusLine() {
-  try { renderMind(); } catch (e) {}
-  const mind = state.mindOnline
-    ? (signal() ? "online · green" : "online · no signal")
-    : "amber · offline · local";
-  const sz = formatBytes(mindBytes());
+  // Function 0 battery budget: one-liner from cached flags only.
+  // No renderMind, no model load, no evolve, no feed, no nativeAsk.
+  const mode = !signal() ? "offline" : (state.mindOnline ? "online" : "amber");
+  const sz = state.cachedMindLabel || formatBytes(Number(state.cachedMindBytes) || mindBytesCachedOnly());
   const nEv = (state.evolved || []).length;
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv;
+  const lastGain = state.lastGain ? 1 : 0;
+  if (state.lastGain) state.lastGain = false; // no save() on status path — next normal save persists
+  return mode + " · mind:" + sz + " · evolved:" + nEv + " · last_gain:" + lastGain;
 }
 
 function ensureDemoPingStatusSkill() {
@@ -1764,8 +1792,13 @@ function applyYaFeed(feed, meta) {
 }
 
 function refreshInteractFeed() {
+  // Battery: never spin feed/URLSession work on airplane / no signal.
+  if (!signal()) {
+    try { stopInteractFeed(); } catch (e) {}
+    return;
+  }
   healInteractBindIfNeeded();
-  if (state.mindOnline && signal() && loadInteractChannel()) startInteractFeed();
+  if (state.mindOnline && loadInteractChannel()) startInteractFeed();
   else stopInteractFeed();
 }
 
@@ -2666,6 +2699,22 @@ function hideEat() {
 
 let llamaShowEat = false;
 let llamaBusy = false;
+let llamaIdleTimer = 0;
+function bumpLlamaIdleUnload() {
+  try { if (llamaIdleTimer) clearTimeout(llamaIdleTimer); } catch (e) {}
+  llamaIdleTimer = setTimeout(function () {
+    llamaIdleTimer = 0;
+    try {
+      if (!llamaInst || llamaBusy) return;
+      if (typeof llamaInst.exit === "function") llamaInst.exit();
+      else if (typeof llamaInst.destroy === "function") llamaInst.destroy();
+    } catch (e) {}
+    llamaInst = null;
+    llamaReady = false;
+    llamaLoadPromise = null;
+  }, 45000);
+}
+
 let llamaHangUntil = 0;
 
 function showEat(pct, done) {
@@ -3768,6 +3817,7 @@ async function refreshMindSize(opts) {
     }
   } catch (e) {}
   mindSizeRefreshing = false;
+  try { cacheMindSizeSnapshot(); } catch (e) {}
   if (forceRender) try { renderMind(); } catch (e) {}
   return mindBytes();
 }
@@ -3788,10 +3838,10 @@ function startMindSizeWatch() {
     try {
       const card = document.getElementById("mind-size") || document.getElementById("mind-card") || document.getElementById("panel-mind");
       if (!card) return;
-      // Refresh while mind UI is in DOM (offline-safe).
+      // Battery: ≤30s refresh while mind UI visible — never on ping status path.
       refreshMindSize({ silent: false });
     } catch (e) {}
-  }, 3000);
+  }, 30000);
 }
 
 function stopMindSizeWatch() {
