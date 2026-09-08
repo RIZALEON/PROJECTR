@@ -2935,21 +2935,22 @@ async function answer(userText) {
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
   if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
-    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline.";
+    // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
     const healedPing = healInteractBindIfNeeded();
+    const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
+    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline." + healNote;
     if (ISOLATED && !loadInteractChannel()) {
-      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again.";
+      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again." + healNote;
     }
     const res = await pingChief({ force: true });
     const where = interactBoundLabel();
-    const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
     if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED." + healNote;
     if (res && res.ok) {
       const left = utahNow();
       return "Ping/pong\nPing · " + botName() + " · phone (Utah) · " + left + "\nWaiting for Chief pong on " + where + "…" + healNote;
     }
-    if (res && res.reason === "offline") return "No signal — cannot ping.";
-    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
+    if (res && res.reason === "offline") return "No signal — cannot ping." + healNote;
+    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + "." + healNote;
   }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
