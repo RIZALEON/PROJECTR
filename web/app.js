@@ -189,8 +189,11 @@ function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
-  try { seedCore();
-try { const n = scrubCoreEchoesFromMemories(); if (n) remember("Track B: scrubbed " + n + " Core: echo(s) from Learned."); } catch (e) {} } catch (e) {}
+  try { seedCore(); } catch (e) {}
+  try {
+    const n = scrubCoreEchoesFromMemories();
+    if (n) remember("Track B: scrubbed " + n + " Core: echo(s) from Learned.");
+  } catch (e) {}
   vault = loadVault();
   github = loadGithub();
   creator = null;
