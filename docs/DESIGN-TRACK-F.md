@@ -147,10 +147,35 @@ Hard rule: no silent full gut; no Essence upload; prefer explicit `mind.ask` / `
 
 **Product lock:** inbound `mind.ask` prompts yes/no before posting the session slice, unless Decider sets `auto share mind on` (`state.autoShareMind`). Chat `share mind` remains immediate opt-in.
 
+
+## Phase 2 — `function.evolve` (gain first)
+
+**Policy:** ship gain/evolve only. `function.drop` is Decider-explicit later (`decider-later` if posted). Function 0 / NonNuclear / locked cores immune.
+
+### Amber / offline chat
+- `add function NAME: what it does`
+- `when I say X, you Y`
+- Applies immediately into `evolved[]` + functions registry; survives reopen via localStorage gut.
+
+### Green ya-feed
+```bash
+curl -d '{"kind":"ya-feed","v":1,"ack":false,"ops":[{"op":"function.evolve","name":"ping status note","trigger":"ping status note","action":"Report mind amber/green and MIND SIZE."}]}' \
+  https://ntfy.sh/<topic>
+```
+Auto-applies when mind green + bound. Chat note: `Function 0 gained · … (evolved: N)`.
+
+### Demo skill: `ping status`
+Seated in `evolved[]` with live action (`__PING_STATUS__`) → one-liner: online/amber · MIND SIZE · evolved N. Also chat `status`.
+
+### Demo smoke
+1. Airplane: `add function greet rizal: Say Mabuhay when greeted.` → reopen → skill still there.
+2. Chat `ping status` / `status` → amber/green + MIND SIZE + evolved count.
+3. Optional green: curl `function.evolve` → evolved count bumps; `mind.ask` pack shows evolved > 0.
+
 ## Phases (locked cut)
 
-1. **NOW** — inbound SSE/poll + memory.upsert / memory.forget / ping.ack + NonNuclear + optional ack ping  
-2. function.evolve / drop  
+1. Phase 1 + 1.5 — ACCEPT on tip 6f011d8  
+2. **NOW** — function.evolve / gain only (no drop)    
 3. shelf.seat + www.bump (GitHub URL)  
 4. essence.patch  
 

@@ -232,6 +232,7 @@ const defaultState = () => ({
   offlineStartedAt: 0,
   mindRev: 0,
   autoShareMind: false,
+  demoPingStatusSeeded: false,
   heart: null,
   senses: { svg: true, midi: true, sfx: true, voicePart: null },
   deadman: { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -292,6 +293,7 @@ function load() {
       offlineStartedAt: Number(parsed.offlineStartedAt) || 0,
       mindRev: Number(parsed.mindRev) || 0,
       autoShareMind: !!parsed.autoShareMind,
+      demoPingStatusSeeded: !!parsed.demoPingStatusSeeded,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
       senses: parsed.senses && typeof parsed.senses === "object" ? Object.assign({ svg: true, midi: true, sfx: true, voicePart: null }, parsed.senses) : { svg: true, midi: true, sfx: true, voicePart: null },
       deadman: parsed.deadman && typeof parsed.deadman === "object" ? Object.assign({ enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" }, parsed.deadman) : { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -937,6 +939,37 @@ function seedCore() {
   save();
 }
 
+
+function pingStatusLine() {
+  try { renderMind(); } catch (e) {}
+  const mind = state.mindOnline
+    ? (signal() ? "online · green" : "online · no signal")
+    : "amber · offline · local";
+  const sz = formatBytes(mindBytes());
+  const nEv = (state.evolved || []).length;
+  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv;
+}
+
+function ensureDemoPingStatusSkill() {
+  try {
+    const list = state.evolved || [];
+    const has = list.some(function (s) {
+      return s && (/^ping status$/i.test(String(s.trigger || "")) || /^ping status$/i.test(String(s.name || "")) || s.action === "__PING_STATUS__");
+    });
+    if (has) {
+      state.demoPingStatusSeeded = true;
+      return;
+    }
+    if (state.demoPingStatusSeeded) return;
+    // Seat demo skill (Function 0 gain) — action token resolved live at match time.
+    const skill = registerEvolved("ping status", "ping status", "__PING_STATUS__");
+    if (skill && skill !== "blocked") {
+      state.demoPingStatusSeeded = true;
+      save();
+    }
+  } catch (e) {}
+}
+
 function tryEvolveCommand(userText) {
   const t = normalizeTalk(userText);
   const q = t.toLowerCase();
@@ -958,14 +991,14 @@ function tryEvolveCommand(userText) {
       const skill = registerEvolved(add[1].slice(0, 40), add[1], add[1]);
       if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
       if (!skill) return "Evolve is locked off, which should not happen.";
-      return "Evolved offline. New function: " + skill.name + ". It is in the registry and the Essence. Say it again anytime.";
+      return "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + "). It is seated offline. Say it again anytime.";
     }
     const name = (add[1] || "").trim();
     const action = (add[2] || add[1] || "").trim();
     if (name && action) {
       const skill = registerEvolved(name, name, action);
       if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
-      return "Function 0 ran " + (state.mindOnline ? "online" : "offline") + ". Added: " + skill.name + ".\nWhen you say that, I will: " + skill.action;
+      return "Function 0 gained · " + skill.name + " (" + (state.mindOnline ? "green" : "amber") + ", evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.name + "\", I will: " + skill.action;
     }
   }
   const when = t.match(/^when i say\s+["']?(.+?)["']?\s*,\s*(?:you|do|say)\s+(.+)$/i)
@@ -973,7 +1006,7 @@ function tryEvolveCommand(userText) {
   if (when) {
     const skill = registerEvolved(when[1], when[1], when[2]);
     if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
-    return "Learned by conversation. When you say \"" + skill.trigger + "\", I will: " + skill.action + ". Stored in the offline mind.";
+    return "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.trigger + "\", I will: " + skill.action;
   }
   return null;
 }
@@ -1430,7 +1463,7 @@ function tryInteractCommand(userText) {
     if (!bound) return "No interact bound — paste an ntfy URL first.";
     if (!state.mindOnline) return "Mind is amber — go green to listen for Chief ya-feed packs on " + interactBoundLabel() + ".";
     refreshInteractFeed();
-    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Phase 1 ops: memory.upsert, memory.forget, ping.ack, ping.pong, mind.ask.";
+    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Ops: memory.*, ping.*, mind.ask, function.evolve (gain). No function.drop yet.";
   }
   return null;
 }
@@ -1679,7 +1712,31 @@ function applyYaFeed(feed, meta) {
             push("ya", "Chief asked for last offline mind (session slice · " + sz + ").\nShare with Chief? Reply yes or no.\n(No full gut · Essence hash only.)");
           } catch (e) {}
         }
-      } else if (name === "function.evolve" || name === "function.drop" || name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
+      } else if (name === "function.evolve" || name === "function.gain" || name === "evolve.gain" || name === "evolve.self") {
+        // F2 gain-first — auto-apply when green feed delivers; no function.drop in this ship.
+        const skillName = String(op.name || op.trigger || op.id || "").trim();
+        const trigger = String(op.trigger || op.name || "").trim();
+        const action = String(op.action || op.text || op.do || "").trim();
+        if (!skillName || !action) {
+          results.push({ op: name, ok: false, reason: "empty" });
+        } else if (nuclearBlocked(skillName + " " + trigger + " " + action)) {
+          results.push({ op: name, ok: false, reason: "nonnuclear" });
+        } else {
+          const skill = registerEvolved(skillName, trigger || skillName, action);
+          if (skill === "blocked") {
+            results.push({ op: name, ok: false, reason: "nonnuclear" });
+          } else if (!skill) {
+            results.push({ op: name, ok: false, reason: "evolve-locked" });
+          } else {
+            results.push({ op: name, ok: true, id: skill.id, name: skill.name, evolved: (state.evolved || []).length });
+            try {
+              push("ya", "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.trigger + "\", I will: " + skill.action);
+            } catch (e) {}
+          }
+        }
+      } else if (name === "function.drop") {
+        results.push({ op: name, ok: false, reason: "decider-later" });
+      } else if (name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
         results.push({ op: name, ok: false, reason: "phase-later" });
       } else {
         results.push({ op: name || "unknown", ok: false, reason: "unsupported" });
@@ -2934,7 +2991,10 @@ async function answer(userText) {
   if (forgot) return forgot;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
-  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+  if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
+    return pingStatusLine();
+  }
+if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
     const healedPing = healInteractBindIfNeeded();
     const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
@@ -2960,6 +3020,9 @@ async function answer(userText) {
   const evolvedHit = matchEvolved(userText);
   if (evolvedHit) {
     remember("Used evolved function " + evolvedHit.name);
+    if (String(evolvedHit.action || "") === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
+      return pingStatusLine();
+    }
     return evolvedHit.action;
   }
   if (typeof trySenseCommand === "function") {
@@ -4451,7 +4514,8 @@ ensureCreator().then(() => {
   renderMind();
   finishXReturn();
   if (signal()) setTimeout(() => { onCommsBack(); refreshInteractFeed(); }, 800);
-setTimeout(function () { scheduleMindSizeRefresh(); startMindSizeWatch(); }, 400);
+setTimeout(function () { try { ensureDemoPingStatusSkill(); } catch (e) {}
+  scheduleMindSizeRefresh(); startMindSizeWatch(); }, 400);
 });
 render();
 renderMind();
