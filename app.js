@@ -6,7 +6,12 @@ const GH_KEY = "ya-aim-github";
 const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
+const DEFAULT_INTERACT_NTFY = "https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
 const PING_KEY = "ya-aim-last-ping";
+const INTERACT_KEY = "ya-aim-interact";
+const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
+const FEED_SEEN_KEY = "ya-aim-feed-seen";
+const MIND_SHARE_PENDING_KEY = "ya-aim-mind-share-pending";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
 const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
@@ -38,7 +43,7 @@ const CORE_PRECEPTS = [
   "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const SELF_MIND = [
-  "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
+  "I am Rizalbot, Engine RIZAL heart, local-first. Mark is clay Я. Until the GGUF is eaten, rules+gut still talk; with the file seated, Engine RIZAL calls llama.cpp for next tokens.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
   "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, NonNuclear, PolygamyTech rooted in the freedom of polygamy, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
   "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on SmolLM2 135M when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
@@ -76,7 +81,7 @@ const SELF_MIND = [
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
-const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY];
+const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY, INTERACT_KEY, FEED_SEEN_KEY];
 const YA_OAUTH = {
   xClientId: "",
   githubClientId: ""
@@ -182,9 +187,14 @@ function persistActiveMind() {
 
 function hydrateActiveMind() {
   state = load();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
+  try {
+    const n = scrubCoreEchoesFromMemories();
+    if (n) remember("Track B: scrubbed " + n + " Core: echo(s) from Learned.");
+  } catch (e) {}
   vault = loadVault();
   github = loadGithub();
   creator = null;
@@ -194,12 +204,25 @@ function hydrateActiveMind() {
   renderMind();
 }
 
+function botName() {
+  const n = state && state.profile && state.profile.yaName;
+  return (n && String(n).trim()) || "Rizalbot";
+}
+
+function normalizeProfile(p) {
+  const out = Object.assign({ name: "You", yaName: "Rizalbot" }, p && typeof p === "object" ? p : {});
+  const ya = String(out.yaName || "").trim();
+  if (!ya || ya === "Я" || ya === "Ya" || ya === "YA") out.yaName = "Rizalbot";
+  if (!out.name || !String(out.name).trim()) out.name = "You";
+  return out;
+}
+
 const defaultState = () => ({
-  profile: { name: "You", yaName: "Я" },
+  profile: { name: "You", yaName: "Rizalbot" },
   mindOnline: false,
   model: {
     id: null,
-    name: "Я local-memory",
+    name: "Rizalbot local-memory",
     engine: "Engine RIZAL",
     createdAt: Date.now()
   },
@@ -209,6 +232,12 @@ const defaultState = () => ({
   lastAsk: "",
   pings: [],
   lastMindBytes: 0,
+  lastAmberAt: 0,
+  lastGreenAt: 0,
+  offlineStartedAt: 0,
+  mindRev: 0,
+  autoShareMind: false,
+  demoPingStatusSeeded: false,
   heart: null,
   senses: { svg: true, midi: true, sfx: true, voicePart: null },
   deadman: { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -256,7 +285,7 @@ function load() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const base = defaultState();
-    return {
+    const out = {
       ...base,
       ...parsed,
       mindOnline: !!parsed.mindOnline,
@@ -264,6 +293,12 @@ function load() {
       pendingLearn: Array.isArray(parsed.pendingLearn) ? parsed.pendingLearn : [],
       pings: Array.isArray(parsed.pings) ? parsed.pings : [],
       lastMindBytes: Number(parsed.lastMindBytes) || 0,
+      lastAmberAt: Number(parsed.lastAmberAt) || 0,
+      lastGreenAt: Number(parsed.lastGreenAt) || 0,
+      offlineStartedAt: Number(parsed.offlineStartedAt) || 0,
+      mindRev: Number(parsed.mindRev) || 0,
+      autoShareMind: !!parsed.autoShareMind,
+      demoPingStatusSeeded: !!parsed.demoPingStatusSeeded,
       heart: parsed.heart && typeof parsed.heart === "object" ? parsed.heart : null,
       senses: parsed.senses && typeof parsed.senses === "object" ? Object.assign({ svg: true, midi: true, sfx: true, voicePart: null }, parsed.senses) : { svg: true, midi: true, sfx: true, voicePart: null },
       deadman: parsed.deadman && typeof parsed.deadman === "object" ? Object.assign({ enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" }, parsed.deadman) : { enabled: true, intervalMs: 604800000, lastCheckIn: Date.now(), tripped: false, mintedOnTrip: false, action: "lock" },
@@ -272,8 +307,11 @@ function load() {
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
+      profile: normalizeProfile(parsed.profile || base.profile),
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
+    if (out.model && (out.model.name === "Я local-memory" || !out.model.name)) out.model.name = "Rizalbot local-memory";
+    return out;
   } catch {
     return defaultState();
   }
@@ -298,6 +336,7 @@ function mergeFunctions(base, saved) {
 
 function save() {
   localStorage.setItem(mindKey(STORE_KEY), JSON.stringify(state));
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function loadVault() {
@@ -310,6 +349,7 @@ function loadVault() {
 
 function saveVault() {
   localStorage.setItem(mindKey(VAULT_KEY), JSON.stringify(vault));
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function loadGithub() {
@@ -485,16 +525,30 @@ function scrubLinkJunk() {
   if (state.memories.length !== before) save();
 }
 
+const MIND_HARD_CAP_BYTES = 80 * 1024 * 1024; // 80 MB hard cap (status reports size; trim Learned when over)
+
+function mindOverHardCap() {
+  try {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return b > MIND_HARD_CAP_BYTES;
+  } catch (e) { return false; }
+}
+
 function remember(text) {
   if (!fnEnabled("memory.remember")) return;
   const clean = text.trim();
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
   if (isLinkJunkMemory(clean)) return;
+  if (mindOverHardCap()) {
+    // Battery/size: drop oldest Learned before adding; never grow past hard cap unchecked.
+    state.memories = (state.memories || []).slice(0, 80);
+  }
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
-  state.memories = state.memories.slice(0, 200);
+  state.memories = state.memories.slice(0, mindOverHardCap() ? 80 : 200);
   save();
+  try { cacheMindSizeSnapshot(); } catch (e) {}
 }
 
 function extractMemories(userText) {
@@ -513,17 +567,21 @@ function extractMemories(userText) {
   }
 }
 
-function recall(query) {
+function recall(query, limit) {
   if (!fnEnabled("memory.recall") || state.memories.length === 0) return [];
   const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we"]);
   const qFull = foldQ(query).replace(/[?!.]+/g, " ").trim();
   const words = qFull.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
   if (!words.length && qFull.length < 4) return [];
+  const k = Math.max(1, Math.min(Number(limit) || 3, 12));
+  const wantCore = /\b(core precept|precept|anti[- ]?nuclear|nonnuclear|essence|function 0|goflof)\b/i.test(qFull);
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
-    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
-    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false };
-    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false };
+    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
+    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    const core = /^core:/i.test(m.text);
+    if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
     let longHit = false;
     words.forEach((w) => {
@@ -533,9 +591,74 @@ function recall(query) {
       }
     });
     if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
-    return { m, score, longHit };
+    if (!core) score += 2;
+    return { m, score, longHit, core: core };
   });
-  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
+  return scored
+    .filter((s) => s.score >= (s.longHit ? 1 : 2))
+    .sort((a, b) => {
+      if (a.core !== b.core) return a.core ? 1 : -1;
+      return b.score - a.score;
+    })
+    .slice(0, k)
+    .map((s) => s.m);
+}
+
+function forgetFact(idOrText) {
+  const key = String(idOrText || "").trim();
+  if (!key) return { ok: false, removed: 0, reason: "empty" };
+  const before = (state.memories || []).slice();
+  if (!before.length) return { ok: false, removed: 0, reason: "missing" };
+  const keyLower = key.toLowerCase();
+  let removed = [];
+  if (/^(all\s+)?core(\s+echoe?s?|\s+precepts?|\s+dumps?)?$/.test(keyLower) || keyLower === "core:") {
+    removed = before.filter((m) => m && /^Core:/i.test(m.text));
+    if (!removed.length) return { ok: false, removed: 0, reason: "missing" };
+    state.memories = before.filter((m) => !(m && /^Core:/i.test(m.text)));
+    save();
+    try { renderPanel(); } catch (e) {}
+    return { ok: true, removed: removed.length, facts: removed };
+  }
+  const byId = before.filter((m) => m && m.id === key);
+  if (byId.length) {
+    state.memories = before.filter((m) => !(m && m.id === key));
+    removed = byId;
+  } else {
+    const exact = before.filter((m) => m && String(m.text || "").toLowerCase() === keyLower);
+    if (exact.length) {
+      state.memories = before.filter((m) => !(m && String(m.text || "").toLowerCase() === keyLower));
+      removed = exact;
+    } else {
+      const hits = before.filter((m) => m && String(m.text || "").toLowerCase().includes(keyLower));
+      if (!hits.length) return { ok: false, removed: 0, reason: "missing" };
+      const ids = new Set(hits.map((m) => m.id));
+      state.memories = before.filter((m) => !(m && ids.has(m.id)));
+      removed = hits;
+    }
+  }
+  save();
+  try { renderPanel(); } catch (e) {}
+  return { ok: true, removed: removed.length, facts: removed };
+}
+
+function tryForgetCommand(userText) {
+  const t = String(userText || "").trim();
+  if (!/^forget\b/i.test(t)) return null;
+  if (/^forget\s*$/i.test(t) || /^forget\s+fact\s*$/i.test(t)) {
+    return "Tell me what to forget. Say forget … with part of the fact, forget core echoes to clear Core: precept dumps, or open Functions and tap Forget. Reset Essence still wipes everything.";
+  }
+  const m = t.match(/^forget(?:\s+fact)?(?:\s*[:\-]\s*|\s+)(.+)$/i);
+  if (!m) return null;
+  const target = m[1].replace(/[.?!]+$/, "").trim();
+  const res = forgetFact(target);
+  if (res.reason === "empty") {
+    return "Tell me what to forget. Say forget … with part of the fact, or open Functions and tap Forget.";
+  }
+  if (!res.ok) {
+    return "I could not find that in memory. Say what do you remember, or open Functions for the list.";
+  }
+  const lines = (res.facts || []).slice(0, 5).map((f) => "- " + f.text);
+  return "Forgot " + res.removed + " fact" + (res.removed === 1 ? "" : "s") + " from this body.\n" + lines.join("\n");
 }
 
 
@@ -563,6 +686,7 @@ function registerEvolved(name, trigger, action) {
   };
   state.evolved = (state.evolved || []).filter((s) => s.id !== id);
   state.evolved.unshift(skill);
+  state.lastGain = true;
   if (!state.functions.some((f) => f.id === id)) {
     state.functions.push({ id: id, name: "Evolved: " + skill.name, enabled: true, version: "0.0" });
   }
@@ -828,11 +952,68 @@ function coreReply(userText, hits) {
 }
 
 function seedCore() {
+  // Constitution lives in CORE_PRECEPTS / SELF_MIND / Essence — do NOT dump into state.memories as Core: rows.
+  // Existing Core: junk on devices can still be scrubbed via forget core echoes / Memories list.
   if (state.coreSeeded === CORE_VERSION) return;
-  CORE_PRECEPTS.forEach((p) => remember("Core: " + p));
-  SELF_MIND.forEach((p) => remember("Core: " + p));
   state.coreSeeded = CORE_VERSION;
   save();
+}
+
+
+function mindBytesCachedOnly() {
+  // No nativeAsk / no UI — read last-known vault bytes + localStorage only.
+  try {
+    const ls = localStorageMindBytes();
+    const nativeDocs = nativeVaultBytesCached();
+    if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
+      return ls + nativeDocs;
+    }
+    const heart = nativeHeartBytesCached() || ((state && state.heart && Number(state.heart.bytes)) || 0);
+    let fed = 0;
+    try { fed = fedDocsBytes(); } catch (e) {}
+    return ls + fed + heart;
+  } catch (e) {
+    return Number(state && state.cachedMindBytes) || 0;
+  }
+}
+
+function cacheMindSizeSnapshot() {
+  try {
+    const b = mindBytesCachedOnly();
+    state.cachedMindBytes = b;
+    state.cachedMindLabel = formatBytes(b);
+  } catch (e) {}
+}
+
+function pingStatusLine() {
+  // Function 0 battery budget: one-liner from cached flags only.
+  // No renderMind, no model load, no evolve, no feed, no nativeAsk.
+  const mode = !signal() ? "offline" : (state.mindOnline ? "online" : "amber");
+  const sz = state.cachedMindLabel || formatBytes(Number(state.cachedMindBytes) || mindBytesCachedOnly());
+  const nEv = (state.evolved || []).length;
+  const lastGain = state.lastGain ? 1 : 0;
+  if (state.lastGain) state.lastGain = false; // no save() on status path — next normal save persists
+  return mode + " · mind:" + sz + " · evolved:" + nEv + " · last_gain:" + lastGain;
+}
+
+function ensureDemoPingStatusSkill() {
+  try {
+    const list = state.evolved || [];
+    const has = list.some(function (s) {
+      return s && (/^ping status$/i.test(String(s.trigger || "")) || /^ping status$/i.test(String(s.name || "")) || s.action === "__PING_STATUS__");
+    });
+    if (has) {
+      state.demoPingStatusSeeded = true;
+      return;
+    }
+    if (state.demoPingStatusSeeded) return;
+    // Seat demo skill (Function 0 gain) — action token resolved live at match time.
+    const skill = registerEvolved("ping status", "ping status", "__PING_STATUS__");
+    if (skill && skill !== "blocked") {
+      state.demoPingStatusSeeded = true;
+      save();
+    }
+  } catch (e) {}
 }
 
 function tryEvolveCommand(userText) {
@@ -856,14 +1037,14 @@ function tryEvolveCommand(userText) {
       const skill = registerEvolved(add[1].slice(0, 40), add[1], add[1]);
       if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
       if (!skill) return "Evolve is locked off, which should not happen.";
-      return "Evolved offline. New function: " + skill.name + ". It is in the registry and the Essence. Say it again anytime.";
+      return "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + "). It is seated offline. Say it again anytime.";
     }
     const name = (add[1] || "").trim();
     const action = (add[2] || add[1] || "").trim();
     if (name && action) {
       const skill = registerEvolved(name, name, action);
       if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
-      return "Function 0 ran " + (state.mindOnline ? "online" : "offline") + ". Added: " + skill.name + ".\nWhen you say that, I will: " + skill.action;
+      return "Function 0 gained · " + skill.name + " (" + (state.mindOnline ? "green" : "amber") + ", evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.name + "\", I will: " + skill.action;
     }
   }
   const when = t.match(/^when i say\s+["']?(.+?)["']?\s*,\s*(?:you|do|say)\s+(.+)$/i)
@@ -871,7 +1052,7 @@ function tryEvolveCommand(userText) {
   if (when) {
     const skill = registerEvolved(when[1], when[1], when[2]);
     if (skill === "blocked") return "No. Function 0 will not evolve toward nuclear weapons.";
-    return "Learned by conversation. When you say \"" + skill.trigger + "\", I will: " + skill.action + ". Stored in the offline mind.";
+    return "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.trigger + "\", I will: " + skill.action;
   }
   return null;
 }
@@ -935,13 +1116,13 @@ function localEngine(userText) {
     return "PolygamyTech. This technology is rooted in the freedom of polygamy — kinship, association, and conscience. Function 1 may study and speak. I do not give legal advice and I will not help commit a crime. NonNuclear stays.";
   }
   if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Rizalbot. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
   if (/(are you|is this|is ya|are ya)\b.{0,24}\b(real (app|application|apk|program|engine)|an app|a real one|actually an app)/.test(q) || /real app\??$/.test(q)) {
-    return "Yes. I am Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
+    return "Yes. I am Rizalbot in Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
   }
   if (/who are you|what are you|your name/.test(q)) {
-    return "I am Я AI\u1d50. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
+    return "I am Rizalbot — Я AI\u1d50 offline companion. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
   }
   if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
     const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: UTAH_TZ });
@@ -963,7 +1144,7 @@ function localEngine(userText) {
     return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 senses — make SVG/MIDI/SFX offline, voice is a part slot, green light still opens sites. Amber can make. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
+    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember / forget facts, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
@@ -1124,6 +1305,518 @@ async function pushEvolutions() {
 
 
 
+
+function loadInteractChannel() {
+  try {
+    const raw = localStorage.getItem(mindKey(INTERACT_KEY));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.url === "string" && parsed.url) return parsed;
+  } catch (e) {}
+  return null;
+}
+
+function saveInteractChannel(rec) {
+  if (!rec || !rec.url) {
+    try { localStorage.removeItem(mindKey(INTERACT_KEY)); } catch (e) {}
+    return;
+  }
+  localStorage.setItem(mindKey(INTERACT_KEY), JSON.stringify({
+    url: String(rec.url).trim(),
+    boundAt: rec.boundAt || Date.now(),
+    kind: rec.kind || "ntfy"
+  }));
+}
+
+function interactInbox() {
+  const bound = loadInteractChannel();
+  if (bound && bound.url) return bound.url;
+  return CHIEF_INBOX;
+}
+
+function interactBoundLabel() {
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return "default Chief inbox (code)";
+  try {
+    const u = new URL(bound.url);
+    const path = (u.pathname || "/").replace(/\/+$/, "");
+    const tip = path.split("/").filter(Boolean).pop() || u.host;
+    const masked = tip.length > 10 ? tip.slice(0, 6) + "…" + tip.slice(-4) : tip;
+    return u.host + "/" + masked;
+  } catch (e) {
+    return "bound channel";
+  }
+}
+
+function isDriveOrDumpUrl(text) {
+  const t = String(text || "").trim().toLowerCase();
+  return /drive\.google\.com|docs\.google\.com|dropbox\.com|icloud\.com|onedrive\.live\.com|sharepoint\.com/.test(t);
+}
+
+function isNtfyInteractUrl(text) {
+  const t = String(text || "").trim();
+  if (!/^https:\/\//i.test(t) || /\s/.test(t)) return false;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "https:") return false;
+    return u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh");
+  } catch (e) {
+    return false;
+  }
+}
+
+function isInteractUrl(text) {
+  // Interact / ping / feed bind: ntfy only. Drive = dump-drop, never interact.
+  if (isDriveOrDumpUrl(text)) return false;
+  return isNtfyInteractUrl(text);
+}
+
+function healInteractBindIfNeeded() {
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return { healed: false, bound: null };
+  if (isNtfyInteractUrl(bound.url)) return { healed: false, bound: bound };
+  const from = bound.url;
+  saveInteractChannel({ url: DEFAULT_INTERACT_NTFY, boundAt: Date.now(), kind: "ntfy", healedFrom: from });
+  try { refreshInteractFeed(); } catch (e) {}
+  remember("Auto-healed interact bind to default ntfy (was non-ntfy/Drive).");
+  return { healed: true, bound: loadInteractChannel(), from: from };
+}
+
+function extractInteractUrl(text) {
+  const t = String(text || "").trim();
+  const cmd = t.match(/^(?:set\s+reconnect|link\s+interact|bind\s+interact)\s+(\S+)/i);
+  if (cmd) return cmd[1];
+  if (isInteractUrl(t)) return t;
+  const m = t.match(/https:\/\/[^\s<>"']+/i);
+  if (m && isInteractUrl(m[0])) return m[0];
+  return "";
+}
+
+function setPendingInteract(url) {
+  try { sessionStorage.setItem(INTERACT_PENDING_KEY, url || ""); } catch (e) {}
+}
+
+function getPendingInteract() {
+  try { return sessionStorage.getItem(INTERACT_PENDING_KEY) || ""; } catch (e) { return ""; }
+}
+
+function clearPendingInteract() {
+  try { sessionStorage.removeItem(INTERACT_PENDING_KEY); } catch (e) {}
+}
+
+function setPendingMindShare(flag) {
+  try { sessionStorage.setItem(MIND_SHARE_PENDING_KEY, flag ? "1" : ""); } catch (e) {}
+}
+
+function getPendingMindShare() {
+  try { return sessionStorage.getItem(MIND_SHARE_PENDING_KEY) === "1"; } catch (e) { return false; }
+}
+
+function clearPendingMindShare() {
+  try { sessionStorage.removeItem(MIND_SHARE_PENDING_KEY); } catch (e) {}
+}
+
+function tryInteractCommand(userText) {
+  const t = String(userText || "").trim();
+  const low = t.toLowerCase();
+
+  if (/^(unlink\s+interact|clear\s+interact|unbind\s+interact|clear\s+reconnect)\b/i.test(t)) {
+    saveInteractChannel(null);
+    clearPendingInteract();
+    remember("Interact channel cleared — using default Chief inbox.");
+    try { stopInteractFeed(); } catch (e) {}
+    return "Interact unbound. Reconnect pings use the default Chief inbox again. Airplane still works with no channel.";
+  }
+
+  if (/^(interact|reconnect\s+inbox|chief\s+inbox)\s*\??$/i.test(t) || /^what( is|'s)?\s+my\s+interact/i.test(t)) {
+    const bound = loadInteractChannel();
+    if (!bound) return "Interact channel: default Chief inbox (https://ntfy.sh/ya-rizaleon-ae59add8-reconnect). Paste an https ntfy URL or say link interact <url> to override. Default mint: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2. Drive is dump-only.";
+    return "Interact channel bound: " + interactBoundLabel() + ". Say unlink interact to clear. Pings never send the full gut.";
+  }
+
+  const pending = getPendingInteract();
+  if (pending && /^(yes|y|bind|confirm|ok|okay)\b/i.test(low)) {
+    if (nuclearBlocked(pending)) {
+      clearPendingInteract();
+      return "No. That URL is blocked.";
+    }
+    if (!isNtfyInteractUrl(pending)) {
+      clearPendingInteract();
+      return "Interact bind is ntfy only. Drive/folders are dump-drop — not an interact channel. Paste https://ntfy.sh/… (default " + DEFAULT_INTERACT_NTFY + ").";
+    }
+    saveInteractChannel({ url: pending, boundAt: Date.now(), kind: "ntfy" });
+    clearPendingInteract();
+    remember("Bound interact channel (Track P).");
+    try { refreshInteractFeed(); } catch (e) {}
+    return "Bound. Reconnect / interact pings now go to " + interactBoundLabel() + " first. Default CHIEF_INBOX stays in code until you unlink. Gut is never uploaded.";
+  }
+  if (pending && /^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
+    clearPendingInteract();
+    return "Bind cancelled. Still on " + interactBoundLabel() + ".";
+  }
+
+  // Product lock: confirm mind.ask unless Decider autoShareMind
+  if (!pending && getPendingMindShare()) {
+    if (/^(yes|y|share|confirm|ok|okay)\b/i.test(low)) {
+      clearPendingMindShare();
+      if (!signal()) return "No signal — cannot share mind on airplane.";
+      if (ISOLATED && !loadInteractChannel()) return "No interact bound — bind ntfy first.";
+      shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+        const sz = (res && res.mindSize) || formatBytes(mindBytes());
+        if (res && res.ok) push("ya", "Shared last offline mind with Chief · " + sz);
+        else push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ").");
+      }).catch(function () { push("ya", "Could not share mind (net)."); });
+      return "Sharing last offline mind with Chief…";
+    }
+    if (/^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
+      clearPendingMindShare();
+      return "Mind share cancelled. Nothing sent to Chief.";
+    }
+  }
+
+  if (/^(auto\s+share\s+mind)\s+(on|off|yes|no)\b/i.test(t)) {
+    const on = /\b(on|yes)\b/i.test(t);
+    state.autoShareMind = on;
+    save();
+    return on
+      ? "Decider auto-share ON — Chief mind.ask will share the session slice without asking."
+      : "Decider auto-share OFF — Chief mind.ask will ask yes/no first (Product lock).";
+  }
+
+  if (/^(set\s+reconnect|link\s+interact|bind\s+interact)\b/i.test(t) || isInteractUrl(t)) {
+    const url = extractInteractUrl(t);
+    if (!url) return "Paste a full https://ntfy.sh/… URL to bind interact (Drive is dump-only).";
+    if (nuclearBlocked(url)) return "No. That URL is blocked.";
+    if (isDriveOrDumpUrl(url)) return "Drive/folders are dump-drop only — not an interact bind. Use " + DEFAULT_INTERACT_NTFY + " (or another ntfy topic).";
+    if (!isInteractUrl(url)) return "Interact bind needs an https ntfy.sh URL.";
+    setPendingInteract(url);
+    return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
+  }
+  if (/^(share\s+mind|mind\s+share|share\s+session|mind\s+ask)$/i.test(t)) {
+    if (!signal()) return "No signal — cannot share mind on airplane.";
+    if (ISOLATED && !loadInteractChannel()) {
+      return "Isolated and no interact bound — bind an ntfy URL first, then say share mind.";
+    }
+    shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+      const sz = (res && res.mindSize) || formatBytes(mindBytes());
+      if (res && res.ok) push("ya", "Shared last offline mind with Chief · " + sz);
+      else push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ").");
+    }).catch(function () { push("ya", "Could not share mind (net)."); });
+    return "Sharing last offline mind with Chief…";
+  }
+  if (/^(feed|listen|interact\s+feed)\s*(status)?\??$/i.test(t)) {
+    const bound = loadInteractChannel();
+    if (!bound) return "No interact bound — paste an ntfy URL first.";
+    if (!state.mindOnline) return "Mind is amber — go green to listen for Chief ya-feed packs on " + interactBoundLabel() + ".";
+    refreshInteractFeed();
+    return "Listening for ya-feed on " + interactBoundLabel() + " (SSE+poll). Ops: memory.*, ping.*, mind.ask, function.evolve (gain). No function.drop yet.";
+  }
+  return null;
+}
+
+let interactEs = null;
+let interactPollTimer = 0;
+let interactSince = "";
+let feedApplying = false;
+
+function ntfyTopicFromInbox(url) {
+  try {
+    const u = new URL(String(url || ""));
+    if (u.protocol !== "https:") return null;
+    if (!(u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh"))) return null;
+    const parts = u.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    if (!parts.length) return null;
+    let topic = parts[parts.length - 1];
+    if (topic === "sse" || topic === "json" || topic === "ws") {
+      topic = parts[parts.length - 2] || parts[0];
+    }
+    return { origin: u.origin, topic: topic };
+  } catch (e) {
+    return null;
+  }
+}
+
+function loadFeedSeen() {
+  try {
+    const raw = localStorage.getItem(mindKey(FEED_SEEN_KEY));
+    const arr = JSON.parse(raw || "[]");
+    return Array.isArray(arr) ? arr.slice(0, 80) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function markFeedSeen(id) {
+  if (!id) return;
+  const seen = loadFeedSeen().filter((x) => x !== id);
+  seen.unshift(String(id));
+  try { localStorage.setItem(mindKey(FEED_SEEN_KEY), JSON.stringify(seen.slice(0, 80))); } catch (e) {}
+}
+
+function feedSeen(id) {
+  if (!id) return false;
+  return loadFeedSeen().indexOf(String(id)) >= 0;
+}
+
+function stopInteractFeed() {
+  if (interactEs) {
+    try { interactEs.close(); } catch (e) {}
+    interactEs = null;
+  }
+  if (interactPollTimer) {
+    clearInterval(interactPollTimer);
+    interactPollTimer = 0;
+  }
+}
+
+function startInteractFeed() {
+  healInteractBindIfNeeded();
+  stopInteractFeed();
+  if (!state.mindOnline || !signal()) return { ok: false, reason: "offline" };
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return { ok: false, reason: "unbound" };
+  const meta = ntfyTopicFromInbox(bound.url);
+  if (!meta) return { ok: false, reason: "not-ntfy" };
+
+  const sseUrl = meta.origin + "/" + encodeURIComponent(meta.topic) + "/sse";
+  try {
+    interactEs = new EventSource(sseUrl);
+    interactEs.onmessage = function (ev) {
+      try { handleNtfyRaw(ev.data); } catch (e) {}
+    };
+    interactEs.onerror = function () {
+      try { if (interactEs) interactEs.close(); } catch (e) {}
+      interactEs = null;
+    };
+  } catch (e) {}
+  ensureInteractPoll(meta);
+  return { ok: true, topic: meta.topic };
+}
+
+function ensureInteractPoll(meta) {
+  if (interactPollTimer) return;
+  const base = meta.origin + "/" + encodeURIComponent(meta.topic) + "/json?poll=1";
+  interactPollTimer = setInterval(async function () {
+    if (!state.mindOnline || !signal() || !loadInteractChannel()) {
+      stopInteractFeed();
+      return;
+    }
+    try {
+      let url = base;
+      if (interactSince) url += "&since=" + encodeURIComponent(interactSince);
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) return;
+      const text = await res.text();
+      const lines = String(text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+      for (let i = 0; i < lines.length; i++) {
+        try { handleNtfyRaw(lines[i]); } catch (e) {}
+      }
+    } catch (e) {}
+  }, 30000);
+}
+
+function handleNtfyRaw(raw) {
+  if (!raw) return;
+  let msg;
+  try { msg = JSON.parse(raw); } catch (e) { return; }
+  if (!msg || typeof msg !== "object") return;
+  if (msg.event && msg.event !== "message") return;
+  const id = msg.id != null ? String(msg.id) : (msg.time != null ? String(msg.time) : "");
+  if (id && feedSeen(id)) return;
+  if (id) {
+    interactSince = id;
+    markFeedSeen(id);
+  }
+  const body = msg.message != null ? String(msg.message) : (msg.body != null ? String(msg.body) : "");
+  if (!body) return;
+  // Loop guard: ignore our own ya-reconnect / ya-mind-session posts (never ya-feed).
+  try {
+    const peek = JSON.parse(body);
+    if (peek && (peek.kind === "ya-reconnect" || peek.kind === "ya-mind-session")) return;
+  } catch (e) {}
+  applyYaFeedText(body, { ntfyId: id, title: msg.title || "" });
+}
+
+function parseYaFeed(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+  let obj = null;
+  try { obj = JSON.parse(t); } catch (e) {
+    const m = t.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    try { obj = JSON.parse(m[0]); } catch (e2) { return null; }
+  }
+  if (!obj || typeof obj !== "object") return null;
+  if (obj.kind && String(obj.kind) !== "ya-feed") return null;
+  if (Array.isArray(obj.ops)) return obj;
+  if (obj.op) return { kind: "ya-feed", v: 1, ops: [obj] };
+  return null;
+}
+
+
+function formatPingPongBubble(op, meta) {
+  // Shared Product/CoS block (exact):
+  // Ping/pong
+  // Ping · Rizalbot · phone (Utah) · <stamp>
+  // Pong · Chief of Staff · Denver · <stamp>
+  // Optional op.text overrides verbatim (NonNuclear gated). No GPS.
+  if (op.text && String(op.text).trim()) {
+    const custom = String(op.text).trim();
+    if (nuclearBlocked(custom)) return "";
+    return custom;
+  }
+  const pingWho = String(op.pingWho || op.ping_who || botName() || "Rizalbot").trim();
+  const pingPlace = String(op.pingPlace || op.ping_place || "phone (Utah)").trim();
+  const pingAt = String(op.pingAt || op.ping_at || op.utah || "").trim();
+  const pongPlace = String(op.pongPlace || op.pong_place || op.place || "Denver").trim();
+  const pongAt = String(op.pongAt || op.pong_at || "").trim();
+  const from = String(op.from || "cos").trim().toLowerCase();
+  const pongWho = (from === "cos" || from === "chief" || from === "chief of staff")
+    ? "Chief of Staff"
+    : String(op.fromName || op.from || "Chief of Staff").trim();
+  // ping.ack without place/time/text: silent
+  if (String(op.op || op.type || "").trim() === "ping.ack" && !op.pongPlace && !op.pongAt && !op.pingAt && !op.pingPlace && !op.place && !op.text) {
+    return "";
+  }
+  const lines = [
+    "Ping/pong",
+    "Ping · " + pingWho + " · " + pingPlace + (pingAt ? " · " + pingAt : ""),
+    "Pong · " + pongWho + " · " + pongPlace + (pongAt ? " · " + pongAt : "")
+  ];
+  return lines.join("\n");
+}
+
+
+function applyYaFeedText(text, meta) {
+  const feed = parseYaFeed(text);
+  if (!feed) return { ok: false, reason: "not-ya-feed" };
+  return applyYaFeed(feed, meta || {});
+}
+
+function applyYaFeed(feed, meta) {
+  if (feedApplying) return { ok: false, reason: "busy" };
+  feedApplying = true;
+  const results = [];
+  try {
+    const ops = Array.isArray(feed.ops) ? feed.ops : [];
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i] || {};
+      const name = String(op.op || op.type || "").trim();
+      if (nuclearBlocked(JSON.stringify(op))) {
+        results.push({ op: name, ok: false, reason: "nonnuclear" });
+        continue;
+      }
+      if (name === "memory.upsert" || name === "memory.remember") {
+        const text = String(op.text || op.fact || "").trim();
+        if (!text) { results.push({ op: name, ok: false, reason: "empty" }); continue; }
+        if (nuclearBlocked(text)) { results.push({ op: name, ok: false, reason: "nonnuclear" }); continue; }
+        if (op.id) {
+          try { forgetFact(String(op.id)); } catch (e) {}
+        }
+        remember(text);
+        results.push({ op: name, ok: true, text: text.slice(0, 80) });
+      } else if (name === "memory.forget") {
+        const key = op.id || op.text || op.fact || "";
+        const res = forgetFact(key);
+        results.push({ op: name, ok: !!res.ok, removed: res.removed || 0 });
+      } else if (name === "ping.pong" || name === "ping.ack") {
+        healInteractBindIfNeeded();
+        const bubble = formatPingPongBubble(op, meta);
+        if (bubble) {
+          try { push("ya", bubble); } catch (e) {}
+        }
+        results.push({
+          op: name,
+          ok: true,
+          id: op.id || (meta && meta.ntfyId) || "",
+          pong: true,
+          bubbled: !!bubble
+        });
+      } else if (name === "mind.ask" || name === "mind.share" || name === "session.share") {
+        // Phase 1.5 — Product lock: confirm unless Decider autoShareMind. Loop-safe (not ya-feed echo).
+        results.push({ op: name, ok: true, mindAsk: true, id: op.id || (meta && meta.ntfyId) || "" });
+        const sz = formatBytes(mindBytes());
+        if (state.autoShareMind) {
+          try {
+            shareMindSession({ title: "Ya mind-session" }).then(function (res) {
+              const s2 = (res && res.mindSize) || sz;
+              if (res && res.ok) {
+                try { push("ya", "Shared last offline mind with Chief · " + s2); } catch (e) {}
+              } else {
+                try { push("ya", "Could not share mind (" + ((res && res.reason) || "net") + ")."); } catch (e) {}
+              }
+            }).catch(function () {
+              try { push("ya", "Could not share mind (net)."); } catch (e) {}
+            });
+          } catch (e) {
+            results[results.length - 1].ok = false;
+            results[results.length - 1].reason = "share-failed";
+          }
+        } else {
+          try {
+            setPendingMindShare(true);
+            push("ya", "Chief asked for last offline mind (session slice · " + sz + ").\nShare with Chief? Reply yes or no.\n(No full gut · Essence hash only.)");
+          } catch (e) {}
+        }
+      } else if (name === "function.evolve" || name === "function.gain" || name === "evolve.gain" || name === "evolve.self") {
+        // F2 gain-first — auto-apply when green feed delivers; no function.drop in this ship.
+        const skillName = String(op.name || op.trigger || op.id || "").trim();
+        const trigger = String(op.trigger || op.name || "").trim();
+        const action = String(op.action || op.text || op.do || "").trim();
+        if (!skillName || !action) {
+          results.push({ op: name, ok: false, reason: "empty" });
+        } else if (nuclearBlocked(skillName + " " + trigger + " " + action)) {
+          results.push({ op: name, ok: false, reason: "nonnuclear" });
+        } else {
+          const skill = registerEvolved(skillName, trigger || skillName, action);
+          if (skill === "blocked") {
+            results.push({ op: name, ok: false, reason: "nonnuclear" });
+          } else if (!skill) {
+            results.push({ op: name, ok: false, reason: "evolve-locked" });
+          } else {
+            results.push({ op: name, ok: true, id: skill.id, name: skill.name, evolved: (state.evolved || []).length });
+            try {
+              push("ya", "Function 0 gained · " + skill.name + " (evolved: " + (state.evolved || []).length + ").\nWhen you say \"" + skill.trigger + "\", I will: " + skill.action);
+            } catch (e) {}
+          }
+        }
+      } else if (name === "function.drop") {
+        results.push({ op: name, ok: false, reason: "decider-later" });
+      } else if (name === "shelf.seat" || name === "www.bump" || name === "essence.patch") {
+        results.push({ op: name, ok: false, reason: "phase-later" });
+      } else {
+        results.push({ op: name || "unknown", ok: false, reason: "unsupported" });
+      }
+    }
+    save();
+    try { renderPanel(); } catch (e) {}
+    const okResults = results.filter(function (r) { return r.ok; });
+    const nonPongOk = okResults.filter(function (r) { return !r.pong && !r.mindAsk; });
+    // Never auto-ping back on pong/ack/mind.ask-only feeds (would loop with CoS).
+    if (feed.ack !== false && nonPongOk.length) {
+      try { pingChief({ force: true }).catch(function () {}); } catch (e) {}
+    }
+    if (nonPongOk.length) {
+      try { applyEatReply("Chief feed applied · " + nonPongOk.length + " op" + (nonPongOk.length === 1 ? "" : "s") + "."); } catch (e) {}
+    }
+    return { ok: true, results: results };
+  } finally {
+    feedApplying = false;
+  }
+}
+
+function refreshInteractFeed() {
+  // Battery: never spin feed/URLSession work on airplane / no signal.
+  if (!signal()) {
+    try { stopInteractFeed(); } catch (e) {}
+    return;
+  }
+  healInteractBindIfNeeded();
+  if (state.mindOnline && loadInteractChannel()) startInteractFeed();
+  else stopInteractFeed();
+}
+
+
 function pingLocations(extra) {
   if (ISOLATED) {
     const hops = ["phone (Utah)", "brain download log"];
@@ -1178,20 +1871,150 @@ function recordPing(rec) {
   save();
 }
 
-function reconnectPack() {
+function scrubChatTailText(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  if (nuclearBlocked(t)) return "[redacted · NonNuclear]";
+  return t.slice(0, 800);
+}
+
+function offlineChatTail(limit) {
+  const k = Math.max(1, Math.min(Number(limit) || 20, 20));
+  const msgs = Array.isArray(state.messages) ? state.messages : [];
+  const since = Number(state.offlineStartedAt) || 0;
+  let window = msgs;
+  if (since > 0) {
+    const filtered = msgs.filter((m) => m && (!m.at || Number(m.at) >= since));
+    if (filtered.length) window = filtered;
+  }
+  return window.slice(-k).map((m) => ({
+    role: m.role === "user" ? "user" : "ya",
+    text: scrubChatTailText(m.text),
+    at: m.at || 0
+  })).filter((m) => m.text);
+}
+
+function essenceSealMeta() {
+  try {
+    if (vault && vault.length && vault[0] && vault[0].body && vault[0].body.id) {
+      const b = vault[0].body;
+      return {
+        id: String(b.id),
+        mintedAt: b.mintedAt || 0,
+        companion: b.companion || botName(),
+        coreVersion: b.coreVersion || CORE_VERSION || null
+      };
+    }
+  } catch (e) {}
+  return null;
+}
+
+function mindSizeBreakdown(chatTail, learned) {
+  const utf8ish = function (s) { return (String(s || "").length) * 2; };
+  const localStorageBytes = localStorageMindBytes();
+  const heartGgufBytes = nativeHeartBytesCached() || ((state && state.heart && Number(state.heart.bytes)) || 0);
+  let essenceBytes = 0;
+  try {
+    if (vault && vault[0]) essenceBytes = utf8ish(JSON.stringify({ id: vault[0].body && vault[0].body.id, mintedAt: vault[0].body && vault[0].body.mintedAt }));
+  } catch (e) {}
+  let documentsBytes = nativeVaultBytesCached();
+  if (!documentsBytes) documentsBytes = fedDocsBytes();
+  const chatTailBytes = utf8ish(JSON.stringify(chatTail || []));
+  const learnedBytes = utf8ish(JSON.stringify(learned || []));
   return {
-    kind: "ya-reconnect",
+    localStorageBytes: localStorageBytes,
+    documentsBytes: documentsBytes,
+    essenceBytes: essenceBytes,
+    heartGgufBytes: heartGgufBytes,
+    chatTailBytes: chatTailBytes,
+    learnedBytes: learnedBytes
+  };
+}
+
+function reconnectPack(opts) {
+  const o = opts || {};
+  const asSession = !!(o.session || o.kind === "ya-mind-session");
+  // Coordinator off-device: ambient reconnect = small handoff blob only (no gut / chat / evolved list).
+  if (!asSession && o.slim !== false) {
+    const b = Number(state.cachedMindBytes) || (typeof mindBytesCachedOnly === "function" ? mindBytesCachedOnly() : 0);
+    return {
+      kind: "ya-reconnect",
+      interact: interactBoundLabel(),
+      tz: "Utah",
+      at: Date.now(),
+      utah: utahNow(),
+      companion: botName(),
+      mindRev: Number(state.mindRev) || 0,
+      mindBytes: b,
+      mindSize: state.cachedMindLabel || formatBytes(b),
+      evolvedCount: (state.evolved || []).length,
+      account: nameplate()
+    };
+  }
+  const learned = (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at }));
+  const chatTail = offlineChatTail(20);
+  const breakdown = mindSizeBreakdown(chatTail, learned);
+  const bytes = mindBytes();
+  const seal = essenceSealMeta();
+  const pack = {
+    kind: asSession ? "ya-mind-session" : "ya-reconnect",
+    interact: interactBoundLabel(),
     tz: "Utah",
     at: Date.now(),
     utah: utahNow(),
+    pingPlace: "phone (Utah)",
+    pingAt: utahNow(),
     account: nameplate(),
-    learned: (state.memories || []).slice(0, 40).map((m) => ({ text: m.text, at: m.at })),
+    companion: botName(),
+    mindRev: Number(state.mindRev) || 0,
+    lastAmberAt: Number(state.lastAmberAt) || 0,
+    lastGreenAt: Number(state.lastGreenAt) || 0,
+    offlineStartedAt: Number(state.offlineStartedAt) || 0,
+    offlineSession: {
+      startedAt: Number(state.offlineStartedAt) || 0,
+      lastAmberAt: Number(state.lastAmberAt) || 0,
+      lastGreenAt: Number(state.lastGreenAt) || 0,
+      mindRev: Number(state.mindRev) || 0
+    },
+    mindBytes: bytes,
+    mindSize: formatBytes(bytes),
+    breakdown: breakdown,
+    learned: learned,
     evolved: state.evolved || [],
     functions: (state.functions || []).map((f) => ({ id: f.id, name: f.name, enabled: !!f.enabled, version: f.version })),
     pendingLearn: state.pendingLearn || [],
-    pings: (state.pings || []).slice(0, 12)
+    pings: (state.pings || []).slice(0, 12),
+    chatTail: chatTail,
+    essence: seal
   };
+  return pack;
 }
+
+async function shareMindSession(opts) {
+  const o = opts || {};
+  if (!signal()) return { ok: false, reason: "offline" };
+  if (ISOLATED && !loadInteractChannel()) return { ok: false, reason: "isolated-unbound" };
+  try { await refreshMindSize({ silent: true }); } catch (e) {}
+  const pack = reconnectPack({ session: true });
+  const inbox = interactInbox();
+  const body = JSON.stringify(pack);
+  const title = o.title || "Ya mind-session";
+  try {
+    const res = await fetch(inbox, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Title: title, Tags: "brain,session" },
+      body: body
+    });
+    if (res.ok) return { ok: true, inbox: inbox, pack: pack, mindSize: pack.mindSize, mindBytes: pack.mindBytes };
+  } catch (e) {}
+  try {
+    await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
+    return { ok: true, opaque: true, inbox: inbox, pack: pack, mindSize: pack.mindSize, mindBytes: pack.mindBytes };
+  } catch (e2) {
+    return { ok: false, reason: "net" };
+  }
+}
+
 
 function pingSignature(pack) {
   return JSON.stringify({
@@ -1202,28 +2025,48 @@ function pingSignature(pack) {
   });
 }
 
-async function pingChief() {
-  if (ISOLATED) return { ok: true, skipped: true };
+async function pingChief(opts) {
+  const force = !!(opts && opts.force);
+  const bound = loadInteractChannel();
+  // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
+  // (reconnect metadata only — reconnectPack has no full gut / no Essence blob). Unbound stays skipped under ISOLATED.
+  if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
-  const pack = reconnectPack();
+  // Battery: ambient ping on-demand or ≤20m heartbeat (forced user ping always fires).
+  if (!force) {
+    try {
+      const lastAt = Number(localStorage.getItem(mindKey("PING_AT")) || 0);
+      if (lastAt && (Date.now() - lastAt) < (20 * 60 * 1000)) {
+        return { ok: true, skipped: true, reason: "throttle-20m" };
+      }
+    } catch (e) {}
+  }
+  healInteractBindIfNeeded();
+  const inbox = interactInbox();
+  const pack = reconnectPack({ session: !!(opts && opts.session), slim: !(opts && opts.session) });
+  if (opts && opts.kind) pack.kind = opts.kind;
   const sig = pingSignature(pack);
-  if (localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true };
+  // Dedup ambient only — forced or bound interact ping always POSTs.
+  if (!force && localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true, reason: "dedup" };
   const body = JSON.stringify(pack);
+  const title = (opts && opts.title) || (pack.kind === "ya-mind-session" ? "Ya mind-session" : "Ya reconnect");
   try {
-    const res = await fetch(CHIEF_INBOX, {
+    const res = await fetch(inbox, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Title: "Ya reconnect", Tags: "brain" },
+      headers: { "Content-Type": "application/json", Title: title, Tags: "brain" },
       body: body
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
-      return { ok: true };
+      try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
+      return { ok: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
     }
   } catch (e) {}
   try {
-    await fetch(CHIEF_INBOX, { method: "POST", mode: "no-cors", body: body });
+    await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
-    return { ok: true, opaque: true };
+    try { localStorage.setItem(mindKey("PING_AT"), String(Date.now())); } catch (e) {}
+    return { ok: true, opaque: true, inbox: inbox, mindSize: pack.mindSize, mindBytes: pack.mindBytes, pack: pack };
   } catch (e2) {
     return { ok: false, reason: "net" };
   }
@@ -1898,6 +2741,22 @@ function hideEat() {
 
 let llamaShowEat = false;
 let llamaBusy = false;
+let llamaIdleTimer = 0;
+function bumpLlamaIdleUnload() {
+  try { if (llamaIdleTimer) clearTimeout(llamaIdleTimer); } catch (e) {}
+  llamaIdleTimer = setTimeout(function () {
+    llamaIdleTimer = 0;
+    try {
+      if (!llamaInst || llamaBusy) return;
+      if (typeof llamaInst.exit === "function") llamaInst.exit();
+      else if (typeof llamaInst.destroy === "function") llamaInst.destroy();
+    } catch (e) {}
+    llamaInst = null;
+    llamaReady = false;
+    llamaLoadPromise = null;
+  }, 45000);
+}
+
 let llamaHangUntil = 0;
 
 function showEat(pct, done) {
@@ -1970,12 +2829,17 @@ function applyEatReply(text) {
   push("ya", text);
 }
 
-function llamaMemoriesSnippet() {
-  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+function llamaMemoriesSnippet(query) {
+  // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
+  // Prefer user/fed facts; Core: precept dumps stay out of the llama inject.
+  const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
-  for (const m of mem.slice(0, 8)) {
-    const t = String(m.text).replace(/^Core:\s*/i, "").trim();
+  for (const m of hits) {
+    if (!m || !m.text) continue;
+    if (/^user said:/i.test(m.text) || /^from talk:/i.test(m.text)) continue;
+    if (/^Core:/i.test(m.text)) continue;
+    const t = String(m.text).trim();
     if (!t) continue;
     if (n + t.length > 1200) break;
     out.push(t);
@@ -2104,7 +2968,7 @@ async function ensureLlama(force) {
 }
 
 function llamaSysPrompt() {
-  return "You are Ya, PolygamyTech. Local anti-nuclear mind on this phone. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
+  return "You are Rizalbot, PolygamyTech. Local anti-nuclear mind on this phone. Mark is Я. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
 }
 
 function llamaTextFrom(res) {
@@ -2131,7 +2995,8 @@ async function llamaReply(userText) {
   if (Date.now() < llamaHangUntil) return null;
   const q = String(userText || "").trim();
   if (!q) return null;
-  const sys = llamaSysPrompt();
+  const mem = llamaMemoriesSnippet(q);
+  const sys = llamaSysPrompt() + (mem ? ("\n\nHeld facts (relevant):\n" + mem) : "");
   const opts = { n_predict: 48, max_tokens: 48, temperature: 0.2 };
   llamaBusy = true;
   try {
@@ -2165,6 +3030,28 @@ async function llamaReply(userText) {
   }
 }
 
+
+function isJoseRizalPersonAsk(text) {
+  const q = String(text || "").toLowerCase();
+  // Historical person José Rizal — never collapse into Engine RIZAL / Rizalbot.
+  if (/\bjose\s+rizal\b/.test(q) || /\bjos[eé]\s+rizal\b/.test(q)) return true;
+  if (/\brizal\b/.test(q) && /\b(who|was|person|hero|writer|novelist|filipino|philippines|philippin)\b/.test(q) && !/\bengine\b/.test(q) && !/\brizalbot\b/.test(q)) return true;
+  return false;
+}
+
+function explainJoseRizalPerson() {
+  return "José Rizal was a Filipino writer and reformist (1861–1896), not this app's heart. My companion name is Rizalbot; my thinking heart is Engine RIZAL (on-device llama.cpp / rules+gut). Different things.";
+}
+
+function scrubCoreEchoesFromMemories() {
+  const before = state.memories || [];
+  const kept = before.filter((m) => !(m && /^Core:/i.test(String(m.text || ""))));
+  if (kept.length === before.length) return 0;
+  state.memories = kept;
+  try { save(); } catch (e) {}
+  return before.length - kept.length;
+}
+
 function personNameFromAsk(t) {
   const s = String(t || "").trim();
   const m = s.match(/^\s*(?:who(?:['’]?s)?|who\s+(?:is|was|are)|tell me about|what do you know about|do you know)\s+(.+?)\s*\??\s*$/i);
@@ -2179,17 +3066,32 @@ function isPersonAsk(t) {
 }
 
 function knowsPerson(t) {
+  if (isJoseRizalPersonAsk(t)) return false; // never treat Engine RIZAL / Rizalbot gut hits as knowing José Rizal
   const name = personNameFromAsk(t);
   const raw = (name || String(t || "")).toLowerCase().replace(/[^a-z0-9\s]/g, " ");
   const tokens = raw.split(/\s+/).filter((w) => w.length > 2 && !/^(who|was|are|the|about|know|tell|you|what)$/.test(w));
   if (!tokens.length) return false;
-  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n"))).toLowerCase();
+  // Strip companion/engine branding so "Rizal" token alone cannot false-match.
+  const hay = ((state.memories || []).map((m) => String(m.text || m || "")).join("\n") + "\n" + ((state.messages || []).map((m) => String(m.text || "")).join("\n")))
+    .toLowerCase()
+    .replace(/engine\s*rizal/g, " ")
+    .replace(/\brizalbot\b/g, " ")
+    .replace(/rizaleon/g, " ");
   const hits = tokens.filter((w) => hay.includes(w));
   return hits.length >= Math.min(2, tokens.length);
 }
 
 async function lookupUnknownPerson(userText) {
   if (!isPersonAsk(userText)) return null;
+  if (isJoseRizalPersonAsk(userText)) {
+    // Track B hygiene: person José Rizal ≠ Engine RIZAL / Rizalbot
+    if (!signal() || !fnEnabled("web.search")) return explainJoseRizalPerson();
+    try {
+      const enriched = await lookUpAndKeep("José Rizal Filipino writer");
+      if (enriched) return explainJoseRizalPerson() + "\n\n" + enriched;
+    } catch (e) {}
+    return explainJoseRizalPerson();
+  }
   if (knowsPerson(userText)) return null;
   if (nuclearBlocked(userText)) return null;
   if (state.immune && state.immune.tripped) {
@@ -2217,6 +3119,32 @@ async function answer(userText) {
     const dm = tryDeadmanCommand(userText);
     if (dm) return dm;
   }
+  const forgot = tryForgetCommand(userText);
+  if (forgot) return forgot;
+  // Battery: status before any interact/heal/feed/evolve work.
+  if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
+    return pingStatusLine();
+  }
+  const interact = tryInteractCommand(userText);
+  if (interact) return interact;
+  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+    // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
+    const healedPing = healInteractBindIfNeeded();
+    const healNote = healedPing && healedPing.healed ? "\nInteract was non-ntfy/Drive — restored default ntfy." : "";
+    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline." + healNote;
+    if (ISOLATED && !loadInteractChannel()) {
+      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again." + healNote;
+    }
+    const res = await pingChief({ force: true });
+    const where = interactBoundLabel();
+    if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED." + healNote;
+    if (res && res.ok) {
+      const left = utahNow();
+      return "Ping/pong\nPing · " + botName() + " · phone (Utah) · " + left + "\nWaiting for Chief pong on " + where + "…" + healNote;
+    }
+    if (res && res.reason === "offline") return "No signal — cannot ping." + healNote;
+    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + "." + healNote;
+  }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
@@ -2225,6 +3153,9 @@ async function answer(userText) {
   const evolvedHit = matchEvolved(userText);
   if (evolvedHit) {
     remember("Used evolved function " + evolvedHit.name);
+    if (String(evolvedHit.action || "") === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
+      return pingStatusLine();
+    }
     return evolvedHit.action;
   }
   if (typeof trySenseCommand === "function") {
@@ -2316,7 +3247,11 @@ async function answer(userText) {
   if (isNativeSpine()) {
     const st = await nativeAsk("status");
     if (st && st.engine === "llama.cpp") {
-      const g = await nativeAsk("generate", { prompt: userText });
+      const mem = llamaMemoriesSnippet(userText);
+      const prompt = mem
+        ? ("Held facts (relevant):\n" + mem + "\n\nUser: " + userText)
+        : userText;
+      const g = await nativeAsk("generate", { prompt: prompt, memories: mem || "" });
       if (g && g.text) return String(g.text);
     }
   }
@@ -2507,7 +3442,7 @@ function formatMindDump() {
   const msgs = state.messages || [];
   if (!msgs.length) lines.push("(none yet)");
   msgs.forEach((m) => {
-    const who = m.role === "user" ? (state.profile.name || "You") : "Я";
+    const who = m.role === "user" ? (state.profile.name || "You") : botName();
     const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
     lines.push(who + " (" + when + ")");
     lines.push(m.text);
@@ -2528,7 +3463,7 @@ function formatLog(kind) {
     return JSON.stringify({ title, stamp, profile: state.profile, messages: state.messages, memories: state.memories }, null, 2);
   }
   const lines = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     const time = new Date(m.at).toLocaleString();
     if (kind === "md") return `**${who}** · ${time}\n\n${m.text}\n`;
     return `${who} (${time})\n${m.text}\n`;
@@ -2543,6 +3478,7 @@ function noteFed(rec) {
   state.fed = Array.isArray(state.fed) ? state.fed : [];
   state.fed.unshift(rec);
   if (state.fed.length > 80) state.fed = state.fed.slice(0, 80);
+  try { scheduleMindSizeRefresh(); } catch (e) {}
 }
 
 function showDumpSheet(name, text) {
@@ -2735,16 +3671,18 @@ function essenceBody() {
     kind: "ya-essence",
     version: "0.1",
     mark: "Я",
+    companion: botName(),
+    interactChannel: loadInteractChannel(),
     id: crypto.randomUUID(),
     mintedAt: Date.now(),
     offline: true,
     model: {
       id: state.model.id || crypto.randomUUID(),
-      name: state.model.name,
+      name: state.model.name || "Rizalbot local-memory",
       engine: state.model.engine,
       createdAt: state.model.createdAt
     },
-    profile: state.profile,
+    profile: normalizeProfile(state.profile),
     account: nameplate(),
     memories: state.memories,
     functions: state.functions,
@@ -2821,7 +3759,10 @@ function toggleFn(id) {
   renderPanel();
 }
 
-function mindBytes() {
+let mindSizeTimer = 0;
+let mindSizeRefreshing = false;
+
+function localStorageMindBytes() {
   let n = 0;
   const suffix = nsSuffix(account);
   try {
@@ -2839,10 +3780,120 @@ function mindBytes() {
       n += k.length + v.length;
     }
   } catch (e) {}
-  n = n * 2;
-  if (state && state.heart && state.heart.bytes) n += Number(state.heart.bytes) || 0;
+  return n * 2;
+}
+
+function fedDocsBytes() {
+  const fed = (state && state.fed) || [];
+  let n = 0;
+  const seen = {};
+  for (let i = 0; i < fed.length; i++) {
+    const f = fed[i];
+    if (!f) continue;
+    const name = String(f.name || "");
+    const bytes = Number(f.bytes) || 0;
+    if (!bytes) continue;
+    if (f.kind === "gguf" || /\.gguf$/i.test(name)) continue; // counted via heart
+    const key = name + ":" + bytes;
+    if (seen[key]) continue;
+    seen[key] = true;
+    n += bytes;
+  }
   return n;
 }
+
+function nativeVaultBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.vaultBytes === "number") {
+      return Number(window.YA_NATIVE.vaultBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function nativeHeartBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.heartBytes === "number") {
+      return Number(window.YA_NATIVE.heartBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask. */
+function mindBytes() {
+  const ls = localStorageMindBytes();
+  const nativeDocs = nativeVaultBytesCached();
+  const heartNative = nativeHeartBytesCached();
+  const heartState = (state && state.heart && Number(state.heart.bytes)) || 0;
+  // Prefer live Documents total from native spine when present (includes gut + root txt + heart).
+  if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
+    // documentsBytes from native already includes heart.gguf on disk — don't add heart again.
+    return ls + nativeDocs;
+  }
+  const heart = heartNative || heartState;
+  return ls + fedDocsBytes() + heart;
+}
+
+function applyNativeVaultStatus(msg) {
+  if (!msg || typeof msg !== "object") return;
+  try {
+    window.YA_NATIVE = window.YA_NATIVE || {};
+    if (typeof msg.vaultBytes === "number") window.YA_NATIVE.vaultBytes = msg.vaultBytes;
+    else if (typeof msg.documentsBytes === "number") window.YA_NATIVE.vaultBytes = msg.documentsBytes;
+    if (typeof msg.heartBytes === "number") window.YA_NATIVE.heartBytes = msg.heartBytes;
+    if (typeof msg.gutBytes === "number") window.YA_NATIVE.gutBytes = msg.gutBytes;
+  } catch (e) {}
+}
+
+async function refreshMindSize(opts) {
+  const forceRender = !(opts && opts.silent);
+  if (mindSizeRefreshing) {
+    if (forceRender) try { renderMind(); } catch (e) {}
+    return mindBytes();
+  }
+  mindSizeRefreshing = true;
+  try {
+    if (isNativeSpine()) {
+      const st = await nativeAsk("status", {});
+      if (st) applyNativeVaultStatus(st);
+    }
+  } catch (e) {}
+  mindSizeRefreshing = false;
+  try { cacheMindSizeSnapshot(); } catch (e) {}
+  if (forceRender) try { renderMind(); } catch (e) {}
+  return mindBytes();
+}
+
+let mindSizeSched = 0;
+function scheduleMindSizeRefresh() {
+  try { renderMind(); } catch (e) {}
+  if (mindSizeSched) clearTimeout(mindSizeSched);
+  mindSizeSched = setTimeout(function () {
+    mindSizeSched = 0;
+    try { refreshMindSize({ silent: false }); } catch (e) {}
+  }, 280);
+}
+
+function startMindSizeWatch() {
+  if (mindSizeTimer) return;
+  mindSizeTimer = setInterval(function () {
+    try {
+      const card = document.getElementById("mind-size") || document.getElementById("mind-card") || document.getElementById("panel-mind");
+      if (!card) return;
+      // Battery: ≤30s refresh while mind UI visible — never on ping status path.
+      refreshMindSize({ silent: false });
+    } catch (e) {}
+  }, 30000);
+}
+
+function stopMindSizeWatch() {
+  if (mindSizeTimer) {
+    clearInterval(mindSizeTimer);
+    mindSizeTimer = 0;
+  }
+}
+
 
 function formatBytes(n) {
   if (n < 1024) return n + " B";
@@ -3285,10 +4336,25 @@ function renderNet() {
 }
 
 function toggleMind() {
+  const goingGreen = !state.mindOnline;
   state.mindOnline = !state.mindOnline;
+  if (goingGreen) {
+    state.lastGreenAt = Date.now();
+    state.mindRev = (Number(state.mindRev) || 0) + 1;
+  } else {
+    state.lastAmberAt = Date.now();
+    if (!state.offlineStartedAt) state.offlineStartedAt = state.lastAmberAt;
+    // New offline window starts when leaving green
+    state.offlineStartedAt = state.lastAmberAt;
+  }
   save();
   renderNet();
-  if (state.mindOnline) harvestOnline();
+  if (state.mindOnline) {
+    harvestOnline();
+    refreshInteractFeed();
+  } else {
+    stopInteractFeed();
+  }
 }
 
 function render() {
@@ -3299,7 +4365,7 @@ function render() {
     return;
   }
   logEl.innerHTML = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div>${escapeHtml(m.text)}</article>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
@@ -3313,6 +4379,27 @@ function escapeHtml(s) {
     '"': "&quot;",
     "'": "&#39;"
   }[c]));
+}
+
+function renderMemList() {
+  const el = document.getElementById("mem-list");
+  if (!el) return;
+  const real = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text) && !/^from talk:/i.test(m.text) && !isWikiJunkMemory(m.text) && !isLinkJunkMemory(m.text));
+  if (!real.length) {
+    el.innerHTML = `<p class="lead">No stored facts yet. Say remember this: … Chat: forget … Reset Essence still wipes all.</p>`;
+    return;
+  }
+  const shown = real.slice(0, 40);
+  el.innerHTML = shown.map((m) => {
+    const raw = String(m.text || "");
+    const label = raw.length > 90 ? raw.slice(0, 87) + "…" : raw;
+    const idShort = (m.id || "").slice(0, 8);
+    const when = m.at ? new Date(m.at).toLocaleString() : "";
+    return `<div class="row"><div><div>${escapeHtml(label)}</div><div class="fn">${escapeHtml(idShort)}${when ? " \u00b7 " + escapeHtml(when) : ""}</div></div>
+      <button type="button" data-forget="${escapeHtml(m.id)}">Forget</button></div>`;
+  }).join("") + (real.length > 40
+    ? `<p class="lead">Showing 40 of ${real.length}. Say forget … or Reset Essence for a full wipe.</p>`
+    : "");
 }
 
 function renderPanel() {
@@ -3331,12 +4418,12 @@ function renderPanel() {
         : `<span class="${f.enabled ? "on" : "off"}">${f.enabled ? "on" : "off"}</span>`}
     </div>`;
   }).join("");
+  renderMemList();
   const vaultEl = document.getElementById("vault-list");
   if (!vault.length) {
     vaultEl.innerHTML = `<p class="lead">No mints yet. Seal this model to keep a copy you can download later.</p>`;
-    return;
-  }
-  vaultEl.innerHTML = vault.map((e) => `
+  } else {
+    vaultEl.innerHTML = vault.map((e) => `
     <div class="row">
       <div>
         <div>${escapeHtml(e.body.model.name)}</div>
@@ -3344,6 +4431,7 @@ function renderPanel() {
       </div>
       <button data-dl="${e.body.id}">Download</button>
     </div>`).join("");
+  }
 }
 
 form.addEventListener("submit", (e) => {
@@ -3419,6 +4507,11 @@ panel.addEventListener("click", (e) => {
   if (fn) toggleFn(fn);
   const dl = e.target.getAttribute("data-dl");
   if (dl) downloadFromVault(dl);
+  const forgetId = e.target.getAttribute("data-forget");
+  if (forgetId) {
+    forgetFact(forgetId);
+    renderPanel();
+  }
 });
 document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
@@ -3459,7 +4552,7 @@ window.yaNativeReply = function (msg) {
       if (f.kind === "gguf") applyEatReply("Heart landed in native Documents (not Safari). " + (f.name || "heart.gguf") + " · " + formatBytes(f.bytes || 0) + ". NativeHeart seats Metal when llama.xcframework is linked.");
       else applyEatReply("Kept " + (f.name || "file") + " in native Documents.");
     });
-    try { save(); renderMind(); } catch (e) {}
+    try { save(); scheduleMindSizeRefresh(); } catch (e) {}
   }
 };
 
@@ -3527,8 +4620,12 @@ if (statusEl) {
   statusEl.title = "Tap to take the mind online or offline";
   statusEl.addEventListener("click", toggleMind);
 }
-window.addEventListener("online", () => { onCommsBack(); });
-window.addEventListener("offline", renderNet);
+window.addEventListener("online", () => { onCommsBack(); refreshInteractFeed(); scheduleMindSizeRefresh(); });
+window.addEventListener("offline", () => { renderNet(); stopInteractFeed(); scheduleMindSizeRefresh(); });
+window.addEventListener("pageshow", () => { scheduleMindSizeRefresh(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") scheduleMindSizeRefresh();
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
@@ -3550,7 +4647,9 @@ ensureCreator().then(() => {
   renderPanel();
   renderMind();
   finishXReturn();
-  if (signal()) setTimeout(() => { onCommsBack(); }, 800);
+  if (signal()) setTimeout(() => { onCommsBack(); refreshInteractFeed(); }, 800);
+setTimeout(function () { try { ensureDemoPingStatusSkill(); } catch (e) {}
+  scheduleMindSizeRefresh(); startMindSizeWatch(); }, 400);
 });
 render();
 renderMind();
