@@ -545,6 +545,35 @@ function scrubHygieneJunk() {
   if (state.memories.length !== before) save();
 }
 
+/** Prefer Christopher Bishop / PRML; reject industrial DCS false friends when query is ML Bishop. */
+function isBishopPrmlQuery(query) {
+  const q = foldQ(query);
+  const hasBishop = /\bbishop\b/.test(q);
+  const hasPat = /\bpattern\b/.test(q) && /\brecognition\b/.test(q);
+  const hasML = /\b(machine learning|ml|prml|vapnik|hastie|tibshirani|friedman|duda|hart)\b/.test(q);
+  return hasBishop && (hasPat || hasML || /\bpattern recognition\b/.test(q));
+}
+
+function isIndustrialDcsFalseFriend(title, body) {
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (/\b(christopher bishop|pattern recognition and machine learning|\bprml\b|springer)\b/.test(hay)) return false;
+  if (/\b(distributed control|dcs\b|process control|scada|plc\b|industrial automation|honeywell|yokogawa|emerson)\b/.test(hay)) return true;
+  if (/\bpattern recognition\b/.test(hay) && /\b(control system|plant floor|refinery)\b/.test(hay)) return true;
+  return false;
+}
+
+function searchPreferBishopPrml(query, title, body) {
+  if (!isBishopPrmlQuery(query)) return true;
+  if (isIndustrialDcsFalseFriend(title, body)) return false;
+  const hay = foldQ((title || "") + " " + (body || ""));
+  // Prefer real book / author signals when present; allow through if not obviously DCS
+  if (/\b(christopher|prml|machine learning|springer|oxford|vapnik)\b/.test(hay)) return true;
+  if (/\bbishop\b/.test(hay) && /\b(pattern recognition|machine learning)\b/.test(hay)) return true;
+  // Weak generic "pattern recognition" without Bishop/ML → discard for Bishop queries
+  if (/\bpattern recognition\b/.test(hay) && !/\bbishop\b/.test(hay) && !/\bmachine learning\b/.test(hay)) return false;
+  return true;
+}
+
 /** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
 function searchRelevant(query, title, body) {
   if (isSearchInfraJunk(title, body, "")) return false;
@@ -558,10 +587,13 @@ function searchRelevant(query, title, body) {
   }
   // Need at least one strong term (len>=5) or two shorter terms
   const strong = terms.filter((t) => t.length >= 5);
-  if (strong.some((t) => hay.indexOf(t) >= 0)) return true;
-  if (hits >= 2) return true;
-  if (terms.length === 1 && hits >= 1) return true;
-  return false;
+  let ok = false;
+  if (strong.some((t) => hay.indexOf(t) >= 0)) ok = true;
+  else if (hits >= 2) ok = true;
+  else if (terms.length === 1 && hits >= 1) ok = true;
+  if (!ok) return false;
+  if (!searchPreferBishopPrml(query, title, body)) return false;
+  return true;
 }
 
 function stripSearchFluff(query) {
@@ -649,6 +681,8 @@ function remember(text) {
   if (isLinkJunkMemory(clean)) return;
   // Never persist ntfy / push-notification / interact infra (Link notes or otherwise)
   if (isSearchInfraJunkMemory(clean)) return;
+  if (typeof isRaceBoardText === "function" && isRaceBoardText(clean)) return;
+  if (/^Pong\s*·/i.test(clean) || /^Compass race\b/i.test(clean)) return;
   if (/^Link note:/i.test(clean) && /ntfy\.sh/i.test(clean)) return;
   if (/\bpush notifications?\b/i.test(clean) && (/\bntfy\b/i.test(clean) || /^Link note:/i.test(clean))) return;
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
@@ -688,6 +722,8 @@ function recall(query, limit) {
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
     if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
     if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (/^Pong\s*·/i.test(m.text) || /^Compass race\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
     if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
@@ -1068,7 +1104,7 @@ function classifyAsk(userText) {
 
 function coreHitText(hits, kind) {
   const list = Array.isArray(hits) ? hits : [];
-  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text));
+  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text) && !(typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) && !/^Pong\s*·/i.test(m.text));
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
   if (facts.length) return facts[0].text;
   const core = list.find((m) => m && /^Core:/i.test(m.text));
@@ -2676,7 +2712,15 @@ async function lookUpAndKeep(query) {
   if (!raw) return "I looked it up and did not find a page I will keep.";
   if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
   const candidates = splitSearchCandidates(raw);
-  const list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
+  let list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
+  if (isBishopPrmlQuery(raw)) {
+    const prefer = [
+      "Christopher Bishop Pattern Recognition and Machine Learning",
+      "Bishop PRML Pattern Recognition and Machine Learning",
+      stripSearchFluff(raw) || raw
+    ];
+    list = prefer.concat(list.filter(function (x) { return prefer.indexOf(x) < 0; })).slice(0, 6);
+  }
   try {
     const kept = [];
     for (const item of list) {
