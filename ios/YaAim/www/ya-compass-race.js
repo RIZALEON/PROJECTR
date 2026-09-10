@@ -2,7 +2,8 @@
  * Named origins only for place slots. CDN clocks labeled (clock) — path-only, never top-3/closest place.
  * South: S-BR-registro.br always in race + board (fail/timed-out still listed).
  * Location-relative: every Ping/compass ping/furthest RE-RACES from this seat.
- * Denver/CoS never substitutes for closest. Airplane → local-seat.
+ * Seat stamp = precise GPS city/neighborhood (same stack as place search), not Utah TZ.
+ * Denver/CoS never substitutes for closest. Airplane → local-seat honest (no fake GPS).
  * Seat after app.js; before ya-ping-bounce.js
  */
 (function () {
@@ -28,18 +29,99 @@
     }
   }
 
-  /** Seat label for board — phone Utah home vs abroad device TZ. Not CoS Denver as bounce. */
+  /** Seat label — prefer precise GPS city/neighborhood; TZ Utah only as last resort. */
   function seatPlace() {
     try {
       if (typeof state !== "undefined" && state && state.pingPlace) {
         return String(state.pingPlace);
       }
     } catch (e) {}
+    try {
+      if (typeof window !== "undefined" && typeof window.yaLoadLastKnownGeo === "function") {
+        var g = window.yaLoadLastKnownGeo();
+        if (g && g.label) return String(g.label);
+      }
+    } catch (e2) {}
+    try {
+      if (typeof state !== "undefined" && state && state.lastRacePlace) {
+        return String(state.lastRacePlace);
+      }
+    } catch (e3) {}
     var tz = deviceTz();
     if (tz === UTAH_TZ || tz === "America/Boise" || tz === "America/Phoenix") {
-      return "phone (Utah)";
+      return "phone (Utah · TZ — allow Location for GPS)";
     }
-    return "this seat · " + tz;
+    return "this seat · " + tz + " (TZ — allow Location for GPS)";
+  }
+
+  /** Precise GPS seat for board stamp (same stack as place search). */
+  function refreshGpsSeat() {
+    return new Promise(function (resolve) {
+      if (isAirplane()) {
+        try {
+          if (typeof window !== "undefined" && typeof window.yaLoadLastKnownGeo === "function") {
+            var last = window.yaLoadLastKnownGeo();
+            if (last && last.label) {
+              var lab = String(last.label) + " (last known · airplane)";
+              try {
+                if (typeof state !== "undefined" && state) {
+                  state.pingPlace = lab;
+                  state.lastRacePlace = lab;
+                  if (typeof save === "function") save();
+                }
+              } catch (e0) {}
+              return resolve(lab);
+            }
+          }
+        } catch (e1) {}
+        return resolve("local-seat · no live GPS");
+      }
+      if (typeof window === "undefined" || typeof window.yaResolveDeviceGeo !== "function") {
+        return resolve(seatPlace());
+      }
+      window.yaResolveDeviceGeo().then(function (geo) {
+        if (!geo || !geo.ok) {
+          return resolve(seatPlace());
+        }
+        function finish(label) {
+          try {
+            if (typeof state !== "undefined" && state) {
+              state.pingPlace = label;
+              state.lastRacePlace = label;
+              if (typeof save === "function") save();
+            }
+          } catch (e2) {}
+          resolve(label);
+        }
+        if (geo.label && !geo.live) {
+          return finish(String(geo.label));
+        }
+        if (typeof window.yaReverseGeocode === "function" && typeof geo.lat === "number") {
+          return window.yaReverseGeocode(geo.lat, geo.lon).then(function (rev) {
+            var short = (rev && rev.label) || (geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4));
+            try {
+              if (typeof window.yaSaveLastKnownGeo === "function") {
+                window.yaSaveLastKnownGeo({
+                  lat: geo.lat,
+                  lon: geo.lon,
+                  label: short,
+                  city: (rev && rev.city) || "",
+                  neighborhood: (rev && rev.neighborhood) || "",
+                  source: geo.source || "device",
+                  accuracy: geo.accuracy
+                });
+              }
+            } catch (e3) {}
+            finish(short);
+          }).catch(function () {
+            finish(geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4));
+          });
+        }
+        finish(geo.label || (geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4)));
+      }).catch(function () {
+        resolve(seatPlace());
+      });
+    });
   }
 
   function seatStamp() {
@@ -155,67 +237,69 @@
     return "Top 3 · " + parts.join(" · ");
   }
 
-  /** Always fresh RTT from this seat — never frozen Utah winners. */
+  /** Always fresh RTT from this seat — never frozen Utah winners. Seat place = GPS. */
   function runRace() {
-    var place = seatPlace();
-    var st = seatStamp();
-    if (isAirplane()) {
-      lastBoard = {
-        at: Date.now(),
-        stamp: st,
-        place: place,
-        airplane: true,
-        rows: ensureAllRows([]).map(function (r) {
-          return { ok: false, id: r.id, dir: r.dir, kind: r.kind, url: r.url, ms: 0, timedOut: false, airplane: true };
-        }),
-        closest: null,
-        furthest: null,
-        top3: []
-      };
-      return Promise.resolve(lastBoard);
-    }
-    return Promise.all(RACE.map(function (e) { return probe(e, PROBE_MS); })).then(function (rawRows) {
-      var rows = ensureAllRows(rawRows);
-      // Closest / furthest / top3 = named origins only (never clock as place)
-      var originsOk = rows.filter(function (r) { return r.ok && r.kind === "origin"; });
-      var closest = null;
-      var furthest = null;
-      for (var i = 0; i < originsOk.length; i++) {
-        var r = originsOk[i];
-        if (!closest || r.ms < closest.ms) closest = r;
-        if (!furthest || r.ms > furthest.ms) furthest = r;
+    return refreshGpsSeat().then(function (place) {
+      var st = seatStamp();
+      if (isAirplane()) {
+        lastBoard = {
+          at: Date.now(),
+          stamp: st,
+          place: place,
+          airplane: true,
+          rows: ensureAllRows([]).map(function (r) {
+            return { ok: false, id: r.id, dir: r.dir, kind: r.kind, url: r.url, ms: 0, timedOut: false, airplane: true };
+          }),
+          closest: null,
+          furthest: null,
+          top3: []
+        };
+        return lastBoard;
       }
-      // If no origin succeeded, still rank places by measured ms among origins (timed-out/fail)
-      var top3 = top3Origins(rows);
-      if (!closest && top3.length && top3[0].ok) closest = top3[0];
-      lastBoard = {
-        at: Date.now(),
-        stamp: st,
-        place: place,
-        airplane: false,
-        rows: rows,
-        closest: closest,
-        furthest: furthest,
-        top3: top3
-      };
-      try {
-        if (typeof state !== "undefined" && state) {
-          if (closest) state.lastBounce = closest.id;
-          if (furthest) state.lastFurthest = furthest.id;
-          state.lastRacePlace = place;
-          state.lastRaceAt = lastBoard.at;
-          state.lastTop3 = top3.map(function (t) { return t.id; });
-          if (typeof save === "function") save();
+      // Race RTT in parallel with seat already GPS-stamped
+      return Promise.all(RACE.map(function (e) { return probe(e, PROBE_MS); })).then(function (rawRows) {
+        var rows = ensureAllRows(rawRows);
+        // Closest / furthest / top3 = named origins only (never clock as place)
+        var originsOk = rows.filter(function (r) { return r.ok && r.kind === "origin"; });
+        var closest = null;
+        var furthest = null;
+        for (var i = 0; i < originsOk.length; i++) {
+          var r = originsOk[i];
+          if (!closest || r.ms < closest.ms) closest = r;
+          if (!furthest || r.ms > furthest.ms) furthest = r;
         }
-      } catch (e) {}
-      try {
-        if (typeof window !== "undefined") {
-          window.YA_LAST_RACE = lastBoard;
-          if (closest) window.BOUNCE = window.BOUNCE || {};
-          if (closest && window.BOUNCE) window.BOUNCE.last = closest.id;
-        }
-      } catch (e) {}
-      return lastBoard;
+        var top3 = top3Origins(rows);
+        if (!closest && top3.length && top3[0].ok) closest = top3[0];
+        lastBoard = {
+          at: Date.now(),
+          stamp: st,
+          place: place,
+          airplane: false,
+          rows: rows,
+          closest: closest,
+          furthest: furthest,
+          top3: top3
+        };
+        try {
+          if (typeof state !== "undefined" && state) {
+            if (closest) state.lastBounce = closest.id;
+            if (furthest) state.lastFurthest = furthest.id;
+            state.lastRacePlace = place;
+            state.pingPlace = place;
+            state.lastRaceAt = lastBoard.at;
+            state.lastTop3 = top3.map(function (t) { return t.id; });
+            if (typeof save === "function") save();
+          }
+        } catch (e) {}
+        try {
+          if (typeof window !== "undefined") {
+            window.YA_LAST_RACE = lastBoard;
+            if (closest) window.BOUNCE = window.BOUNCE || {};
+            if (closest && window.BOUNCE) window.BOUNCE.last = closest.id;
+          }
+        } catch (e) {}
+        return lastBoard;
+      });
     });
   }
 

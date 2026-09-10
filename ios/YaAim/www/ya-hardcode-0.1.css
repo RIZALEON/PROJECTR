@@ -124,9 +124,9 @@
   position: fixed;
   left: max(10px, env(safe-area-inset-left, 0px));
   right: auto;
-  bottom: calc(62px + env(safe-area-inset-bottom, 0px));
-  width: 150px;
-  height: 114px;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  width: 72px;
+  height: 56px;
   z-index: 9998;
   pointer-events: none;
   display: flex;
@@ -137,22 +137,22 @@
 #ya-cloud-mark[hidden],
 #ya-cloud-mark.idle { display: none !important; }
 #ya-cloud-mark .ya-cloud-stage {
-  width: 150px;
-  height: 110px;
+  width: 72px;
+  height: 54px;
   position: relative;
-  filter: drop-shadow(0 0 14px rgba(180, 130, 255, 0.75));
+  filter: drop-shadow(0 0 8px rgba(180, 130, 255, 0.55));
 }
 #ya-cloud-mark .ya-cloud-tumble {
-  width: 150px;
-  height: 110px;
+  width: 72px;
+  height: 54px;
   position: relative;
   transform-origin: 50% 50%;
   will-change: transform;
 }
 #ya-cloud-mark .ya-cloud-canvas {
   display: block;
-  width: 150px;
-  height: 110px;
+  width: 72px;
+  height: 54px;
 }
 
 #ya-jump-bottom {
@@ -196,11 +196,8 @@
 }
 
 @keyframes ya-cloud-tumble-spin {
-  0% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(90deg) scale(1.08); }
-  50% { transform: rotate(180deg) scale(1); }
-  75% { transform: rotate(270deg) scale(1.08); }
-  100% { transform: rotate(360deg) scale(1); }
+  0%, 100% { transform: rotate(-6deg) scale(1); }
+  50% { transform: rotate(6deg) scale(1.06); }
 }
 @keyframes ya-cloud-tumble-breathe {
   0%, 100% { transform: scale(0.92) translateY(2px); }

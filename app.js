@@ -3165,8 +3165,197 @@ async function reverseGeocode(lat, lon) {
   return { label: label, city: city, neighborhood: neighborhood, state: state, raw: data };
 }
 
+function placeRadiusMiles(text) {
+  const q = foldQ(text);
+  const m = q.match(/\b(?:within|inside|in|under|up\s*to)?\s*(\d+(?:\.\d+)?)\s*(mi|mile|miles|km|kilometers?)\b/);
+  if (m) {
+    let n = parseFloat(m[1]);
+    if (/^km/.test(m[2])) n = n / 1.60934;
+    if (n > 0 && n <= 50) return n;
+  }
+  if (/\bexpand\b/.test(q) || /\b(wider|farther|further)\b/.test(q)) return 5;
+  return 2; // Decider default: 2 miles
+}
+
+function placeCuisineHint(text) {
+  const q = foldQ(text);
+  const hay = " " + q.replace(/[^a-z0-9]+/g, " ") + " ";
+  const cuisines = [
+    "chinese", "mexican", "italian", "thai", "japanese", "indian", "korean",
+    "vietnamese", "mediterranean", "greek", "french", "american", "bbq",
+    "barbecue", "sushi", "pizza", "burger", "seafood", "vegan", "vegetarian",
+    "ethiopian", "turkish", "lebanese", "peruvian", "cajun", "ramen", "pho"
+  ];
+  for (let i = 0; i < cuisines.length; i++) {
+    if (hay.indexOf(" " + cuisines[i] + " ") >= 0) return cuisines[i];
+  }
+  return "";
+}
+
+
+function placeOverpassFilters(subject, cuisine) {
+  const s = foldQ(subject);
+  const filters = [];
+  if (/\bgrocer|supermarket|food\s*mart\b/.test(s)) {
+    filters.push('node["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
+    filters.push('way["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(coffee|cafe|café)\b/.test(s)) {
+    filters.push('node["amenity"="cafe"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="cafe"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bmassage\b/.test(s)) {
+    filters.push('node["shop"="massage"](around:RAD,LAT,LON);');
+    filters.push('node["amenity"="massage_parlour"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="spa"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(bar|pub)\b/.test(s) && !/\brestaurant\b/.test(s)) {
+    filters.push('node["amenity"~"bar|pub"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"~"bar|pub"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bgym|fitness\b/.test(s)) {
+    filters.push('node["leisure"="fitness_centre"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="fitness_centre"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(hotel|motel)\b/.test(s)) {
+    filters.push('node["tourism"="hotel"](around:RAD,LAT,LON);');
+    filters.push('way["tourism"="hotel"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bpharmac/.test(s)) {
+    filters.push('node["amenity"="pharmacy"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bshopping|mall\b/.test(s)) {
+    filters.push('node["shop"](around:RAD,LAT,LON);');
+    filters.push('way["shop"="mall"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  // default: restaurant (+ cuisine when known)
+  if (cuisine) {
+    filters.push('node["amenity"="restaurant"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="restaurant"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+    filters.push('node["amenity"="fast_food"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+  } else {
+    filters.push('node["amenity"="restaurant"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="restaurant"](around:RAD,LAT,LON);');
+    if (/\bfood\b/.test(s) || /\beater/.test(s)) {
+      filters.push('node["amenity"="fast_food"](around:RAD,LAT,LON);');
+    }
+  }
+  return filters;
+}
+
+function milesToMeters(mi) {
+  return Math.round(mi * 1609.34);
+}
+
+function placeRelevanceScore(name, tags, subject, cuisine) {
+  const hay = foldQ((name || "") + " " + JSON.stringify(tags || {}));
+  const sub = foldQ(subject);
+  let score = 0;
+  if (cuisine && hay.indexOf(cuisine) >= 0) score += 5;
+  const words = sub.split(/\s+/).filter(function (w) {
+    return w.length >= 3 && !/^(near|find|search|for|the|and|restaurant|restaurants|restraunts|food|place|places)$/.test(w);
+  });
+  words.forEach(function (w) {
+    if (hay.indexOf(w) >= 0) score += 2;
+  });
+  if (tags && tags.cuisine && cuisine && foldQ(tags.cuisine).indexOf(cuisine) >= 0) score += 3;
+  if (tags && (tags.stars || tags.rating)) score += 1; // rare on OSM
+  return score;
+}
+
+function formatMiles(km) {
+  const mi = km / 1.60934;
+  if (mi < 0.1) return Math.round(mi * 5280) + " ft";
+  return mi.toFixed(mi < 2 ? 2 : 1) + " mi";
+}
+
+async function overpassPlaces(lat, lon, radiusM, subject, cuisine) {
+  const filters = placeOverpassFilters(subject, cuisine).map(function (f) {
+    return f.replace(/RAD/g, String(radiusM)).replace(/LAT/g, String(lat)).replace(/LON/g, String(lon));
+  });
+  const ql =
+    "[out:json][timeout:20];\n(\n  " +
+    filters.join("\n  ") +
+    "\n);\nout center tags 20;";
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places; contact: rizalbot@rizal.institute)"
+    },
+    body: "data=" + encodeURIComponent(ql)
+  });
+  if (!res.ok) throw new Error("overpass " + res.status);
+  const data = await res.json();
+  const elements = (data && data.elements) || [];
+  return elements.map(function (el) {
+    const tags = el.tags || {};
+    const lat2 = el.lat != null ? el.lat : (el.center && el.center.lat);
+    const lon2 = el.lon != null ? el.lon : (el.center && el.center.lon);
+    return {
+      name: tags.name || tags.brand || "Unnamed place",
+      lat: lat2,
+      lon: lon2,
+      tags: tags,
+      cuisine: tags.cuisine || "",
+      type: tags.amenity || tags.shop || tags.leisure || tags.tourism || el.type
+    };
+  }).filter(function (p) {
+    return typeof p.lat === "number" && typeof p.lon === "number";
+  });
+}
+
+async function nominatimNearBox(lat, lon, radiusMi, q) {
+  const delta = radiusMi / 69.0; // ~miles to degrees lat
+  const viewbox = [
+    (lon - delta).toFixed(5),
+    (lat + delta).toFixed(5),
+    (lon + delta).toFixed(5),
+    (lat - delta).toFixed(5)
+  ].join(",");
+  const url =
+    "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=12" +
+    "&q=" + encodeURIComponent(q) +
+    "&viewbox=" + encodeURIComponent(viewbox) +
+    "&bounded=1";
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
+    }
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data.map(function (row) {
+    return {
+      name: String(row.display_name || "").split(",")[0].trim() || "Place",
+      lat: parseFloat(row.lat),
+      lon: parseFloat(row.lon),
+      tags: { display: row.display_name },
+      cuisine: "",
+      type: [row.type, row.class].filter(Boolean).join("/"),
+      full: String(row.display_name || "")
+    };
+  }).filter(function (p) {
+    return p.lat && p.lon;
+  });
+}
+
 async function searchPlacesNearSeat(query) {
   const subject = placeSearchSubject(query);
+  const cuisine = placeCuisineHint(query);
+  const radiusMi = placeRadiusMiles(query);
+  const radiusM = milesToMeters(radiusMi);
   const geo = await resolveDeviceGeo();
 
   if (!geo.ok) {
@@ -3174,14 +3363,14 @@ async function searchPlacesNearSeat(query) {
       return (
         "Airplane / offline — no live GPS. I will not invent places.\n" +
         "Turn networking on (green mind), allow Location when prompted, or say where you are " +
-        "(e.g. restaurants near Sugar House)."
+        "(e.g. Chinese restaurant near Sugar House)."
       );
     }
     if (geo.denied) {
       return (
         "Location permission denied. I need precise lat/lon for closest places — not a coarse Utah TZ stamp.\n" +
         "Enable Location for YaAim (When In Use), or tell me your city/neighborhood " +
-        "(e.g. coffee near Provo)."
+        "(e.g. Mexican restaurant near Provo)."
       );
     }
     return (
@@ -3207,102 +3396,109 @@ async function searchPlacesNearSeat(query) {
       }
     } catch (e) {
       if (!placeLabel) {
-        placeLabel = (typeof geo.lat === "number" ? geo.lat.toFixed(4) : "?") + ", " + (typeof geo.lon === "number" ? geo.lon.toFixed(4) : "?");
+        placeLabel = geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4);
       }
     }
   }
 
   saveLastKnownGeo(geo);
 
+  let hits = [];
+  try {
+    hits = await overpassPlaces(geo.lat, geo.lon, radiusM, subject, cuisine);
+  } catch (e) {
+    hits = [];
+  }
+
   const whereBits = [];
   if (neighborhood) whereBits.push(neighborhood);
   if (city && foldQ(city) !== foldQ(neighborhood)) whereBits.push(city);
   if (!whereBits.length && placeLabel) whereBits.push(placeLabel);
-  if (!whereBits.length) whereBits.push(seatPlaceQuery());
-  const where = whereBits.join(", ");
+  const where = whereBits.join(", ") || "here";
+  const qNom = (subject + " " + where).replace(/\s+/g, " ").trim();
 
-  const q = (subject + " " + where).replace(/\s+/g, " ").trim();
-  const delta = 0.18; // ~20km box
-  const viewbox = [
-    (geo.lon - delta).toFixed(5),
-    (geo.lat + delta).toFixed(5),
-    (geo.lon + delta).toFixed(5),
-    (geo.lat - delta).toFixed(5)
-  ].join(",");
-  const url =
-    "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8" +
-    "&q=" + encodeURIComponent(q) +
-    "&viewbox=" + encodeURIComponent(viewbox) +
-    "&bounded=1";
-
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
+  if (!hits.length) {
+    try {
+      hits = await nominatimNearBox(geo.lat, geo.lon, radiusMi, qNom);
+    } catch (e2) {
+      hits = [];
     }
-  });
-  if (!res.ok) throw new Error("nominatim " + res.status);
-  let data = await res.json();
-  if (!Array.isArray(data) || !data.length) {
-    // Unbounded retry near city label only (still not Utah-only stamp)
-    const url2 =
-      "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=" +
-      encodeURIComponent(q);
-    const res2 = await fetch(url2, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
-      }
-    });
-    if (res2.ok) data = await res2.json();
-  }
-  if (!Array.isArray(data) || !data.length) {
-    return (
-      "No places found near " + placeLabel + " for “" + subject + "”.\n" +
-      "Try a sharper query, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(q)
-    );
   }
 
-  data = data.slice().sort(function (a, b) {
-    const da = haversineKm(geo.lat, geo.lon, parseFloat(a.lat), parseFloat(a.lon));
-    const db = haversineKm(geo.lat, geo.lon, parseFloat(b.lat), parseFloat(b.lon));
-    return da - db;
+  // Enrich + filter hard radius
+  hits = hits.map(function (p) {
+    const km = haversineKm(geo.lat, geo.lon, p.lat, p.lon);
+    const rel = placeRelevanceScore(p.name, p.tags, subject, cuisine);
+    return Object.assign({}, p, { km: km, mi: km / 1.60934, rel: rel });
+  }).filter(function (p) {
+    return p.mi <= radiusMi + 0.05;
+  });
+
+  // Rank: distance first, then relevance (best nearby, not statewide)
+  hits.sort(function (a, b) {
+    if (a.mi !== b.mi) return a.mi - b.mi;
+    return b.rel - a.rel;
+  });
+  // Stable best-of nudge: among top by distance, prefer higher rel within 0.3 mi band
+  hits.sort(function (a, b) {
+    const band = Math.abs(a.mi - b.mi) < 0.3;
+    if (band && a.rel !== b.rel) return b.rel - a.rel;
+    return a.mi - b.mi;
   });
 
   const srcNote = geo.live
     ? (geo.source === "core-location" ? "Core Location" : "device geolocation")
     : (geo.airplane ? "last known (airplane — not live GPS)" : "last known seat");
+
+  if (!hits.length) {
+    const nextMi = radiusMi < 5 ? 5 : Math.min(10, Math.ceil(radiusMi + 3));
+    return [
+      "No “" + subject + "” within " + radiusMi + " mi of " + placeLabel + ".",
+      "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
+      "Say expand or search " + subject + " " + nextMi + " miles to widen — I will not invent places or fall back to statewide Utah / Bishop wiki."
+    ].join("\n");
+  }
+
   const lines = [
-    "Places near " + placeLabel + " (OpenStreetMap)",
+    "Best near " + placeLabel + " · within " + radiusMi + " mi",
     "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
-    "Query: " + subject
+    "Query: " + subject + (cuisine ? " · cuisine " + cuisine : "") + " · ranked distance + match"
   ];
-  data.slice(0, 5).forEach(function (row, i) {
-    const name = String(row.display_name || row.name || "Place").split(",")[0].trim();
-    const full = String(row.display_name || "").trim();
-    const lat = parseFloat(row.lat);
-    const lon = parseFloat(row.lon);
-    const type = [row.type, row.class].filter(Boolean).join("/");
-    const km = haversineKm(geo.lat, geo.lon, lat, lon);
-    const dist = km < 1 ? Math.round(km * 1000) + " m" : km.toFixed(1) + " km";
-    lines.push((i + 1) + ". " + name + " · " + dist + (type ? " · " + type : ""));
-    if (full && full !== name) lines.push("   " + full.slice(0, 120));
-    if (lat && lon) {
-      lines.push("   https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=17/" + lat + "/" + lon);
+  hits.slice(0, 5).forEach(function (p, i) {
+    const cuisineTag = p.cuisine ? " · " + p.cuisine : "";
+    const type = p.type ? " · " + p.type : "";
+    lines.push((i + 1) + ". " + p.name + " · " + formatMiles(p.km) + cuisineTag + type);
+    if (p.full && p.full !== p.name) lines.push("   " + String(p.full).slice(0, 120));
+    else if (p.tags && p.tags["addr:street"]) {
+      const addr = [p.tags["addr:housenumber"], p.tags["addr:street"]].filter(Boolean).join(" ");
+      if (addr) lines.push("   " + addr);
     }
+    lines.push("   https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lon + "#map=17/" + p.lat + "/" + p.lon);
   });
   lines.push("");
-  lines.push("Closest-first from precise seat — not Denver/CoS, not coarse Utah stamp. Say browse <url> for Safari.");
+  lines.push("Closest-first inside " + radiusMi + " mi — not Denver/CoS, not coarse Utah stamp. Say expand for wider radius. Browse <url> for Safari.");
   try {
     if (typeof remember === "function") {
       remember(
-        "Places near " + placeLabel + ": " + subject + " → " +
-        data.slice(0, 3).map(function (r) { return String(r.display_name || "").split(",")[0]; }).join("; ")
+        "Places ≤" + radiusMi + "mi " + placeLabel + ": " + subject + " → " +
+        hits.slice(0, 3).map(function (p) { return p.name; }).join("; ")
       );
     }
   } catch (e) {}
   return lines.join("\n");
 }
+
+
+try {
+  if (typeof window !== "undefined") {
+    window.yaResolveDeviceGeo = resolveDeviceGeo;
+    window.yaReverseGeocode = reverseGeocode;
+    window.yaSaveLastKnownGeo = saveLastKnownGeo;
+    window.yaLoadLastKnownGeo = loadLastKnownGeo;
+    window.yaIsAirplaneish = isAirplaneish;
+    window.yaHaversineKm = haversineKm;
+  }
+} catch (eWin) {}
 
 async function lookUpAndKeep(query) {
   const raw = String(query || "").trim();
