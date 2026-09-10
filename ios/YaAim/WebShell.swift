@@ -188,8 +188,8 @@ struct WebShell: UIViewRepresentable {
                     presenter = shown
                 }
                 // Apple Maps directions → hand off to Maps app when possible
-                let host = (url.host || "").lowercased()
-                if host == "maps.apple.com" || host.hasSuffix(".apple.com") && host.contains("maps") {
+                let host = (url.host ?? "").lowercased()
+                if host == "maps.apple.com" || (host.hasSuffix(".apple.com") && host.contains("maps")) {
                     UIApplication.shared.open(url, options: [:]) { ok in
                         var payload: [String: Any] = ["op": "browse", "ok": ok, "url": url.absoluteString, "maps": true]
                         if let id = id { payload["id"] = id }
