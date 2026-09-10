@@ -2972,9 +2972,20 @@ function isBareCuisineOrPlaceAlt(text) {
   const q = foldQ(text);
   if (!q || q.length > 48) return false;
   if (placeCuisineHint(text)) return true;
-  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean|greek|vegan|vegetarian)$/.test(q)) return true;
+  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean|greek|vegan|vegetarian|filipino|filipina)$/.test(q)) return true;
   if (/^(search|find|look\s*up)\s+[a-z][a-z\s-]{1,40}$/.test(q) && !placeNounRe().test(q)) return true;
   if (/^(what about|how about|try|instead|or)\s+/.test(q)) return true;
+  // Decider: context matters — after restaurant Places, short unknown tokens are cuisine alts
+  const ctx = inferPlaceCtxFromRecent();
+  const restCtx = !!(ctx && (ctx.kind === "restaurant" || /\brestaurant/.test(foldQ(ctx.subject || ""))));
+  if (restCtx) {
+    if (placeNounRe().test(q)) return false;
+    const stopRe = /^(ping|pong|help|thanks|thank\s*you|yes|no|ok|okay|what|who|why|how|when|where|hi|hey|hello|remember|status|vault|mint|browse|open|bishop|recognition|prml|time|date|race|clear|reset|stop|start|save|load|share|copy|menu|settings|about|version|debug|please)$/;
+    let tip = q.replace(/^(search|find|look\s*up)\s+/, "").trim();
+    if (!tip || stopRe.test(tip)) return false;
+    if (/^[a-z][a-z-]{2,24}$/.test(tip)) return true;
+    if (/^[a-z][a-z-]{2,24}\s+[a-z][a-z-]{2,24}$/.test(tip)) return true;
+  }
   return false;
 }
 
@@ -3161,7 +3172,17 @@ function resolvePlaceQuery(text) {
     kind = ctx && ctx.kind ? ctx.kind : kind;
     if (kind === "restaurant" || (ctx && ctx.kind === "restaurant")) {
       kind = "restaurant";
-      if (cuisine) subject = cuisine + " restaurant";
+      // Soft cuisine from bare follow-up (e.g. Filipino after Mexican places)
+      if (!cuisine) {
+        let tip = foldQ(placeSearchSubject(raw)).replace(/^(search|find|look\s*up)\s+/, "").trim();
+        if (/^[a-z][a-z-]{2,24}$/.test(tip) || /^[a-z][a-z-]{2,24}\s+[a-z][a-z-]{2,24}$/.test(tip)) {
+          cuisine = tip.replace(/\s+/g, "_");
+          if (cuisine === "soul_food") cuisine = "soul";
+          if (cuisine === "tex_mex" || cuisine === "texmex") cuisine = "tex-mex";
+          if (cuisine === "middle_eastern") cuisine = "middle_eastern";
+        }
+      }
+      if (cuisine) subject = cuisine.replace(/_/g, " ") + " restaurant";
       else if (/^search\s+/i.test(raw)) subject = placeSearchSubject(raw) + " restaurant";
       else subject = (subject && subject !== "places" ? subject : "restaurant");
       if (!/\brestaurant/.test(foldQ(subject))) subject = (subject + " restaurant").trim();
@@ -3410,14 +3431,25 @@ function placeRadiusMiles(text) {
 function placeCuisineHint(text) {
   const q = foldQ(text);
   const hay = " " + q.replace(/[^a-z0-9]+/g, " ") + " ";
+  // Sticky cuisine lexicon — Decider: bare follow-ups inherit restaurant context
   const cuisines = [
     "chinese", "mexican", "italian", "thai", "japanese", "indian", "korean",
     "vietnamese", "mediterranean", "greek", "french", "american", "bbq",
     "barbecue", "sushi", "pizza", "burger", "seafood", "vegan", "vegetarian",
-    "ethiopian", "turkish", "lebanese", "peruvian", "cajun", "ramen", "pho"
+    "ethiopian", "turkish", "lebanese", "peruvian", "cajun", "ramen", "pho",
+    "filipino", "filipina", "hawaiian", "caribbean", "spanish", "german",
+    "brazilian", "middle eastern", "soul food", "soul", "afro", "samoan",
+    "pacific", "asian", "latin", "texmex", "tex mex", "tex-mex"
   ];
   for (let i = 0; i < cuisines.length; i++) {
-    if (hay.indexOf(" " + cuisines[i] + " ") >= 0) return cuisines[i];
+    const needle = String(cuisines[i]).replace(/[^a-z0-9]+/g, " ").trim();
+    if (!needle) continue;
+    if (hay.indexOf(" " + needle + " ") >= 0) {
+      if (needle === "soul food" || needle === "soul") return "soul";
+      if (needle === "tex mex" || needle === "texmex") return "tex-mex";
+      if (needle === "middle eastern") return "middle_eastern";
+      return needle.replace(/\s+/g, "_");
+    }
   }
   return "";
 }
@@ -3815,8 +3847,8 @@ async function lookUpAndKeep(query) {
   const raw = String(query || "").trim();
   if (!raw) return "I looked it up and did not find a page I will keep.";
   if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
-  // Place/local intent — OSM near seat; NEVER Bishop/wiki scientist path
-  if (isPlaceSearchQuery(raw)) {
+  // Place/local intent — OSM near seat; NEVER wiki person/Katipunan fallthrough
+  if (isPlaceSearchQuery(raw) || isPlaceFollowUp(raw)) {
     try {
       return await searchPlacesNearSeat(raw);
     } catch (err) {
@@ -4546,8 +4578,8 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
-  // Place/local intent early — before evolve/local/"I am listening"
-  if (isPlaceSearchQuery(userText)) {
+  // Place/local intent early — before evolve/local/"I am listening"; never wiki person path
+  if (isPlaceSearchQuery(userText) || isPlaceFollowUp(userText)) {
     if (!mindWantsWeb()) {
       queueLearn(userText);
       return "Place search needs green mind + device Location for precise seat (city/neighborhood, not Utah stamp). Tap the light green.";
