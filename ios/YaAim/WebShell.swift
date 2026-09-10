@@ -187,6 +187,16 @@ struct WebShell: UIViewRepresentable {
                 while let shown = presenter.presentedViewController {
                     presenter = shown
                 }
+                // Apple Maps directions → hand off to Maps app when possible
+                let host = (url.host || "").lowercased()
+                if host == "maps.apple.com" || host.hasSuffix(".apple.com") && host.contains("maps") {
+                    UIApplication.shared.open(url, options: [:]) { ok in
+                        var payload: [String: Any] = ["op": "browse", "ok": ok, "url": url.absoluteString, "maps": true]
+                        if let id = id { payload["id"] = id }
+                        self.reply(payload)
+                    }
+                    return
+                }
                 let safari = SFSafariViewController(url: url)
                 presenter.present(safari, animated: true)
                 var payload: [String: Any] = ["op": "browse", "ok": true, "url": url.absoluteString]

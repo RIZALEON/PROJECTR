@@ -3546,6 +3546,24 @@ function placeRelevanceScore(name, tags, subject, cuisine) {
   return score;
 }
 
+
+function appleMapsDirectionsUrl(lat, lon, name) {
+  const la = Number(lat);
+  const lo = Number(lon);
+  if (!isFinite(la) || !isFinite(lo)) return "";
+  // Directions to coords — opens Apple Maps navigation on device
+  let u = "http://maps.apple.com/?daddr=" + encodeURIComponent(la + "," + lo) + "&dirflg=d";
+  const q = String(name || "").trim();
+  if (q) u += "&q=" + encodeURIComponent(q.slice(0, 80));
+  return u;
+}
+
+function formatOpenMapsLine(lat, lon, name) {
+  const u = appleMapsDirectionsUrl(lat, lon, name);
+  if (!u) return "";
+  return "   Open Maps · directions → " + u;
+}
+
 function formatMiles(km) {
   const mi = km / 1.60934;
   if (mi < 0.1) return Math.round(mi * 5280) + " ft";
@@ -3814,13 +3832,17 @@ async function searchPlacesNearSeat(query) {
       const addr = [p.tags["addr:housenumber"], p.tags["addr:street"]].filter(Boolean).join(" ");
       if (addr) lines.push("   " + addr);
     }
-    lines.push("   https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lon + "#map=17/" + p.lat + "/" + p.lon);
+    const mapsLine = formatOpenMapsLine(p.lat, p.lon, p.name);
+    if (mapsLine) lines.push(mapsLine);
+    else if (p.lat && p.lon) {
+      lines.push("   https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lon + "#map=17/" + p.lat + "/" + p.lon);
+    }
   });
   lines.push("");
   lines.push(
     widened
-      ? "No inventing — showed closest real OSM match beyond " + preferMi + " mi. Sticky place context on for follow-ups (e.g. Mexican after Chinese restaurant)."
-      : "Closest-first inside " + preferMi + " mi. Follow-ups keep this place kind (Mexican / park / grocery…). Browse <url> for Safari."
+      ? "No inventing — closest real match beyond " + preferMi + " mi. Tap Open Maps · directions for navigation. Sticky cuisine follow-ups on."
+      : "Closest-first inside " + preferMi + " mi. Tap Open Maps · directions for Apple Maps navigation. Follow-ups keep place kind."
   );
   try {
     if (typeof remember === "function") {
@@ -5793,6 +5815,24 @@ async function finishXReturn() {
 
 const mindEl = document.getElementById("mind");
 const logEl = document.getElementById("log");
+
+if (logEl && !logEl.__yaLinkDelegated) {
+  logEl.__yaLinkDelegated = true;
+  logEl.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var a = t.closest("a.ya-link, a[data-ya-open]");
+    if (!a) return;
+    var u = a.getAttribute("data-ya-open") || a.getAttribute("href") || "";
+    if (!/^https?:\/\//i.test(u)) return;
+    ev.preventDefault();
+    try {
+      if (typeof openBrowse === "function" && openBrowse(u)) return;
+    } catch (e) {}
+    try { window.open(u, "_blank"); } catch (e2) {}
+  });
+}
+
 const form = document.getElementById("composer");
 const input = document.getElementById("input");
 const panel = document.getElementById("panel");
@@ -5839,9 +5879,19 @@ function render() {
   }
   logEl.innerHTML = state.messages.map((m) => {
     const who = m.role === "user" ? state.profile.name : botName();
-    return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div>${escapeHtml(m.text)}</article>`;
+    return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div><div class="body">${linkifyHtml(m.text)}</div></article>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+function linkifyHtml(text) {
+  const esc = escapeHtml(text);
+  // Autolink http(s) URLs (Open Maps · directions, OSM, browse targets)
+  return esc.replace(/(https?:\/\/[^\s<>"']+)/g, function (url) {
+    const clean = url.replace(/[),.;]+$/g, "");
+    const trail = url.slice(clean.length);
+    return '<a class="ya-link" href="' + clean + '" data-ya-open="' + clean + '">' + clean + "</a>" + trail;
+  });
 }
 
 function escapeHtml(s) {
