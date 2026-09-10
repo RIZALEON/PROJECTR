@@ -1302,13 +1302,8 @@ function seedCore() {
 }
 
 
-function pingStatusLine() {
-  try { renderMind(); } catch (e) {}
-  const mind = state.mindOnline
-    ? (signal() ? "online · green" : "online · no signal")
-    : "amber · offline · local";
-  const sz = formatBytes(mindBytes());
-  const nEv = (state.evolved || []).length;
+/** NativeHeart / iOS heart fragment — tokensOn · llama.cpp · Metal (never Android APK eat line). */
+function heartStatusFrag() {
   let heart = "";
   try {
     if (typeof isNativeSpine === "function" && isNativeSpine() && window.YA_NATIVE) {
@@ -1320,9 +1315,64 @@ function pingStatusLine() {
       else if (!seated) heart = " · heart tokensOff (no heart.gguf)";
       else if (off) heart = " · heart tokensOff";
       else heart = " · heart tokensOn · " + eng + (window.YA_NATIVE.metal ? " · Metal" : "");
+    } else if (typeof llamaIsReady === "function" && llamaIsReady()) {
+      heart = " · heart tokensOn · llama.cpp";
     }
   } catch (e2) {}
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heart;
+  return heart;
+}
+
+/** Bare Heart — short status only (no eat / HANDOFF / APK leftover). */
+function shortHeartStatusLine() {
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine() && window.YA_NATIVE) {
+      const n = window.YA_NATIVE;
+      const linked = n.frameworkLinked === true;
+      const seated = n.seated === true || (Number(n.heartBytes) || 0) > 1024;
+      const on = n.tokensOn === true && n.tokensOff !== true;
+      const eng = n.engine || "none";
+      const parts = ["Heart"];
+      parts.push(linked ? "frameworkLinked" : "frameworkLinked:false");
+      parts.push(seated ? "seated" : "seated:false");
+      if (on) {
+        parts.push("tokensOn");
+        parts.push(eng);
+        if (n.metal) parts.push("Metal");
+      } else {
+        parts.push("tokensOff");
+        if (!linked) parts.push("no llama.xcframework");
+        else if (!seated) parts.push("no heart.gguf");
+      }
+      return parts.join(" · ");
+    }
+  } catch (e) {}
+  if (typeof llamaIsReady === "function" && llamaIsReady()) {
+    return "Heart · tokensOn · llama.cpp";
+  }
+  return "Heart · tokensOff · rules+gut";
+}
+
+function statusHeartLine() {
+  return pingStatusLine().replace(/^Status\b/, "Status/heart");
+}
+
+async function refreshNativeHeartForStatus() {
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine()) {
+      const st = await nativeAsk("status", {});
+      if (st) applyNativeVaultStatus(st);
+    }
+  } catch (e) {}
+}
+
+function pingStatusLine() {
+  try { renderMind(); } catch (e) {}
+  const mind = state.mindOnline
+    ? (signal() ? "online · green" : "online · no signal")
+    : "amber · offline · local";
+  const sz = formatBytes(mindBytes());
+  const nEv = (state.evolved || []).length;
+  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heartStatusFrag();
 }
 
 function ensureDemoPingStatusSkill() {
@@ -4584,8 +4634,22 @@ async function answer(userText) {
       }
     }
   } catch (e) {}
-  if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
-    return pingStatusLine();
+  {
+    const statusTrim = String(userText || "").trim();
+    // Status/heart (and similar) → NativeHeart style; never Android "Packed GGUF missing from APK assets"
+    if (/^(?:ping\s+status|mind\s+status|status)[\/\s]+heart[.?!]*$/i.test(statusTrim) || /^status[\/]+heart[.?!]*$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return statusHeartLine();
+    }
+    if (/^(ping\s+status|mind\s+status|status)$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return pingStatusLine();
+    }
+    // Bare Heart → short heart status (not eat path / HANDOFF essay)
+    if (/^heart[.?!]*$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return shortHeartStatusLine();
+    }
   }
 if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
@@ -4686,7 +4750,10 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     }
     return parts.join("\n\n——\n\n");
   }
-  const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
+  // Do not route bare Heart / Status/heart into wllama eat (APK leftover).
+  const bareOrStatusHeart = /^heart[.?!]*$/i.test(String(userText || "").trim())
+    || /^(?:ping\s+status|mind\s+status|status)[\/\s]+heart[.?!]*$/i.test(String(userText || "").trim());
+  const eatAsk = !bareOrStatusHeart && /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
   if (eatAsk && fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
     ensureLlama(true);
     if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
