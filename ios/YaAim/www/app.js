@@ -550,8 +550,22 @@ function isBishopPrmlQuery(query) {
   const q = foldQ(query);
   const hasBishop = /\bbishop\b/.test(q);
   const hasPat = /\bpattern\b/.test(q) && /\brecognition\b/.test(q);
-  const hasML = /\b(machine learning|ml|prml|vapnik|hastie|tibshirani|friedman|duda|hart)\b/.test(q);
+  const hasML = /\b(machine learning|\bml\b|prml|vapnik|hastie|tibshirani|friedman)\b/.test(q);
   return hasBishop && (hasPat || hasML || /\bpattern recognition\b/.test(q));
+}
+
+function isBishopOnlyQuery(query) {
+  const q = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query);
+  return /\bbishop\b/.test(q);
+}
+
+function isTop3GamesJunk(title, body, url) {
+  const hay = foldQ((title || "") + "\n" + (body || "") + "\n" + (url || ""));
+  if (/top3game\.com/.test(hay)) return true;
+  if (/top\s*3\s*!\s*games/.test(hay)) return true;
+  if (/\btop\s*3\b/.test(hay) && /\b(games?|alien stage|youtube|rut=)\b/.test(hay)) return true;
+  if (/^top\s*3\b/.test(foldQ(title || "")) && /\b(games|youtube)\b/.test(hay)) return true;
+  return false;
 }
 
 function isIndustrialDcsFalseFriend(title, body) {
@@ -562,21 +576,35 @@ function isIndustrialDcsFalseFriend(title, body) {
   return false;
 }
 
-function searchPreferBishopPrml(query, title, body) {
-  if (!isBishopPrmlQuery(query)) return true;
-  if (isIndustrialDcsFalseFriend(title, body)) return false;
+function isDudaNotBishop(title, body) {
   const hay = foldQ((title || "") + " " + (body || ""));
-  // Prefer real book / author signals when present; allow through if not obviously DCS
-  if (/\b(christopher|prml|machine learning|springer|oxford|vapnik)\b/.test(hay)) return true;
-  if (/\bbishop\b/.test(hay) && /\b(pattern recognition|machine learning)\b/.test(hay)) return true;
-  // Weak generic "pattern recognition" without Bishop/ML → discard for Bishop queries
-  if (/\bpattern recognition\b/.test(hay) && !/\bbishop\b/.test(hay) && !/\bmachine learning\b/.test(hay)) return false;
+  return /\b(richard o\.?\s*duda|richard duda|\bduda\b)/.test(hay) && !/\bchristopher\b/.test(hay) && !/\bprml\b/.test(hay);
+}
+
+function searchPreferBishopPrml(query, title, body, url) {
+  const q = foldQ(query);
+  if (isTop3GamesJunk(title, body, url || "") && !/\b(game|games|gaming)\b/.test(q)) return false;
+  if (!isBishopPrmlQuery(query) && !isBishopOnlyQuery(query)) return true;
+  if (isIndustrialDcsFalseFriend(title, body)) return false;
+  if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (isBishopPrmlQuery(query)) {
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
+    if (/\bbishop\b/.test(hay) && /\b(pattern recognition and machine learning|machine learning)\b/.test(hay)) return true;
+    return false;
+  }
+  if (isBishopOnlyQuery(query)) {
+    if (!/\bbishop\b/.test(hay)) return false;
+    if (isTop3GamesJunk(title, body, url || "")) return false;
+  }
   return true;
 }
 
 /** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
 function searchRelevant(query, title, body) {
   if (isSearchInfraJunk(title, body, "")) return false;
+  if (isTop3GamesJunk(title, body, "") && !/\b(game|games|gaming)\b/.test(foldQ(query))) return false;
   const terms = searchContentTerms(query);
   if (!terms.length) return true;
   const hay = foldQ((title || "") + " " + (body || ""));
@@ -592,7 +620,7 @@ function searchRelevant(query, title, body) {
   else if (hits >= 2) ok = true;
   else if (terms.length === 1 && hits >= 1) ok = true;
   if (!ok) return false;
-  if (!searchPreferBishopPrml(query, title, body)) return false;
+  if (!searchPreferBishopPrml(query, title, body, "")) return false;
   return true;
 }
 
@@ -1309,6 +1337,10 @@ function retrieveBeforeReply(userText) {
   if (cont && isRaceBoardText(cont)) cont = "";
   if (cont && /\b(Top\s*3|Pong\s*[·.•]|Compass race|Furthest Tower|YA_LAST_RACE)\b/i.test(cont)) cont = "";
   let direct = "";
+  const qToks = foldQ(q).split(/\W+/).filter(Boolean);
+  if (qToks.length === 1 && /^(recognition|pattern|bishop)$/i.test(qToks[0])) {
+    return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: "" };
+  }
   // Direct gut answers only for clear ask-forms — never for academic bare phrases like "Recognition"
   const askish = /\?$|^(who|what|when|where|which|why|how|do you|did you|is |are |can you|recall|remember)\b/i.test(q);
   const raceCmd = typeof isRaceChatCommand === "function" && isRaceChatCommand(q);
@@ -2734,13 +2766,11 @@ async function lookUpAndKeep(query) {
   if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
   const candidates = splitSearchCandidates(raw);
   let list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
-  if (isBishopPrmlQuery(raw)) {
-    const prefer = [
+  if (isBishopPrmlQuery(raw) || isBishopOnlyQuery(raw)) {
+    list = [
       "Christopher Bishop Pattern Recognition and Machine Learning",
-      "Bishop PRML Pattern Recognition and Machine Learning",
-      stripSearchFluff(raw) || raw
+      "Christopher M. Bishop PRML"
     ];
-    list = prefer.concat(list.filter(function (x) { return prefer.indexOf(x) < 0; })).slice(0, 6);
   }
   try {
     const kept = [];
