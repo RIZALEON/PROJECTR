@@ -9,7 +9,7 @@ Spoken spine · seated vs missing · smoke lines for tip Decider GO pack (?v=104
 
 Law: NonNuclear · Decider · 100%-offline · no-cloud-token-quota · agents-come-to-phone · gain>drop
 
-## SEATED (www · ?v=104)
+## SEATED (www · ?v=105)
 - ya-hardcode-0.1.js/.css — spine + CoS stub  
 - ya-mind-continuity.js — continuity / chief brief  
 - ya-compass-race.js · ya-compass-br.js · ya-ping-bounce.js  
@@ -44,7 +44,7 @@ Heart / status/heart              # NativeHeart — do not regress
 evolve: when stand ready, you standing ready on-device
 ping                              # airplane → local-seat
 ```
-Also: airplane chat still works · keep current heart.gguf · **tokensOn** still Mac Embed&Sign only.
+Also: airplane chat still works · keep current heart.gguf · **tokensOn** = seated-on-device when frameworkLinked+heart (NativeHeart).
 
 ## Reinstall
 Clean install / replace `ios/YaAim/www/` when www changes (WKWebView stale). Live seat: On My iPhone → **Я/**.

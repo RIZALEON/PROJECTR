@@ -72,7 +72,7 @@ Path expectation: app Documents / vault root · filename **`heart.gguf`**.
 
 Without the framework, status must stay honest: **`tokensOff` + `mithrilBorrow` hint**. Function 0 (rules+gut) + offline CoS mode still talk.
 
-**tokensOn still requires Mac Embed & Sign** — Linux tip cannot flip this.
+**tokensOn = seated-on-device when frameworkLinked+heart** (NativeHeart linked on device). Mac Embed&Sign is the build path only (binary not in git); Linux tip cannot flip device tokens — USB smoke confirms.
 
 ---
 

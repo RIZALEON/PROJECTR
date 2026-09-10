@@ -20,7 +20,7 @@
     "Shelf: Place law — live seat is On My iPhone → Я/ (not cloud as sole copy). Cloud twins are dump-only. heart.gguf + gut/ + body/ live under Я/. Utah clock is whose day this is.",
     "Shelf: Track B retrieve-before-reply — gut + continuity + Shelf: facts before airplane/local answers. Say Shelf: … to seat; recall … to retrieve. Perfect-memory path prefers Shelf:/ASTA:/Bookshelf: tags.",
     "Shelf: CoS mode — enter chief|cos|advise; multi-turn offline Chief voice; inventory-before-act; Function 0 gain-first; exit done|exit chief|normal mode. Amber rummages gut/shelves/Documents titles when green/web mind off.",
-    "Shelf: PROJECTRXCODE offline — NativeHeart + Embed&Sign llama.xcframework (Metal) on Mac; do not commit xcframework binary; team 88HACKXHZL · bundle io.github.rizaleon.yaaim.cam; heart.gguf in Documents/Я; sync NativeHeart.swift + pbxproj only. tokensOn after USB device smoke.",
+    "Shelf: PROJECTRXCODE offline — NativeHeart + Embed&Sign llama.xcframework (Metal) on Mac build path; do not commit xcframework binary; team 88HACKXHZL · bundle io.github.rizaleon.yaaim.cam; heart.gguf in Documents/Я; sync NativeHeart.swift + pbxproj only. tokensOn = seated-on-device when frameworkLinked+heart (USB smoke confirms).",
     "Shelf: Body parts — mark/face, skin/shell, mouth/ears, spine/OS, gut/vault, heart/engine, hands/functions, immune, passport/Essence, nerves. Chat: body part X · combine A+B · body status. Switch or combine parts for better function."
   ];
 
@@ -47,6 +47,21 @@
     "senses/shelf-art.jsonl",
     "senses/shelf-freedom.jsonl"
   ];
+
+  var PING_LAW_LEAD = "Airplane · local-seat / here · RIZALBOT. Green Ping · closest+furthest race.";
+
+  function isPingLawAsk(q) {
+    var l = String(q || "").toLowerCase();
+    if (/ping\s*law/.test(l)) return true;
+    if (/airplane/.test(l) && /ping|local-?seat|law/.test(l)) return true;
+    if (/what.*ping/.test(l) && /airplane|offline|local/.test(l)) return true;
+    if (/when airplane/.test(l) && /ping|law|seat/.test(l)) return true;
+    return false;
+  }
+
+  function pingLawLead() {
+    return PING_LAW_LEAD;
+  }
 
   function scrub(s) {
     s = String(s || "").replace(/\s+/g, " ").trim();
@@ -143,10 +158,22 @@
   function offlineRummage(query) {
     var bits = [];
     var topic = scrub(query);
+    if (isPingLawAsk(topic)) {
+      bits.push(PING_LAW_LEAD);
+      // Prefer exact ping-law shelf line next (before generic dump).
+      try {
+        PACK.forEach(function (line) {
+          if (/ping law/i.test(line) && bits.indexOf(line) < 0) bits.push(scrub(line).slice(0, 220));
+        });
+      } catch (ePing) {}
+    }
     try {
       var pack = packHits(topic);
       pack.slice(0, 4).forEach(function (h) {
-        bits.push(scrub(h.text).slice(0, 220));
+        var tx = scrub(h.text).slice(0, 220);
+        if (!tx) return;
+        if (bits.join(" ").indexOf(tx.slice(0, 40)) >= 0) return;
+        bits.push(tx);
       });
     } catch (e) {}
     try {
@@ -184,7 +211,9 @@
       });
       bag.shelfHits = (bag.shelfHits || []).concat(asMem).slice(0, 10);
       bag.hits = (bag.hits || []).concat(asMem).slice(0, 12);
-      if (!bag.direct && /\?$|^(who|what|when|where|which|why|how|recall|remember|law|spine|ping|offline|decider|cos|chief)\b/i.test(String(userText || "").trim())) {
+      if (isPingLawAsk(userText)) {
+        bag.direct = PING_LAW_LEAD;
+      } else if (!bag.direct && /\?$|^(who|what|when|where|which|why|how|recall|remember|law|spine|ping|offline|decider|cos|chief)\b/i.test(String(userText || "").trim())) {
         bag.direct = asMem[0].text;
       }
     } catch (e) {}
@@ -216,7 +245,8 @@
       var topic = q.replace(/^(rummage|offline rummage)\s*/i, "").trim() || "decider offline";
       var bits = offlineRummage(topic);
       if (!bits.length) return "Amber rummage · quiet for: " + topic;
-      return "Amber rummage · offline\n" + bits.map(function (b) { return "· " + b; }).join("\n");
+      var head = isPingLawAsk(topic) ? (PING_LAW_LEAD + "\n") : "";
+      return head + "Amber rummage · offline\n" + bits.map(function (b) { return "· " + b; }).join("\n");
     }
     return null;
   }
@@ -240,6 +270,8 @@
     window.yaShelfPackRecall = shelfPackRecall;
     window.yaOfflineRummage = offlineRummage;
     window.yaHandleShelfPackChat = handleShelfPackChat;
+    window.yaPingLawLead = pingLawLead;
+    window.yaIsPingLawAsk = isPingLawAsk;
   }
 
   setTimeout(function () {

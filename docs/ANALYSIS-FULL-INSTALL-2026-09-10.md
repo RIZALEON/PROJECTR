@@ -86,7 +86,7 @@ Without Metal llama, “full effective bot” ≠ GGUF chat — it’s still PWA
 | 3 Offline search bots | next | File seated green; amber rummage still thin |
 | 4 Write-code + ASTA C + D | **write-code this tip** | **`ya-write-code.js`** manifest hand; ASTA C/D later |
 | UI cloud workmark | seated | `ya-cloud-mark.js` in index |
-| llama.xcframework | Mac Embed&Sign | **Still MISSING** |
+| llama.xcframework | Mac Embed&Sign build path (binary not in git) | **seated-on-device when frameworkLinked+heart** |
 | Size 200–400 MB | proposed | Not locked by Decider yet |
 
 ---

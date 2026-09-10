@@ -131,7 +131,7 @@
       lines.unshift("write code: " + (goal || "…") + " → manifest only");
     }
     lines.push("evolve: when …, you …");
-    lines.push("tokensOn still Mac Embed&Sign until device heart+framework seated");
+    lines.push("tokensOn = seated-on-device when frameworkLinked+heart (NativeHeart); USB smoke confirms");
     return lines;
   }
 

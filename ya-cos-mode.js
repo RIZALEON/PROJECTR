@@ -186,9 +186,11 @@
     try {
       if (typeof window !== "undefined" && window.YA_NATIVE) {
         var n = window.YA_NATIVE;
-        if (n.tokensOn) parts.push("heart tokensOn");
-        else if (n.frameworkLinked) parts.push("llama linked · tokensOff until heart smoke");
-        else parts.push("llama Embed&Sign still open on Mac");
+        var seated = n.seated === true || (Number(n.heartBytes) || 0) > 1024;
+        if (n.tokensOn && n.tokensOff !== true) parts.push("heart tokensOn · seated-on-device");
+        else if (n.frameworkLinked && seated) parts.push("frameworkLinked+heart · seated-on-device · tokensOff until smoke");
+        else if (n.frameworkLinked) parts.push("llama linked · tokensOff until heart.gguf seated");
+        else parts.push("llama framework not linked · NativeHeart status via Heart");
       } else {
         parts.push("heart path · NativeHeart status via Heart / status/heart");
       }
@@ -223,6 +225,27 @@
     return "Chief-of-Staff mode · OFF\nNormal mode. Spine / ASTA / ping still on-device. Say chief or cos mode to return.";
   }
 
+  var PING_LAW_LEAD = "Airplane · local-seat / here · RIZALBOT. Green Ping · closest+furthest race.";
+
+  function isPingLawAsk(q) {
+    var l = String(q || "").toLowerCase();
+    if (/ping\s*law/.test(l)) return true;
+    if (/airplane/.test(l) && /ping|local-?seat|law/.test(l)) return true;
+    if (/what.*ping/.test(l) && /airplane|offline|local/.test(l)) return true;
+    if (/when airplane/.test(l) && /ping|law|seat/.test(l)) return true;
+    return false;
+  }
+
+  function pingLawLeadLine() {
+    try {
+      if (typeof window.yaPingLawLead === "function") {
+        var lead = String(window.yaPingLawLead() || "").trim();
+        if (lead) return lead;
+      }
+    } catch (e) {}
+    return PING_LAW_LEAD;
+  }
+
   function cosReply(userText) {
     try {
       if (typeof nuclearBlocked === "function" && nuclearBlocked(userText)) {
@@ -232,6 +255,7 @@
 
     var topic = scrub(userText);
     var green = mindIsGreen();
+    var pingAsk = isPingLawAsk(topic);
     var bits = green ? gutRecall(topic) : amberRummage(topic);
     var gut = "";
     try {
@@ -243,16 +267,22 @@
     } catch (e2) {}
 
     var lines = [];
+    // Ping-law / airplane asks: crisp law FIRST (1–2 lines) before any shelf dump.
+    if (pingAsk) {
+      lines.push(pingLawLeadLine());
+      lines.push("");
+    }
     lines.push("CoS · " + (green ? "green-aware" : "amber offline rummage") + " · Decider seat · multi-turn");
     lines.push("Inventory: " + inventoryLine());
     if (bits.length) {
       lines.push(green ? "Gut recall:" : "Amber rummage (gut / shelves / Documents titles):");
-      bits.slice(0, 5).forEach(function (b) {
+      // Keep shelf dump short when we already led with ping law.
+      bits.slice(0, pingAsk ? 2 : 5).forEach(function (b) {
         String(b).split("\n").forEach(function (row) {
           if (row) lines.push("· " + row.slice(0, 180));
         });
       });
-    } else {
+    } else if (!pingAsk) {
       lines.push("Rummage · quiet — Shelf: … or remember this: … to seat; recall … to retrieve.");
     }
     lines.push("");
@@ -295,6 +325,8 @@
     window.yaHandleCosModeChat = handleCosModeChat;
     window.yaCosModeOn = isOn;
     window.yaSetCosMode = setOn;
+    window.yaIsPingLawAsk = isPingLawAsk;
+    window.yaPingLawLeadLine = pingLawLeadLine;
     try {
       window.YA_COS_MODE = isOn();
     } catch (e) {}
