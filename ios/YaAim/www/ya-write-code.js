@@ -25,9 +25,9 @@
 
   function parseWrite(userText) {
     var q = String(userText || "").trim();
-    var m = q.match(/^(?:write code|manifest|code this|evolve code|patch www)(?:\s*[:=]\s*|\s+)(.+)$/i);
+    var m = q.match(/^(?:write code|manifest|code this|evolve code|patch www|xcode|darwin|darwin code|ios manifest|pbxproj)(?:\s*[:=]\s*|\s+)(.+)$/i);
     if (m) return scrub(m[1]);
-    if (/^(write code|manifest|code this|evolve code|patch www)$/i.test(q)) return "";
+    if (/^(write code|manifest|code this|evolve code|patch www|xcode|darwin|darwin code|ios manifest|pbxproj)$/i.test(q)) return "";
     return null;
   }
 
@@ -59,6 +59,20 @@
       files = ["web/ya-cos-mode.js", "ios/YaAim/www/ya-cos-mode.js", "ya-cos-mode.js", "app.js answer() hook"];
     } else if (/compass|race/.test(g)) {
       files = ["ya-compass-race.js", "web/ya-compass-race.js", "ios/YaAim/www/ya-compass-race.js"];
+    } else if (/xcode|darwin|pbxproj|nativeheart|llama|embed|metal|swift/.test(g)) {
+      files = [
+        "ios/YaAim/NativeHeart.swift",
+        "ios/YaAim/WebShell.swift",
+        "ios/YaAim/NativeVault.swift",
+        "ios/YaAim.xcodeproj/project.pbxproj",
+        "docs/SEAT-LLAMA-XCFRAMEWORK.md",
+        "hardcode/PROJECTRXCODE-OFFLINE.md",
+        "ios/llama.xcframework (local Mac only — NEVER git commit binary)"
+      ];
+    } else if (/body|parts/.test(g)) {
+      files = ["ya-body-parts.js", "web/ya-body-parts.js", "ios/YaAim/www/ya-body-parts.js", "index.html (?v= bump)"];
+    } else if (/shelf|pack|decider/.test(g)) {
+      files = ["ya-shelf-pack.js", "senses/shelf-decider-cos.jsonl", "web/ + ios www mirrors"];
     }
     return files;
   }
@@ -66,7 +80,8 @@
   function snippetFor(goal) {
     var g = String(goal || "helper");
     var id = slug(g);
-    if (/ping/.test(g.toLowerCase())) {
+    var gl = g.toLowerCase();
+    if (/ping/.test(gl)) {
       return [
         "(function(){",
         "  function handle(raw){",
@@ -76,6 +91,17 @@
         "  }",
         "  window.yaHandlePingHelperChat=handle;",
         "})();"
+      ].join("\n");
+    }
+    if (/xcode|darwin|pbxproj|nativeheart|llama|embed|metal/.test(gl)) {
+      return [
+        "// PROJECTRXCODE offline checklist (no cloud)",
+        "// 1) Mac: open ios/YaAim.xcodeproj · Team 88HACKXHZL · bundle io.github.rizaleon.yaaim.cam",
+        "// 2) Embed & Sign ios/llama.xcframework (Metal) — DO NOT git-add the binary",
+        "// 3) NativeHeart.swift: #if canImport(llama) load Documents/heart.gguf",
+        "// 4) USB device Run · force-quit · status/heart → tokensOn + metal",
+        "// 5) Mirror www changes to web/ + ios/YaAim/www/ · bump ?v=",
+        "window.yaManifest_xcode_darwin = { goal: " + JSON.stringify(g.slice(0, 120)) + ", seated: \"docs-only\" };"
       ].join("\n");
     }
     return [
@@ -96,11 +122,16 @@
     if (/ping/.test(g)) {
       lines.unshift("write code: offline ping helper → this manifest");
       lines.push("ping → local-seat on airplane");
+    } else if (/xcode|darwin|pbxproj|nativeheart|llama|embed|metal/.test(g)) {
+      lines.unshift("xcode: " + (goal || "Embed&Sign") + " → Darwin manifest");
+      lines.push("Heart / status/heart → NativeHeart (not APK eat)");
+      lines.push("Do NOT commit ios/llama.xcframework binary");
+      lines.push("USB tokensOn smoke after Embed&Sign");
     } else {
       lines.unshift("write code: " + (goal || "…") + " → manifest only");
     }
     lines.push("evolve: when …, you …");
-    lines.push("tokensOn still Mac Embed&Sign (llama MISSING until seated)");
+    lines.push("tokensOn still Mac Embed&Sign until device heart+framework seated");
     return lines;
   }
 
@@ -186,11 +217,12 @@
 
   function helpCard() {
     return [
-      "Write-code · offline manifest hand",
+      "Write-code · offline manifest hand (+ Xcode/Darwin)",
       "Say: write code: <goal>",
-      "Also: manifest · code this · evolve code · patch www",
+      "Also: manifest · code this · evolve code · patch www · xcode · darwin",
       "Example: write code: offline ping helper",
-      "Produces files-to-touch + snippet + smoke. No cloud. Seat with evolve pathways when ready."
+      "Example: xcode: Embed&Sign NativeHeart Metal",
+      "Produces files-to-touch + snippet + smoke. No cloud. PROJECTRXCODE patterns are docs/hardcode knowledge."
     ].join("\n");
   }
 
@@ -235,5 +267,5 @@
     }
   } catch (e2) {}
 
-  try { console.log("[ya-write-code] seated — offline write-code / manifest"); } catch (e) {}
+  try { console.log("[ya-write-code] seated — offline write-code / manifest + Xcode/Darwin"); } catch (e) {}
 })();

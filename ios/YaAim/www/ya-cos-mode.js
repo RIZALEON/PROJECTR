@@ -68,7 +68,9 @@
     if (/^(ping|compass|status|mind status|ping status|pong)\b/i.test(l)) return true;
     if (/^(browse|open)\s+https?:\/\//i.test(l)) return true;
     if (/^(spine|machine brain|v0\.0|v0|continuity|touch continuity|commands)$/i.test(l)) return true;
-    if (/^(write code|manifest|code this|evolve code|patch www)\b/i.test(l)) return true;
+    if (/^(write code|manifest|code this|evolve code|patch www|xcode|darwin|pbxproj)\b/i.test(l)) return true;
+    if (/^(body status|body parts|body part|combine|shelf pack|rummage|offline rummage)\b/i.test(l)) return true;
+    if (/^recall\b/i.test(l)) return true;
     return false;
   }
 
@@ -90,6 +92,16 @@
       if (typeof window.yaCosSliceCard === "function") return window.yaCosSliceCard();
     } catch (e) {}
     return "Chief-of-Staff-slice · offline · Decider seat · NonNuclear";
+  }
+
+  function mindIsGreen() {
+    try {
+      if (typeof state === "object" && state && state.mindOnline) return true;
+    } catch (e) {}
+    try {
+      if (typeof mindWantsWeb === "function" && mindWantsWeb()) return true;
+    } catch (e2) {}
+    return false;
   }
 
   function gutRecall(topic) {
@@ -124,6 +136,31 @@
     return bits;
   }
 
+  /** Amber offline rummage — gut / Decider shelves / Documents titles when green/web mind off. */
+  function amberRummage(topic) {
+    var bits = [];
+    try {
+      if (typeof window.yaOfflineRummage === "function") {
+        var rum = window.yaOfflineRummage(topic) || [];
+        rum.forEach(function (r) {
+          var line = scrub(r);
+          if (line && bits.join(" ").indexOf(line.slice(0, 36)) < 0) bits.push(line.slice(0, 200));
+        });
+      }
+    } catch (e) {}
+    try {
+      if (typeof window.yaShelfPackRecall === "function") {
+        var pack = window.yaShelfPackRecall(topic) || [];
+        pack.slice(0, 3).forEach(function (r) {
+          var line = scrub(r);
+          if (line && bits.join(" ").indexOf(line.slice(0, 36)) < 0) bits.push(line.slice(0, 200));
+        });
+      }
+    } catch (e2) {}
+    if (!bits.length) bits = gutRecall(topic);
+    return bits.slice(0, 6);
+  }
+
   function inventoryLine() {
     var parts = [];
     try {
@@ -140,7 +177,24 @@
         parts.push(state.mindOnline ? "mind green" : "mind amber/offline");
       }
     } catch (e2) {}
-    parts.push("llama heart still MISSING until Embed&Sign");
+    try {
+      if (typeof window.YA_BODY_PARTS === "object" && window.YA_BODY_PARTS) {
+        var bp = window.YA_BODY_PARTS;
+        parts.push("body " + (bp.mode || "switch") + ":" + ((bp.active || []).slice(0, 4).join("+") || "—"));
+      }
+    } catch (e3) {}
+    try {
+      if (typeof window !== "undefined" && window.YA_NATIVE) {
+        var n = window.YA_NATIVE;
+        if (n.tokensOn) parts.push("heart tokensOn");
+        else if (n.frameworkLinked) parts.push("llama linked · tokensOff until heart smoke");
+        else parts.push("llama Embed&Sign still open on Mac");
+      } else {
+        parts.push("heart path · NativeHeart status via Heart / status/heart");
+      }
+    } catch (e4) {
+      parts.push("heart path · NativeHeart status via Heart / status/heart");
+    }
     return parts.join(" · ");
   }
 
@@ -158,8 +212,8 @@
       "",
       continuityBrief(),
       "",
-      "Follow-ups stay in CoS voice. Exit: done · exit chief · normal mode.",
-      "No cloud brain · agents come to the phone."
+      "Follow-ups stay in CoS voice (multi-turn). Amber: rummage gut/shelves/Documents titles.",
+      "Exit: done · exit chief · normal mode. No cloud brain · agents come to the phone."
     ];
     return lines.join("\n");
   }
@@ -177,7 +231,8 @@
     } catch (e) {}
 
     var topic = scrub(userText);
-    var bits = gutRecall(topic);
+    var green = mindIsGreen();
+    var bits = green ? gutRecall(topic) : amberRummage(topic);
     var gut = "";
     try {
       if (typeof localEngine === "function") {
@@ -188,28 +243,32 @@
     } catch (e2) {}
 
     var lines = [];
-    lines.push("CoS · offline · Decider seat");
+    lines.push("CoS · " + (green ? "green-aware" : "amber offline rummage") + " · Decider seat · multi-turn");
     lines.push("Inventory: " + inventoryLine());
     if (bits.length) {
-      lines.push("Gut recall:");
-      bits.slice(0, 4).forEach(function (b) {
+      lines.push(green ? "Gut recall:" : "Amber rummage (gut / shelves / Documents titles):");
+      bits.slice(0, 5).forEach(function (b) {
         String(b).split("\n").forEach(function (row) {
           if (row) lines.push("· " + row.slice(0, 180));
         });
       });
     } else {
-      lines.push("Gut recall · quiet — remember this: … to seat a fact.");
+      lines.push("Rummage · quiet — Shelf: … or remember this: … to seat; recall … to retrieve.");
     }
     lines.push("");
     if (gut) {
       lines.push(gut);
     } else {
       lines.push("Hold: " + (topic.slice(0, 200) || "the ask"));
-      lines.push("Gain-first next: one smaller offline step, or evolve: when <trigger>, you <action>.");
-      lines.push("If green later: search online for " + (topic.slice(0, 60) || "the topic") + " — not required.");
+      lines.push("Gain-first next: one smaller offline step, body part switch/combine, or evolve: when <trigger>, you <action>.");
+      if (!green) {
+        lines.push("Web mind off — staying on-device. shelf pack · rummage <topic> · write code: <goal> still work.");
+      } else {
+        lines.push("If needed: search online for " + (topic.slice(0, 60) || "the topic") + " — optional.");
+      }
     }
     lines.push("");
-    lines.push("NonNuclear · offline-first · say done to exit chief.");
+    lines.push("NonNuclear · offline-first · unlimited local · say done to exit chief.");
     try {
       if (typeof remember === "function") remember("CoS turn: " + topic.slice(0, 140));
     } catch (e3) {}
@@ -242,6 +301,6 @@
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-cos-mode] seated — offline CoS multi-turn");
+    if (typeof console !== "undefined") console.log("[ya-cos-mode] seated — offline CoS multi-turn + amber rummage");
   } catch (e) {}
 })();
