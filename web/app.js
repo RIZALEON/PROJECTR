@@ -1195,6 +1195,7 @@ function contentWordsOnly(query) {
 }
 
 async function webSearch(query, force) {
+  if (!force && !signal()) return null;
   if (!force && !worthLearning(query)) return null;
   async function searchOnce(q) {
     const term = String(q || "").trim();
@@ -1213,15 +1214,44 @@ async function webSearch(query, force) {
       if (sum.extract) extract = sum.extract;
     }
     if (wikiJunk(title, extract)) return null;
+    if (nuclearBlocked(title + " " + extract)) return null;
     remember(title + ": " + extract.slice(0, 500));
     const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
-    return { title, extract: extract.slice(0, 700), extras };
+    return { title, extract: extract.slice(0, 700), extras, source: "wikipedia" };
+  }
+  async function searchPublic(q) {
+    if (typeof window.yaPublicSearch !== "function") return null;
+    const term = String(q || "").trim();
+    if (!term) return null;
+    try {
+      const bot = await window.yaPublicSearch(term);
+      if (!bot || !bot.extract) return null;
+      if (nuclearBlocked((bot.title || "") + " " + bot.extract)) return null;
+      if (wikiJunk(bot.title, bot.extract)) return null;
+      return {
+        title: bot.title || term,
+        extract: String(bot.extract).slice(0, 700),
+        extras: Array.isArray(bot.extras) ? bot.extras : [],
+        source: bot.source || "duckduckgo"
+      };
+    } catch (e) {
+      return null;
+    }
   }
   const first = wikiQuery(query) || String(query || "").trim();
   let found = await searchOnce(first);
   if (found) return found;
   const retry = contentWordsOnly(query);
-  if (retry && retry.toLowerCase() !== first.toLowerCase()) return await searchOnce(retry);
+  if (retry && retry.toLowerCase() !== first.toLowerCase()) {
+    found = await searchOnce(retry);
+    if (found) return found;
+  }
+  found = await searchPublic(first);
+  if (found) return found;
+  if (retry && retry.toLowerCase() !== first.toLowerCase()) {
+    found = await searchPublic(retry);
+    if (found) return found;
+  }
   return null;
 }
 
@@ -3061,6 +3091,20 @@ async function answer(userText) {
   if (recalled) return recalled;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  const browseOpen = String(userText || "").trim().match(/^(?:browse|open)\s+(https?:\/\/\S+)/i);
+  if (browseOpen) {
+    const url = browseOpen[1].replace(/[.,;:!?)\]]+$/, "");
+    if (nuclearBlocked(url)) return "No. That URL is blocked.";
+    if (isNativeSpine()) {
+      const ok = openBrowse(url);
+      return ok ? ("Opening in Safari: " + url) : ("Could not open " + url);
+    }
+    if (!mindWantsWeb()) {
+      return "Mind is amber. Tap the light green to browse, or open that URL in the native app (Safari sheet).";
+    }
+    const ok = openBrowse(url);
+    return ok ? ("Opened " + url) : ("Could not open " + url);
+  }
   // Continuity seat — offline CoS recall / stamp (FRIEND-CONTINUITY pattern)
   try {
     if (typeof window !== "undefined" && typeof window.yaHandleContinuityChat === "function") {
@@ -4496,6 +4540,31 @@ document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
   save();
 });
+function openBrowse(url) {
+  const u = String(url || "").trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  if (nuclearBlocked(u)) return false;
+  if (isNativeSpine()) {
+    try {
+      window.webkit.messageHandlers.ya.postMessage({ op: "browse", url: u });
+      return true;
+    } catch (e) {
+      try {
+        window.webkit.messageHandlers.ya.postMessage({ op: "openUrl", url: u });
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+  }
+  try {
+    window.open(u, "_blank", "noopener,noreferrer");
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function isNativeSpine() {
   return !!(window.YA_NATIVE && window.YA_NATIVE.spine === "ios-native"
     && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ya);

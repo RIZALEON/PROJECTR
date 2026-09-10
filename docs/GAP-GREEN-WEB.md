@@ -1,6 +1,6 @@
 # Gap map — green / online web mind (browse clamps)
 
-**Against tip:** `b3c0163` (`race-nesw-furthest`)  
+**Against tip:** `b343a8d`+ (`race-nesw-furthest`) · Step 1 green unlock shipping  
 **Target (Decider):** green mind browsing feels immaculate / broad — any legitimate site, social, video, audio.  
 **Law:** legitimate browse only. **Out of scope forever this track:** credential theft, paywall bypass, TOS-violating scrape, silent upload, nuclear help.
 
@@ -14,14 +14,14 @@
 | `web.search` | `functions[]` id, enabled by default | Required by `mindWantsWeb`. Not in immune-locked drop list (can be disabled). |
 | `web.link` | `functions[]` id, enabled | Declared; **not** consulted by `describeLink` / link paste path (only `mindWantsWeb` / `web.search`). |
 | `web.video` | GOFLOF F2 senses id (locked) | Hands/senses label — **not** the browse allow gate. Green nerves still open sites/videos via mind online. |
-| Wikipedia-only search | `webSearch()` → `en.wikipedia.org` API + REST summary | Green “look it up” / harvest / person-unknown = Wikipedia stub, not open web search. |
+| Wikipedia + DDG Instant Answer | `webSearch()` → wiki primary; on miss/junk → `window.yaPublicSearch` (`ya-search-bots.js` → DuckDuckGo IA JSON) | Green “look it up” / harvest / person-unknown = Wikipedia first, then public DDG AbstractText/Answer/RelatedTopics. |
 | Link fetch | `fetchLinkRaw` → `r.jina.ai/` reader | Any `http(s)` URL when green; no domain allowlist. Junk/wall filter refuses CAPTCHA / sign-in / robot walls (`WALL_MSG`). |
 | YouTube path | `youtubeId` host allowlist + `describeYoutube` | Hosts: youtu.be / youtube.com (+ m/music/nocookie). Metadata via noembed / oembed / Invidious instances; captions when available. |
 | Amber stub | `answer()` when `!mindWantsWeb()` | Queues via `queueLearn`; replies “tap the light green…” — no live fetch. |
 | `ISOLATED = true` | top of `app.js` | Skips GitHub evolution pull/push, unbound ambient reconnect, HF heart download when no packed/native seat. **Does not** block Wikipedia / jina / YouTube fetches when green. |
 | iOS ATS | `ios/YaAim/Info.plist` | `NSAppTransportSecurity` → `NSAllowsLocalNetworking` only. No `NSAllowsArbitraryLoads`. Default ATS = HTTPS for remote. |
-| iOS shell | `WebShell.swift` | Local `www` file URL; `allowsInlineMediaPlayback = true`; no `WKNavigationDelegate` / no `SFSafariViewController` / no external openURL policy. |
-| `ya-search-bots.js` | spine / handoff only | **Missing** from tip load order (not in repo root / www). |
+| iOS shell | `WebShell.swift` | Local `www` file URL; `allowsInlineMediaPlayback = true`; **`browse`/`openUrl` → `SFSafariViewController`** (http/https only); reply `yaNativeReply`. |
+| `ya-search-bots.js` | root + `web/` + `ios/YaAim/www/` · load after `deadman.js` | **Seated.** Exposes `window.yaPublicSearch(query)`. |
 | Android NSC | — | **No** Android project / `network_security_config` in this tip. |
 
 Mirrors of the JS clamps: root `app.js` ≡ `web/app.js` ≡ `ios/YaAim/www/app.js` (same `mindWantsWeb` / `webSearch` / `describeLink` / `WALL_MSG`).
@@ -36,18 +36,21 @@ Mirrors of the JS clamps: root `app.js` ≡ `web/app.js` ≡ `ios/YaAim/www/app.
 - YouTube URLs → title/channel/description/captions note (best-effort public metadata).
 - World time APIs (Utah) as a side path.
 
-**Blocked / stubby / missing**
-- General web / social / news search (not Wikipedia) — **no** DuckDuckGo / Brave / Bing / Google path; `ya-search-bots.js` absent.
+**Open when green (Step 1 unlock)**
+- Second search: DuckDuckGo Instant Answer after Wikipedia miss/junk (`source:'duckduckgo'`).
+- User-initiated `browse` / `open https://…` → iOS `SFSafariViewController` (native always for user-initiated; web green uses `window.open`).
+
+**Still blocked / stubby / missing**
+- Full web / social / news SERP scrape (Brave / Bing / Google) — not claimed; IA abstracts only.
 - Amber: all live browse queued, not fetched.
-- Login walls, CAPTCHA, consent shells → `WALL_MSG` (intentionally not saved).
+- Login walls, CAPTCHA, consent shells → `WALL_MSG` (intentionally not saved); Safari sheet = user session, no cred/paywall bypass.
 - Immune tripped → nerves cut (`mindWantsWeb` false).
 - `ISOLATED` still blocks cloud GitHub sync / unbound ambient ping paths (orthogonal to browse).
-- No in-app SFSafari / system browser handoff for “open this site for me to watch.”
 - No Android NSC story in-repo.
 
 ---
 
-## Proposed thin first unlock (concrete, small)
+## Proposed thin first unlock (concrete, small) — **DONE this tip**
 
 **Seat a green-only second search backend behind `web.search` — document + one script, no paywall work.**
 
@@ -73,6 +76,6 @@ This widens “look it up” beyond Wikipedia without claiming any-site scrape, 
 
 ## Unlock shipped this turn?
 
-**No.** Audit + this gap doc only. No browse unlock code (not a one-line document-only fix beyond this file).
+**Yes — Decider Step 1.** Second public search (DDG IA via `ya-search-bots.js`) + iOS SFSafari `browse`/`openUrl` + chat `browse|open https://…` + `openBrowse()`. No paywall/cred bypass. Race scripts untouched. `?v=75`.
 
 **Tip note:** Commit lands on `race-nesw-furthest`; SHA reported after push.

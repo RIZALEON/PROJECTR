@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import WebKit
 import UniformTypeIdentifiers
+import SafariServices
 
 struct WebShell: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -70,8 +71,41 @@ struct WebShell: UIViewRepresentable {
                 if let list = files["files"] { st["files"] = list }
                 if let id = body["id"] as? String { st["id"] = id }
                 reply(st)
+            case "browse", "openUrl":
+                let raw = (body["url"] as? String) ?? ""
+                presentSafari(urlString: raw, id: body["id"] as? String)
             default:
                 break
+            }
+        }
+
+        func presentSafari(urlString: String, id: String?) {
+            let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let url = URL(string: trimmed),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" else {
+                var payload: [String: Any] = ["op": "browse", "ok": false, "reason": "bad-url"]
+                if let id = id { payload["id"] = id }
+                reply(payload)
+                return
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                guard let root = self.web?.window?.rootViewController else {
+                    var payload: [String: Any] = ["op": "browse", "ok": false, "reason": "no-root"]
+                    if let id = id { payload["id"] = id }
+                    self.reply(payload)
+                    return
+                }
+                var presenter = root
+                while let shown = presenter.presentedViewController {
+                    presenter = shown
+                }
+                let safari = SFSafariViewController(url: url)
+                presenter.present(safari, animated: true)
+                var payload: [String: Any] = ["op": "browse", "ok": true, "url": url.absoluteString]
+                if let id = id { payload["id"] = id }
+                self.reply(payload)
             }
         }
 
