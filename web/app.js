@@ -2991,6 +2991,27 @@ async function answer(userText) {
   if (forgot) return forgot;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  // Compass / bounce seat (never bare here once scripts load)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleCompassChat === "function") {
+      const compass = window.yaHandleCompassChat(userText);
+      if (compass != null) {
+        if (compass && typeof compass.then === "function") {
+          return await compass;
+        }
+        return compass;
+      }
+    }
+    if (typeof window !== "undefined" && typeof window.yaHandlePing === "function") {
+      const bounced = window.yaHandlePing(userText);
+      if (bounced != null) {
+        if (bounced && typeof bounced.then === "function") {
+          return await bounced;
+        }
+        return bounced;
+      }
+    }
+  } catch (e) {}
   if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
     return pingStatusLine();
   }
