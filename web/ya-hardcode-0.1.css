@@ -125,7 +125,7 @@
   left: 0;
   right: 0;
   bottom: calc(58px + env(safe-area-inset-bottom, 0px));
-  height: 76px;
+  height: 100px;
   z-index: 9998;
   pointer-events: none;
   display: flex;
@@ -136,22 +136,22 @@
 #ya-cloud-mark[hidden],
 #ya-cloud-mark.idle { display: none !important; }
 #ya-cloud-mark .ya-cloud-stage {
-  width: 120px;
-  height: 72px;
+  width: 140px;
+  height: 96px;
   position: relative;
   filter: drop-shadow(0 0 14px rgba(180, 130, 255, 0.75));
 }
 #ya-cloud-mark .ya-cloud-tumble {
-  width: 120px;
-  height: 72px;
+  width: 140px;
+  height: 96px;
   position: relative;
   transform-origin: 50% 50%;
   will-change: transform;
 }
 #ya-cloud-mark .ya-cloud-canvas {
   display: block;
-  width: 120px;
-  height: 72px;
+  width: 140px;
+  height: 96px;
 }
 #ya-cloud-mark .ya-cloud-ya {
   position: absolute;

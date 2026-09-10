@@ -1,6 +1,6 @@
-/*! ya-cloud-mark.js — upside-down 3D cloud workmark (iOS WKWebView-safe)
- * Busy = obvious continuous tumble + canvas rain/sparks/thunder.
- * Idle quiet. Offline only. Bottom Speak chrome. Does not block send.
+/*! ya-cloud-mark.js — Rizalbot model cloud workmark (iOS canvas)
+ * Purple fluffy body · glowing white eyes · red horns · bat wings · lightning
+ * Busy = UPSIDE-DOWN + tumble/rain/thunder. Idle quiet. Offline. Speak chrome.
  */
 (function () {
   "use strict";
@@ -14,8 +14,8 @@
   var ctx = null;
   var drops = [];
   var sparks = [];
-  var W = 120;
-  var H = 72;
+  var W = 140;
+  var H = 96;
 
   function ensureDom() {
     var el = document.getElementById(ROOT_ID);
@@ -32,8 +32,7 @@
     el.innerHTML =
       '<div class="ya-cloud-stage">' +
       '<div class="ya-cloud-tumble">' +
-      '<canvas class="ya-cloud-canvas" width="120" height="72"></canvas>' +
-      '<div class="ya-cloud-ya" aria-hidden="true">Я</div>' +
+      '<canvas class="ya-cloud-canvas" width="140" height="96"></canvas>' +
       "</div></div>";
     if (host && host.parentNode) host.parentNode.insertBefore(el, host);
     else document.body.appendChild(el);
@@ -46,61 +45,142 @@
     drops = [];
     sparks = [];
     var i;
-    for (i = 0; i < 14; i++) {
+    for (i = 0; i < 16; i++) {
       drops.push({
-        x: 28 + Math.random() * 64,
-        y: Math.random() * 28,
-        len: 6 + Math.random() * 10,
-        spd: 0.9 + Math.random() * 1.6,
+        x: 30 + Math.random() * 80,
+        y: Math.random() * 30,
+        len: 7 + Math.random() * 11,
+        spd: 1 + Math.random() * 1.8,
         ph: Math.random() * 10
       });
     }
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < 12; i++) {
       sparks.push({
-        x: 36 + Math.random() * 48,
-        y: 22 + Math.random() * 20,
-        r: 0.8 + Math.random() * 1.6,
-        ph: Math.random() * 6
+        x: 40 + Math.random() * 60,
+        y: 25 + Math.random() * 35,
+        r: 0.7 + Math.random() * 1.8,
+        ph: Math.random() * 6,
+        hue: Math.random() > 0.5 ? "#d9a0ff" : "#7ef"
       });
     }
   }
 
-  function drawCloudBody(g, ox, oy, sc, alpha, withEyes) {
+  /** Draw one fluffy lobe */
+  function lobe(g, x, y, rx, ry) {
+    g.beginPath();
+    g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  /** Model Rizalbot cloud character (right-side-up local space; scene flips for busy) */
+  function drawCharacter(g, ox, oy, sc, alpha) {
     g.save();
     g.translate(ox, oy);
     g.scale(sc, sc);
     g.globalAlpha = alpha;
-    // Fluffy purple avatar cloud (bumps = "top" of character; scene is Y-flipped so busy = upside-down)
+
+    // Wings (behind body)
+    g.fillStyle = "rgba(90, 55, 140, 0.92)";
     g.beginPath();
-    g.ellipse(0, 2, 26, 16, 0, 0, Math.PI * 2);
-    g.ellipse(-18, 0, 16, 14, 0, 0, Math.PI * 2);
-    g.ellipse(18, 0, 16, 14, 0, 0, Math.PI * 2);
-    g.ellipse(-8, -10, 14, 12, 0, 0, Math.PI * 2);
-    g.ellipse(10, -11, 13, 12, 0, 0, Math.PI * 2);
-    g.ellipse(0, -14, 12, 11, 0, 0, Math.PI * 2);
-    var grd = g.createLinearGradient(0, -20, 0, 18);
-    grd.addColorStop(0, "rgba(230, 210, 255, 0.95)");
-    grd.addColorStop(0.45, "rgba(186, 150, 235, 0.92)");
-    grd.addColorStop(1, "rgba(130, 95, 190, 0.88)");
-    g.fillStyle = grd;
+    g.moveTo(-22, 2);
+    g.quadraticCurveTo(-48, -18, -52, 8);
+    g.quadraticCurveTo(-40, 6, -28, 12);
+    g.quadraticCurveTo(-38, 0, -22, 2);
     g.fill();
-    g.strokeStyle = "rgba(255, 240, 255, 0.45)";
-    g.lineWidth = 1.1;
+    g.beginPath();
+    g.moveTo(22, 2);
+    g.quadraticCurveTo(48, -18, 52, 8);
+    g.quadraticCurveTo(40, 6, 28, 12);
+    g.quadraticCurveTo(38, 0, 22, 2);
+    g.fill();
+
+    // Purple fluffy body — layered lobes with highlight gradient feel
+    var bodyGrad = g.createRadialGradient(-4, -8, 4, 0, 2, 34);
+    bodyGrad.addColorStop(0, "#e8d4ff");
+    bodyGrad.addColorStop(0.35, "#c49aef");
+    bodyGrad.addColorStop(0.75, "#9b6ad4");
+    bodyGrad.addColorStop(1, "#6a3fa0");
+    g.fillStyle = bodyGrad;
+    lobe(g, 0, 4, 28, 18);
+    lobe(g, -18, 2, 16, 14);
+    lobe(g, 18, 2, 16, 14);
+    lobe(g, -10, -10, 14, 12);
+    lobe(g, 12, -11, 13, 12);
+    lobe(g, 0, -15, 12, 11);
+    // soft rim
+    g.strokeStyle = "rgba(255, 235, 255, 0.35)";
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.ellipse(0, 2, 27, 17, 0, 0, Math.PI * 2);
     g.stroke();
-    if (withEyes) {
-      // Two dark oval eyes (avatar energy) — drawn in cloud local space
-      g.fillStyle = "rgba(28, 22, 40, 0.92)";
-      g.beginPath();
-      g.ellipse(-7, -2, 3.2, 5.2, 0, 0, Math.PI * 2);
-      g.ellipse(7, -2, 3.2, 5.2, 0, 0, Math.PI * 2);
-      g.fill();
-      // tiny highlight
-      g.fillStyle = "rgba(255,255,255,0.35)";
-      g.beginPath();
-      g.ellipse(-6, -4, 1.1, 1.6, 0, 0, Math.PI * 2);
-      g.ellipse(8, -4, 1.1, 1.6, 0, 0, Math.PI * 2);
-      g.fill();
-    }
+
+    // Red horns
+    g.fillStyle = "#e23b4a";
+    g.beginPath();
+    g.moveTo(-8, -18);
+    g.quadraticCurveTo(-14, -32, -4, -28);
+    g.quadraticCurveTo(-6, -22, -8, -18);
+    g.fill();
+    g.beginPath();
+    g.moveTo(8, -18);
+    g.quadraticCurveTo(14, -32, 4, -28);
+    g.quadraticCurveTo(6, -22, 8, -18);
+    g.fill();
+    // horn tips brighter
+    g.fillStyle = "#ff6b7a";
+    g.beginPath();
+    g.ellipse(-7, -27, 2.2, 2.8, -0.4, 0, Math.PI * 2);
+    g.ellipse(7, -27, 2.2, 2.8, 0.4, 0, Math.PI * 2);
+    g.fill();
+
+    // Glowing white slanted pill eyes (model / flat logo energy)
+    g.save();
+    g.shadowColor = "rgba(255,255,255,0.85)";
+    g.shadowBlur = 8;
+    g.fillStyle = "#ffffff";
+    g.beginPath();
+    g.ellipse(-6.5, -1, 3.4, 6.2, -0.35, 0, Math.PI * 2);
+    g.ellipse(6.5, -1, 3.4, 6.2, 0.35, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    // optional pupils (cute variant) — small for busy energy
+    g.fillStyle = "rgba(20, 12, 35, 0.55)";
+    g.beginPath();
+    g.ellipse(-6.2, 0.5, 1.1, 2.2, -0.35, 0, Math.PI * 2);
+    g.ellipse(6.8, 0.5, 1.1, 2.2, 0.35, 0, Math.PI * 2);
+    g.fill();
+
+    // tiny frown (cute model)
+    g.strokeStyle = "rgba(40, 25, 60, 0.55)";
+    g.lineWidth = 1.1;
+    g.lineCap = "round";
+    g.beginPath();
+    g.moveTo(-3, 8);
+    g.quadraticCurveTo(0, 6, 3, 8);
+    g.stroke();
+
+    // lightning bolt accents at wing roots
+    g.fillStyle = "#d8a0ff";
+    g.beginPath();
+    g.moveTo(-24, 6);
+    g.lineTo(-28, 12);
+    g.lineTo(-25, 12);
+    g.lineTo(-30, 20);
+    g.lineTo(-22, 11);
+    g.lineTo(-25, 11);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#7ef0ff";
+    g.beginPath();
+    g.moveTo(24, 6);
+    g.lineTo(28, 12);
+    g.lineTo(25, 12);
+    g.lineTo(30, 20);
+    g.lineTo(22, 11);
+    g.lineTo(25, 11);
+    g.closePath();
+    g.fill();
+
     g.restore();
   }
 
@@ -113,66 +193,81 @@
     var t = (now - t0) / 1000;
     ctx.clearRect(0, 0, W, H);
 
-    // Scene: flip Y so puff is upside-down (weather toward Speak)
     ctx.save();
-    ctx.translate(W / 2, H / 2);
+    ctx.translate(W / 2, H / 2 + 4);
+    // Busy: UPSIDE-DOWN (avatar is right-side-up in Settings)
     ctx.scale(1, -1);
 
-    var breath = 1 + 0.08 * Math.sin(t * 2.2);
-    var driftB = Math.sin(t * 1.3) * 4;
-    var driftF = Math.sin(t * 1.7 + 1) * -5;
-    var tumble = state === "spin" ? t * 2.8 : state === "thunder" ? Math.sin(t * 18) * 0.12 : Math.sin(t * 1.1) * 0.15;
+    var breath = 1 + 0.07 * Math.sin(t * 2.4);
+    var driftB = Math.sin(t * 1.2) * 3;
+    var driftF = Math.sin(t * 1.6 + 1.2) * -4;
+    var tumble =
+      state === "spin" ? t * 2.6 :
+      state === "thunder" ? Math.sin(t * 16) * 0.14 :
+      Math.sin(t * 1.15) * 0.12;
 
-    if (state === "spin") {
-      ctx.rotate(tumble);
-    } else if (state === "thunder") {
-      ctx.translate(Math.sin(t * 22) * 2.5, Math.cos(t * 19) * 1.5);
+    if (state === "spin") ctx.rotate(tumble);
+    else if (state === "thunder") {
+      ctx.translate(Math.sin(t * 20) * 2.8, Math.cos(t * 17) * 1.6);
       ctx.rotate(tumble);
     } else {
       ctx.rotate(tumble);
     }
 
-    // back / mid / front parallax — mid has eyes (avatar); Y-flip makes busy UPSIDE-DOWN
-    drawCloudBody(ctx, driftB * 0.6, 3, 1.18 * breath, 0.4, false);
-    drawCloudBody(ctx, 0, 0, 1.05 * breath, 0.98, true);
-    drawCloudBody(ctx, driftF * 0.5, -3, 0.78 * breath, 0.5, false);
+    // parallax shadow body + main character + front puff hint
+    drawCharacter(ctx, driftB * 0.5, 4, 0.92 * breath, 0.35);
+    drawCharacter(ctx, 0, 0, 1.05 * breath, 1);
+    // front highlight lobe only
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.translate(driftF * 0.4, -4);
+    ctx.scale(0.72 * breath, 0.72 * breath);
+    var hg = ctx.createRadialGradient(0, -6, 2, 0, 0, 16);
+    hg.addColorStop(0, "rgba(255,245,255,0.7)");
+    hg.addColorStop(1, "rgba(180,140,230,0)");
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.ellipse(0, -2, 14, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-    // rain (drawn in flipped space so it falls "up" on screen toward chrome)
+    // rain streaks (toward Speak chrome after flip)
     if (state === "rain" || state === "thunder" || state === "spin") {
-      ctx.strokeStyle = "rgba(170,210,255,0.95)";
-      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = "rgba(200, 170, 255, 0.95)";
+      ctx.lineWidth = 1.7;
       ctx.lineCap = "round";
       for (var i = 0; i < drops.length; i++) {
         var d = drops[i];
-        var yy = (d.y + (t * 40 * d.spd + d.ph * 10)) % 36;
+        var yy = (d.y + (t * 42 * d.spd + d.ph * 10)) % 40;
         var x = d.x - W / 2;
-        var y = yy - 8;
-        ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(t * 3 + d.ph));
+        var y = yy - 10;
+        ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(t * 3.2 + d.ph));
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(x - 2, y + d.len);
+        ctx.lineTo(x - 2.2, y + d.len);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
 
-    // thunder bolt + sparks
-    if (state === "thunder" || (state === "spin" && Math.sin(t * 8) > 0.7)) {
-      var flash = (Math.sin(t * 25) > 0) ? 1 : 0.15;
+    // thunder bolts around character
+    if (state === "thunder" || (state === "spin" && Math.sin(t * 7) > 0.65)) {
+      var flash = Math.sin(t * 22) > 0 ? 1 : 0.2;
       ctx.globalAlpha = flash;
-      ctx.strokeStyle = "#cfefff";
-      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = "#e0b0ff";
+      ctx.lineWidth = 2.3;
       ctx.beginPath();
-      ctx.moveTo(4, -6);
-      ctx.lineTo(-4, 4);
-      ctx.lineTo(2, 4);
-      ctx.lineTo(-6, 16);
+      ctx.moveTo(-8, -28);
+      ctx.lineTo(-14, -14);
+      ctx.lineTo(-8, -14);
+      ctx.lineTo(-18, 2);
       ctx.stroke();
+      ctx.strokeStyle = "#7ef8ff";
       ctx.beginPath();
-      ctx.moveTo(14, -2);
-      ctx.lineTo(8, 6);
-      ctx.lineTo(12, 6);
-      ctx.lineTo(6, 14);
+      ctx.moveTo(10, -26);
+      ctx.lineTo(16, -12);
+      ctx.lineTo(10, -12);
+      ctx.lineTo(20, 4);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
@@ -180,11 +275,16 @@
     if (state === "think" || state === "spin" || state === "thunder") {
       for (var s = 0; s < sparks.length; s++) {
         var sp = sparks[s];
-        var a = 0.2 + 0.8 * Math.abs(Math.sin(t * 5 + sp.ph));
-        ctx.globalAlpha = a;
-        ctx.fillStyle = "#dff";
+        ctx.globalAlpha = 0.25 + 0.75 * Math.abs(Math.sin(t * 5.5 + sp.ph));
+        ctx.fillStyle = sp.hue;
         ctx.beginPath();
-        ctx.arc(sp.x - W / 2 + Math.sin(t * 2 + sp.ph) * 3, sp.y - H / 2, sp.r, 0, Math.PI * 2);
+        ctx.arc(
+          sp.x - W / 2 + Math.sin(t * 2.2 + sp.ph) * 4,
+          sp.y - H / 2,
+          sp.r,
+          0,
+          Math.PI * 2
+        );
         ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -340,6 +440,6 @@
   else boot();
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-cloud-mark] purple avatar cloud · eyes · upside-down busy · tumble/rain/thunder");
+    if (typeof console !== "undefined") console.log("[ya-cloud-mark] model Rizalbot cloud · horns/wings/eyes · upside-down busy");
   } catch (e) {}
 })();
