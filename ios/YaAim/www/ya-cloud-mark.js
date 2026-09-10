@@ -18,14 +18,46 @@
     el.className = "ya-cloud-mark idle";
     el.setAttribute("aria-hidden", "true");
     el.innerHTML =
-      '<svg class="ya-cloud-svg" viewBox="0 0 64 40" width="56" height="36" focusable="false">' +
+      '<svg class="ya-cloud-svg" viewBox="0 0 80 52" width="72" height="48" focusable="false" aria-hidden="true">' +
+      '<defs>' +
+      '<linearGradient id="yaCloudGrad" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="rgba(220,235,255,0.55)"/>' +
+      '<stop offset="55%" stop-color="rgba(140,180,255,0.28)"/>' +
+      '<stop offset="100%" stop-color="rgba(60,90,140,0.35)"/>' +
+      '</linearGradient>' +
+      '<filter id="yaCloudGlow" x="-40%" y="-40%" width="180%" height="180%">' +
+      '<feGaussianBlur stdDeviation="1.4" result="b"/>' +
+      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+      '</filter>' +
+      '</defs>' +
+      '<g class="ya-cloud-scene">' +
       '<g class="ya-cloud-flip">' +
-      '<path class="ya-cloud-body" d="M16 24c-6 0-10-4-10-9s5-9 11-8c2-5 7-8 12-8 7 0 12 5 13 11 5 1 9 5 9 10 0 6-5 10-11 10H16z"/>' +
+      '<g class="ya-cloud-layer ya-cloud-back">' +
+      '<ellipse cx="28" cy="28" rx="16" ry="10"/>' +
+      '<ellipse cx="42" cy="30" rx="14" ry="9"/>' +
+      '</g>' +
+      '<g class="ya-cloud-layer ya-cloud-mid">' +
+      '<path class="ya-cloud-body" d="M18 30c-7 0-12-5-12-11s6-11 13-10c2-6 8-10 14-10 8 0 14 6 15 13 6 1 10 6 10 12 0 7-6 12-13 12H18z" fill="url(#yaCloudGrad)" filter="url(#yaCloudGlow)"/>' +
+      '</g>' +
+      '<g class="ya-cloud-layer ya-cloud-front">' +
+      '<ellipse cx="34" cy="34" rx="11" ry="7"/>' +
+      '<ellipse cx="48" cy="33" rx="9" ry="6"/>' +
+      '</g>' +
       '<g class="ya-cloud-rain">' +
-      '<line x1="22" y1="4" x2="20" y2="12"/><line x1="32" y1="2" x2="30" y2="12"/><line x1="42" y1="4" x2="40" y2="12"/>' +
-      "</g>" +
-      '<g class="ya-cloud-bolt"><polyline points="34,8 28,18 33,18 27,28"/></g>' +
-      "</g></svg>";
+      '<line class="d1" x1="24" y1="6" x2="21" y2="16"/>' +
+      '<line class="d2" x1="32" y1="3" x2="29" y2="15"/>' +
+      '<line class="d3" x1="40" y1="5" x2="37" y2="17"/>' +
+      '<line class="d1" x1="48" y1="4" x2="45" y2="14"/>' +
+      '<line class="d2" x1="56" y1="7" x2="53" y2="16"/>' +
+      '</g>' +
+      '<g class="ya-cloud-bolt">' +
+      '<polyline points="42,6 35,16 40,16 32,28"/>' +
+      '<polyline class="bolt2" points="50,8 46,14 49,14 44,22"/>' +
+      '</g>' +
+      '<g class="ya-cloud-spark">' +
+      '<circle cx="26" cy="22" r="1.2"/><circle cx="54" cy="24" r="1"/><circle cx="40" cy="18" r="0.9"/>' +
+      '</g>' +
+      '</g></g></svg>';
     // Sit just above the composer (bottom chrome) — upside-down cloud = flip via CSS
     if (host && host.parentNode) {
       host.parentNode.insertBefore(el, host);
@@ -176,6 +208,6 @@
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-cloud-mark] upside-down cloud · spin/think/rain/thunder");
+    if (typeof console !== "undefined") console.log("[ya-cloud-mark] 3D upside-down cloud · spin/think/rain/thunder");
   } catch (e) {}
 })();
