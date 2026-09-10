@@ -2968,8 +2968,135 @@ function isPlaceSearchQuery(text) {
   return false;
 }
 
+function isBareCuisineOrPlaceAlt(text) {
+  const q = foldQ(text);
+  if (!q || q.length > 48) return false;
+  if (placeCuisineHint(text)) return true;
+  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean|greek|vegan|vegetarian)$/.test(q)) return true;
+  if (/^(search|find|look\s*up)\s+[a-z][a-z\s-]{1,40}$/.test(q) && !placeNounRe().test(q)) return true;
+  if (/^(what about|how about|try|instead|or)\s+/.test(q)) return true;
+  return false;
+}
+
+function inferPlaceCtxFromRecent() {
+  try {
+    if (state && state.lastPlaceCtx && state.lastPlaceCtx.kind) return state.lastPlaceCtx;
+  } catch (e) {}
+  try {
+    const raw = localStorage.getItem("ya-last-place-ctx");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.kind) return parsed;
+    }
+  } catch (e2) {}
+
+  function packFromText(text, at) {
+    const t = String(text || "");
+    const qLine = t.match(/Query:\s*([^·\n]+?)(?:\s*·\s*cuisine\s+([^·\n]+?))?\s*·\s*([a-z_][a-z0-9_]*)/i);
+    if (qLine) {
+      const subject = String(qLine[1] || "").trim();
+      const cuisine = String(qLine[2] || "").trim() || placeCuisineHint(subject) || "";
+      let kind = String(qLine[3] || "").trim().toLowerCase();
+      if (!kind || kind === "ranked") kind = "";
+      if (!kind) {
+        const qq = foldQ(subject);
+        if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+        else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+        else if (/\b(coffee|cafe|café)\b/.test(qq)) kind = "cafe";
+        else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq)) kind = "restaurant";
+        else kind = "place";
+      }
+      return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at || Date.now() };
+    }
+    const placesLine = t.match(/(?:^|\n)Places\s+(.+?)\s+@/i);
+    if (placesLine) {
+      const subject = String(placesLine[1] || "").trim();
+      const cuisine = placeCuisineHint(subject) || "";
+      const qq = foldQ(subject);
+      let kind = "place";
+      if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+      else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+      else if (/\b(coffee|cafe|café)\b/.test(qq)) kind = "cafe";
+      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq)) kind = "restaurant";
+      else if (/\bmassage|spa\b/.test(qq)) kind = "massage";
+      else if (/\bpharmac/.test(qq)) kind = "pharmacy";
+      else if (/\bgym|fitness\b/.test(qq)) kind = "gym";
+      else if (/\b(hotel|motel)\b/.test(qq)) kind = "hotel";
+      else if (/\b(bar|pub)\b/.test(qq)) kind = "bar";
+      else if (/\b(shopping|mall)\b/.test(qq)) kind = "shopping";
+      else if (/\bmuseum\b/.test(qq)) kind = "museum";
+      return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at || Date.now() };
+    }
+    // Place reply with mi distances (no Query / Places header fragment)
+    if (/\b\d+(?:\.\d+)?\s*mi\b/i.test(t) && /\b(Best near|closest good|within\s+\d|Seat:|openstreetmap\.org)\b/i.test(t)) {
+      const subjM = t.match(/closest good\s+[“"]([^”"]+)[”"]/i) || t.match(/No\s+[“"]([^”"]+)[”"]\s+found near/i);
+      const subject = subjM ? String(subjM[1] || "").trim() : "";
+      const cuisine = placeCuisineHint(subject || t) || "";
+      let kind = "place";
+      const qq = foldQ(subject || t);
+      if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+      else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food)\b/.test(qq)) kind = "restaurant";
+      if (kind !== "place" || subject) {
+        return { kind: kind === "place" && cuisine ? "restaurant" : kind, subject: subject || (cuisine ? cuisine + " restaurant" : kind), cuisine: cuisine, at: at || Date.now() };
+      }
+    }
+    return null;
+  }
+
+  try {
+    const msgs = (state && state.messages) || [];
+    for (let i = msgs.length - 1; i >= 0 && i >= msgs.length - 60; i--) {
+      const m = msgs[i];
+      if (!m) continue;
+      const t = String(m.text || "");
+      const at = m.at || Date.now();
+      if (m.role === "assistant") {
+        const packed = packFromText(t, at);
+        if (packed && packed.kind) return packed;
+      } else if (m.role === "user") {
+        const q = foldQ(t);
+        if (!placeNounRe().test(q) && !placeCuisineHint(t)) continue;
+        // User place nouns / cuisine+place — recover sticky kind
+        const cuisine = placeCuisineHint(t) || "";
+        let kind = "place";
+        if (/\b(park|parks|playground)\b/.test(q)) kind = "park";
+        else if (/\b(grocer|supermarket|market|markets|convenience|farmers?\s*market)\b/.test(q)) kind = "grocery";
+        else if (/\b(coffee|cafe|café)\b/.test(q)) kind = "cafe";
+        else if (/\bmassage|spa\b/.test(q)) kind = "massage";
+        else if (/\bpharmac/.test(q)) kind = "pharmacy";
+        else if (/\bgym|fitness\b/.test(q)) kind = "gym";
+        else if (/\b(hotel|motel)\b/.test(q)) kind = "hotel";
+        else if (/\b(bar|pub)\b/.test(q) && !/\brestaurant/.test(q)) kind = "bar";
+        else if (/\b(shopping|mall)\b/.test(q)) kind = "shopping";
+        else if (/\bmuseum\b/.test(q)) kind = "museum";
+        else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(q)) kind = "restaurant";
+        else continue;
+        let subject = typeof placeSearchSubject === "function" ? placeSearchSubject(t) : t;
+        if (kind === "restaurant" && cuisine && !/\brestaurant/.test(foldQ(subject))) {
+          subject = (cuisine + " restaurant").trim();
+        }
+        return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at };
+      }
+    }
+  } catch (e3) {}
+
+  try {
+    const mems = (state && state.memories) || [];
+    for (let i = 0; i < mems.length && i < 40; i++) {
+      const mem = mems[i];
+      const t = String((mem && (mem.text || mem)) || "");
+      if (!/^Places\s+/i.test(t)) continue;
+      const packed = packFromText(t, (mem && mem.at) || Date.now());
+      if (packed && packed.kind) return packed;
+    }
+  } catch (e4) {}
+
+  return null;
+}
+
 function isPlaceFollowUp(text) {
-  const ctx = loadPlaceCtx();
+  const ctx = inferPlaceCtxFromRecent();
   if (!ctx || !ctx.kind) return false;
   const age = Date.now() - (ctx.at || 0);
   if (age > 20 * 60 * 1000) return false; // 20 min sticky
@@ -2977,25 +3104,11 @@ function isPlaceFollowUp(text) {
   if (!q || q.length > 80) return false;
   // Fresh place-noun query (grocery, park, restaurant…) is NOT a sticky follow-up
   if (placeNounRe().test(q)) return false;
-  // cuisine-only alternate after a restaurant ask
-  if (placeCuisineHint(text)) return true;
-  // "search Mexican" / "find Thai" with no place noun
-  if (/^(search|find|look\s*up)\s+[a-z][a-z\s-]{1,40}$/.test(q)) return true;
-  if (/^(what about|how about|try|instead|or)\s+/.test(q)) return true;
-  // bare cuisine / short alternate
-  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean)$/.test(q)) return true;
-  return false;
+  return isBareCuisineOrPlaceAlt(text);
 }
 
 function loadPlaceCtx() {
-  try {
-    if (state && state.lastPlaceCtx && state.lastPlaceCtx.kind) return state.lastPlaceCtx;
-  } catch (e) {}
-  try {
-    const raw = localStorage.getItem("ya-last-place-ctx");
-    if (raw) return JSON.parse(raw);
-  } catch (e2) {}
-  return null;
+  return inferPlaceCtxFromRecent();
 }
 
 function savePlaceCtx(ctx) {
@@ -3037,7 +3150,7 @@ function inferPlaceKind(text) {
 
 function resolvePlaceQuery(text) {
   const raw = String(text || "").trim();
-  const ctx = loadPlaceCtx();
+  const ctx = inferPlaceCtxFromRecent();
   let subject = placeSearchSubject(raw);
   let cuisine = placeCuisineHint(raw);
   let kind = inferPlaceKind(raw);
@@ -4433,6 +4546,14 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
+  // Place/local intent early — before evolve/local/"I am listening"
+  if (isPlaceSearchQuery(userText)) {
+    if (!mindWantsWeb()) {
+      queueLearn(userText);
+      return "Place search needs green mind + device Location for precise seat (city/neighborhood, not Utah stamp). Tap the light green.";
+    }
+    return await lookUpAndKeep(userText);
+  }
   const evolvedTalk = tryEvolveCommand(userText);
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
@@ -4521,13 +4642,6 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (/^(vault|essences|my mints)\b/.test(q)) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
-  }
-  if (isPlaceSearchQuery(userText)) {
-    if (!mindWantsWeb()) {
-      queueLearn(userText);
-      return "Place search needs green mind + device Location for precise seat (city/neighborhood, not Utah stamp). Tap the light green.";
-    }
-    return await lookUpAndKeep(userText);
   }
   if (isSearchNudge(userText)) {
     const target = searchNudgeTarget(userText);
