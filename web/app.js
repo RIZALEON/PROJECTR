@@ -2737,6 +2737,12 @@ function applyEatReply(text) {
 function llamaMemoriesSnippet(query) {
   // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
   // Prefer user/fed facts; Core: precept dumps stay out of the llama inject.
+  let contBits = "";
+  try {
+    if (typeof window !== "undefined" && typeof window.yaContinuityRecallSnippet === "function") {
+      contBits = window.yaContinuityRecallSnippet(query || "") || "";
+    }
+  } catch (e) {}
   const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
@@ -2991,6 +2997,13 @@ async function answer(userText) {
   if (forgot) return forgot;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  // Continuity seat — offline CoS recall / stamp (FRIEND-CONTINUITY pattern)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleContinuityChat === "function") {
+      const cont = window.yaHandleContinuityChat(userText);
+      if (cont) return cont;
+    }
+  } catch (e) {}
   // Hardcode spine / offline CoS slice (spoken F2 RIZALBOT EMBEDDED)
   try {
     if (typeof window !== "undefined" && typeof window.yaHandleHardcodeChat === "function") {
@@ -3762,6 +3775,7 @@ async function refreshMindSize(opts) {
 let mindSizeSched = 0;
 function scheduleMindSizeRefresh() {
   try { renderMind(); } catch (e) {}
+  try { if (typeof window !== "undefined" && typeof window.yaTouchContinuity === "function") window.yaTouchContinuity(); } catch (e) {}
   if (mindSizeSched) clearTimeout(mindSizeSched);
   mindSizeSched = setTimeout(function () {
     mindSizeSched = 0;
