@@ -15,7 +15,7 @@
       { n: 2, name: "RIZALBOT EMBEDDED", blurb: "Packed on-device companion + offline Chief-of-Staff slice. Ping/pong+compass are base path inside — not a droppable GOFLOF id." }
     ],
     goflofLocked: ["evolve.self", "talk.offline", "web.video"],
-    law: ["NonNuclear", "Decider", "agents-come-to-phone", "gain>drop", "no-silent-gut-upload"]
+    law: ["NonNuclear", "Decider", "100%-offline", "no-cloud-token-quota", "agents-come-to-phone", "gain>drop", "no-silent-gut-upload"]
   };
 
   /** Offline CoS persona stub — not a cloud brain; local continuity only. */
@@ -26,6 +26,7 @@
     knows: [
       "Decider is ultimate authority on this phone seat.",
       "NonNuclear / anti-nuclear is immutable law.",
+      "100% offline capable — never bound by cloud token or usage limits. Core chat/evolve/recall/ping on-device; green web optional.",
       "Spoken V0.0: 0 Evolve · 1 ASTA · 2 RIZALBOT EMBEDDED.",
       "GOFLOF locked ids: evolve.self, talk.offline, web.video (senses=hands, not spoken F2).",
       "Ping law: airplane → local-seat; green → closest bounce + Furthest Tower; ping chief = intentional CoS only.",
