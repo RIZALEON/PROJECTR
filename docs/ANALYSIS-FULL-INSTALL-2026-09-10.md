@@ -145,3 +145,7 @@ Target: +tens of KB hardcode, not another 196K godfile — prefer `ya-cos-mode.j
 7. Write-code hand → ASTA C → D  
 
 Parallel only if Decider says so. Money outside gut/ntfy. NonNuclear immutable.
+
+## Orphans wired (tip)
+- `ya-hardcode-0.1.css` + `ya-think-evolve.js` loaded in index (?v=79).
+- Cloud workmark still queued after llama seat.
