@@ -493,6 +493,79 @@
     } catch (e5) {}
   }
 
+
+  function ensureJumpFab() {
+    var btn = document.getElementById("ya-jump-bottom");
+    if (btn) return btn;
+    btn = document.createElement("button");
+    btn.id = "ya-jump-bottom";
+    btn.type = "button";
+    btn.title = "Jump to bottom";
+    btn.setAttribute("aria-label", "Jump to bottom of chat");
+    btn.innerHTML = "↓";
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var log = document.getElementById("log");
+      if (log) {
+        log.scrollTop = log.scrollHeight;
+        try { log.scrollTo({ top: log.scrollHeight, behavior: "smooth" }); } catch (e) {}
+      } else {
+        try { window.scrollTo(0, document.body.scrollHeight); } catch (e2) {}
+      }
+    });
+    document.body.appendChild(btn);
+    return btn;
+  }
+
+  function hookComposerBusy() {
+    try {
+      var form = document.getElementById("composer") || document.querySelector("form.composer");
+      if (form && !form.__yaCloud) {
+        form.__yaCloud = true;
+        form.addEventListener("submit", function () {
+          try { cycleBusy("spin"); } catch (e) {}
+        }, true);
+      }
+      var input = document.getElementById("input");
+      if (input && !input.__yaCloudBusy) {
+        input.__yaCloudBusy = true;
+        // keep cloud alive while reply pending via answer hook
+      }
+    } catch (e) {}
+  }
+
+  function hookBusyExtras() {
+    // webSearch / harvest / describeLink / interact feed when present
+    var names = [
+      ["webSearch", "search"],
+      ["harvestOnline", "search"],
+      ["describeLink", "search"],
+      ["shareMindSession", "spin"],
+      ["pingChief", "spin"],
+      ["applyYaFeed", "spin"],
+      ["refreshInteractFeed", "spin"]
+    ];
+    names.forEach(function (pair) {
+      try {
+        var fn = window[pair[0]];
+        if (typeof fn !== "function" || fn.__yaCloud) return;
+        var kind = pair[1];
+        var wrapped = function () {
+          try { cycleBusy(kind); } catch (e) {}
+          var ret = fn.apply(this, arguments);
+          if (ret && typeof ret.then === "function") {
+            return ret.then(function (v) { try { hide(); } catch (e) {} return v; },
+              function (err) { try { hide(); } catch (e) {} throw err; });
+          }
+          try { hide(); } catch (e2) {}
+          return ret;
+        };
+        wrapped.__yaCloud = true;
+        window[pair[0]] = wrapped;
+      } catch (e) {}
+    });
+  }
+
   if (typeof window !== "undefined") {
     window.yaCloudShow = show;
     window.yaCloudHide = hide;
@@ -502,12 +575,18 @@
 
   function boot() {
     ensureDom();
+    ensureJumpFab();
     setState("idle");
     hookThink();
     hookAnswer();
+    hookComposerBusy();
+    hookBusyExtras();
     setTimeout(hookThink, 400);
     setTimeout(hookAnswer, 500);
     setTimeout(hookAnswer, 1500);
+    setTimeout(hookBusyExtras, 800);
+    setTimeout(hookBusyExtras, 2000);
+    setTimeout(ensureJumpFab, 300);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
