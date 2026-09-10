@@ -44,7 +44,11 @@
 
   function isInfraJunk(title, body, url) {
     var hay = (String(title || "") + "\n" + String(body || "") + "\n" + String(url || "")).toLowerCase();
-    if (/\bntfy\.sh\b/.test(hay) || /\bntfy\b/.test(hay) && /\b(push notification|reconnect|interact)\b/.test(hay)) return true;
+    if (/\bntfy\.sh\b/.test(hay)) return true;
+    // Push-notification landing / infra — even without URL or explicit ntfy token
+    if (/\bpush notifications?\b/.test(hay)) return true;
+    if (/\bsend push notifications?\b/.test(hay)) return true;
+    if (/\bntfy\b/.test(hay) && /\b(reconnect|interact)\b/.test(hay)) return true;
     if (/\bya-reconnect\b/.test(hay) || /\bya-rizalbot-p-\b/.test(hay)) return true;
     if (/\binteract (bind|channel|inbox)\b/.test(hay)) return true;
     try {
@@ -54,6 +58,8 @@
         if (h === "ntfy.sh" || h.endsWith(".ntfy.sh")) return true;
       }
     } catch (e) {}
+    // Host-ish hay without a parseable URL
+    if (/\bntfy\.sh\b/.test(hay) || /\bya-reconnect\b/.test(hay)) return true;
     return false;
   }
 

@@ -51,3 +51,11 @@ Board contract: **every** RACE id always listed in N/E/S/W order — including `
 1. `ya-compass-race.js`
 2. `ya-compass-br.js`
 3. `ya-ping-bounce.js`
+
+## Recognition vs Top 3 (not code-wired)
+
+Chat **Recognition** (evolved skills via `matchEvolved`) is separate from compass **Top 3**.
+Compass Top 3 only matches exact low=== phrases (`top 3`, `fastest 3`, …) in `ya-compass-race.js`.
+`matchEvolved` uses substring includes for long triggers; triggers length ≤4 use word-boundary / full-trim equality so short words (e.g. `top`) do not fire inside unrelated asks like Bishop pattern.
+Any Decider FAIL that looked like Recognition→Top3 was **UI adjacency**, not a shared code path.
+

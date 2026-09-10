@@ -189,6 +189,8 @@ function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
+  try { scrubSearchInfraJunk(); } catch (e) {}
+  try { scrubHygieneJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
   vault = loadVault();
   github = loadGithub();
@@ -270,6 +272,8 @@ let account = loadAccount();
 let state = load();
 try { scrubWikiJunk(); } catch (e) {}
 try { scrubLinkJunk(); } catch (e) {}
+try { scrubSearchInfraJunk(); } catch (e) {}
+try { scrubHygieneJunk(); } catch (e) {}
 let creator = null;
 let vault = loadVault();
 let github = loadGithub();
@@ -501,12 +505,44 @@ function isSearchInfraHost(urlOrHost) {
 
 function isSearchInfraJunk(title, body, url) {
   const hay = (String(title || "") + "\n" + String(body || "") + "\n" + String(url || "")).toLowerCase();
-  if (isSearchInfraHost(url)) return true;
+  if (isSearchInfraHost(url) || isSearchInfraHost(hay)) return true;
   if (/\bntfy\.sh\b/.test(hay)) return true;
-  if (/\bpush notifications?\b/.test(hay) && /\bntfy\b/.test(hay)) return true;
+  // ntfy landing / push-notification infra — even with no URL in the haystack
+  if (/\bpush notifications?\b/.test(hay)) return true;
+  if (/\bsend push notifications?\b/.test(hay)) return true;
   if (/\binteract (bind|channel|inbox)\b/.test(hay)) return true;
   if (/\bya-reconnect\b/.test(hay) || /\bya-rizalbot-p-\b/.test(hay)) return true;
   return false;
+}
+
+/** Memory-row hygiene: Link note+ntfy / push / interact / reconnect infra. */
+function isSearchInfraJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (/^Link note:/i.test(s) && /ntfy\.sh/i.test(s)) return true;
+  if (/^Link note:/i.test(s) && /\bpush notifications?\b/i.test(s)) return true;
+  if (isSearchInfraJunk(s, "", "")) return true;
+  return false;
+}
+
+/** Broad recall/boot hygiene (wiki + CAPTCHA walls + search infra). */
+function isHygieneJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (isWikiJunkMemory(s) || isLinkJunkMemory(s) || isSearchInfraJunkMemory(s)) return true;
+  return false;
+}
+
+function scrubSearchInfraJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isSearchInfraJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
+function scrubHygieneJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isHygieneJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
 }
 
 /** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
@@ -611,6 +647,10 @@ function remember(text) {
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
   if (isLinkJunkMemory(clean)) return;
+  // Never persist ntfy / push-notification / interact infra (Link notes or otherwise)
+  if (isSearchInfraJunkMemory(clean)) return;
+  if (/^Link note:/i.test(clean) && /ntfy\.sh/i.test(clean)) return;
+  if (/\bpush notifications?\b/i.test(clean) && (/\bntfy\b/i.test(clean) || /^Link note:/i.test(clean))) return;
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
   state.memories = state.memories.slice(0, 200);
@@ -647,7 +687,7 @@ function recall(query, limit) {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
     if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
-    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
     if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
@@ -849,12 +889,21 @@ function dropEvolvedFunction(name) {
 }
 
 function matchEvolved(userText) {
-  const q = userText.toLowerCase();
+  const q = String(userText || "").toLowerCase().trim();
   const list = state.evolved || [];
   for (const s of list) {
     if (!s || s.enabled === false) continue;
     if (!s.trigger) continue;
-    if (q.includes(s.trigger.toLowerCase())) return s;
+    const trig = String(s.trigger).toLowerCase().trim();
+    if (!trig) continue;
+    // Short triggers (≤4): word-boundary or full-trim equality — avoid "top" inside "stop"/"bishop"
+    if (trig.length <= 4) {
+      if (q === trig) return s;
+      const esc = trig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp("(?:^|\\W)" + esc + "(?:\\W|$)", "i").test(q)) return s;
+      continue;
+    }
+    if (q.includes(trig)) return s;
   }
   return null;
 }
@@ -992,7 +1041,7 @@ function classifyAsk(userText) {
 
 function coreHitText(hits, kind) {
   const list = Array.isArray(hits) ? hits : [];
-  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text));
+  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text));
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
   if (facts.length) return facts[0].text;
   const core = list.find((m) => m && /^Core:/i.test(m.text));
@@ -1251,7 +1300,7 @@ function localEngine(userText) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
   }
   if (/what do you remember|what do you know about me/.test(q)) {
-    const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
+    const real = state.memories.filter((m) => m && m.text && !/^user said:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text));
     if (!real.length) return "I have no stored facts yet. Tell me your name, or say remember this: …";
     return "What I hold:\n" + real.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
@@ -2388,6 +2437,7 @@ function isVideoAsk(text) {
 }
 
 const WALL_MSG = "That page showed a wall. I did not save it. Try another link, or tell me the point to remember.";
+const INFRA_WALL_MSG = "I will not keep interact/ntfy pages as web notes.";
 
 async function describeYoutube(id, url) {
   const watch = "https://www.youtube.com/watch?v=" + id;
@@ -2510,7 +2560,9 @@ async function describeLink(url, forQuery) {
   const preview = clean.slice(0, 3500);
   const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500, kind: "link" };
   if (isLinkJunk(d.title, d.body)) return null;
+  // ntfy push landing ("Send push notifications" / ntfy.sh) — never remember
   if (isSearchInfraJunk(d.title, d.body, url)) return null;
+  if (/\bpush notifications?\b/i.test(d.title + " " + d.body) || /\bntfy\.sh\b/i.test(d.title + " " + d.body)) return null;
   // Relevance only when caller passes forQuery (search/harvest) — not bare URL paste
   if (forQuery && !searchRelevant(forQuery, d.title, d.body)) return null;
   remember("Link note:\n" + linkNote(d));
@@ -2602,14 +2654,16 @@ async function lookUpAndKeep(query) {
     const kept = [];
     for (const item of list) {
       if (nuclearBlocked(item)) continue;
+      if (isSearchInfraJunk(item, "", "") || isSearchInfraHost(item)) continue;
       // Prefer wiki/public search — never keep infra hosts as academic hits
       const web = await webSearch(item, true);
       if (web && web.extract && searchRelevant(item, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) {
         kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
         continue;
       }
-      const href = extractHttpUrl(item);
-      if (href && !isSearchInfraHost(href)) {
+      // NEVER describeLink unless the candidate string itself contains an http(s) URL (not CHIEF_INBOX)
+      const href = /https?:\/\//i.test(item) ? extractHttpUrl(item) : null;
+      if (href && !isSearchInfraHost(href) && !/\bntfy\.sh\b/i.test(href)) {
         const d = await describeLink(href, item);
         if (d && searchRelevant(item, d.title, d.body) && !isSearchInfraJunk(d.title, d.body, href)) {
           kept.push({ title: d.title, extract: (d.body || "").slice(0, 700), source: "link" });
@@ -3323,18 +3377,25 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   }
   if (links.length) {
     if (!mindWantsWeb()) {
-      links.forEach((u) => queueLearn(u));
-      if (videoAsk || links.some((u) => youtubeId(u))) {
+      const keepable = links.filter((u) => !isSearchInfraHost(u) && !/\bntfy\.sh\b/i.test(u));
+      if (!keepable.length) return INFRA_WALL_MSG;
+      keepable.forEach((u) => queueLearn(u));
+      if (videoAsk || keepable.some((u) => youtubeId(u))) {
         return "Mind is amber. I queued that URL. Tap the light green and I will fetch, summarize, and keep a note in the gut.";
       }
-      return "Mind is offline. Tap the light green. I will open " + (links.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
+      return "Mind is offline. Tap the light green. I will open " + (keepable.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
     }
     const parts = [];
     for (const link of links) {
       try {
+        if (isSearchInfraHost(link) || /\bntfy\.sh\b/i.test(link)) {
+          parts.push(INFRA_WALL_MSG);
+          continue;
+        }
         const d = await describeLink(link);
         if (!d) {
           if (nuclearBlocked(link)) parts.push("I will not open " + link + ".");
+          else if (isSearchInfraJunk("", "", link)) parts.push(INFRA_WALL_MSG);
           else parts.push(WALL_MSG);
           continue;
         }
@@ -3548,7 +3609,7 @@ function formatMindDump() {
   }
   lines.push("");
   lines.push("=== Links and videos (URL + chat summary only) ===");
-  const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text));
+  const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text) && !isSearchInfraJunkMemory(m.text) && !isHygieneJunkMemory(m.text));
   if (!linkNotes.length) lines.push("(none yet)");
   linkNotes.forEach((m) => {
     lines.push(m.text.replace(/^(Link note:|Video note:)\s*/i, "").trim());
@@ -3560,6 +3621,7 @@ function formatMindDump() {
     if (/^(Link note:|Video note:)/i.test(m.text)) return false;
     if (/^Link .+ \[\d+\]:/i.test(m.text)) return false;
     if (/chars read$/i.test(m.text)) return false;
+    if (isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return false;
     return true;
   });
   if (!mem.length) lines.push("(none yet)");
