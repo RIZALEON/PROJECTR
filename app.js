@@ -2952,20 +2952,137 @@ function searchNudgeTarget(currentText) {
 }
 
 
+function placeNounRe() {
+  return /\b(restaurants?|restraunts?|resteraunts?|eatery|eateries|cafes?|coffee|bars?|pubs?|grocer(y|ies)|supermarket|market|markets|shopping|mall|massage|spa|gym|fitness|hotel|motel|pharmacy|hospital|gas\s*station|parking|museum|parks?|playground|attractions?|takeout|delivery|food\s*near|bakery|butcher|florist|library|bank|atm|laundry|dry\s*clean|hardware|convenience|farmers?\s*market)\b/;
+}
+
 function isPlaceSearchQuery(text) {
   const q = foldQ(text);
-  if (!/\b(search|find|look\s*up|near|nearby|closest|around)\b/.test(q) && !/\bin\s+[a-z]{3,}/.test(q)) {
-    // still allow bare "restaurants in Utah"
-    if (!/\b(in|near|around)\b/.test(q)) return false;
+  if (placeNounRe().test(q)) {
+    if (/\b(search|find|look\s*up|near|nearby|closest|around|in)\b/.test(q)) return true;
+    // bare "restaurants" / "grocery" / "park"
+    return true;
   }
-  return /\b(restaurants?|restraunts?|eatery|eateries|cafes?|coffee|bars?|grocer(y|ies)|supermarket|shopping|mall|massage|spa|gym|hotel|motel|pharmacy|hospital|gas\s*station|parking|museum|park|attractions?|takeout|delivery|food\s*near)\b/.test(q);
+  // Sticky follow-up: "Search Mexican" / "Mexican" / "park instead" after a recent place ask
+  if (isPlaceFollowUp(text)) return true;
+  return false;
+}
+
+function isPlaceFollowUp(text) {
+  const ctx = loadPlaceCtx();
+  if (!ctx || !ctx.kind) return false;
+  const age = Date.now() - (ctx.at || 0);
+  if (age > 20 * 60 * 1000) return false; // 20 min sticky
+  const q = foldQ(text);
+  if (!q || q.length > 80) return false;
+  // Fresh place-noun query (grocery, park, restaurant…) is NOT a sticky follow-up
+  if (placeNounRe().test(q)) return false;
+  // cuisine-only alternate after a restaurant ask
+  if (placeCuisineHint(text)) return true;
+  // "search Mexican" / "find Thai" with no place noun
+  if (/^(search|find|look\s*up)\s+[a-z][a-z\s-]{1,40}$/.test(q)) return true;
+  if (/^(what about|how about|try|instead|or)\s+/.test(q)) return true;
+  // bare cuisine / short alternate
+  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean)$/.test(q)) return true;
+  return false;
+}
+
+function loadPlaceCtx() {
+  try {
+    if (state && state.lastPlaceCtx && state.lastPlaceCtx.kind) return state.lastPlaceCtx;
+  } catch (e) {}
+  try {
+    const raw = localStorage.getItem("ya-last-place-ctx");
+    if (raw) return JSON.parse(raw);
+  } catch (e2) {}
+  return null;
+}
+
+function savePlaceCtx(ctx) {
+  if (!ctx || !ctx.kind) return;
+  const packed = {
+    kind: ctx.kind,
+    subject: ctx.subject || ctx.kind,
+    cuisine: ctx.cuisine || "",
+    at: Date.now()
+  };
+  try {
+    if (typeof state !== "undefined" && state) {
+      state.lastPlaceCtx = packed;
+      if (typeof save === "function") save();
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem("ya-last-place-ctx", JSON.stringify(packed));
+  } catch (e2) {}
+}
+
+function inferPlaceKind(text) {
+  const q = foldQ(text);
+  if (/\b(park|parks|playground)\b/.test(q)) return "park";
+  if (/\b(grocer|supermarket|market|markets|convenience|farmers?\s*market)\b/.test(q)) return "grocery";
+  if (/\b(coffee|cafe|café)\b/.test(q)) return "cafe";
+  if (/\bmassage|spa\b/.test(q)) return "massage";
+  if (/\bpharmac/.test(q)) return "pharmacy";
+  if (/\bgym|fitness\b/.test(q)) return "gym";
+  if (/\b(hotel|motel)\b/.test(q)) return "hotel";
+  if (/\b(bar|pub)\b/.test(q) && !/\brestaurant/.test(q)) return "bar";
+  if (/\b(shopping|mall)\b/.test(q)) return "shopping";
+  if (/\bmuseum\b/.test(q)) return "museum";
+  if (placeCuisineHint(text) || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(q)) return "restaurant";
+  const ctx = loadPlaceCtx();
+  if (ctx && ctx.kind) return ctx.kind;
+  return "place";
+}
+
+function resolvePlaceQuery(text) {
+  const raw = String(text || "").trim();
+  const ctx = loadPlaceCtx();
+  let subject = placeSearchSubject(raw);
+  let cuisine = placeCuisineHint(raw);
+  let kind = inferPlaceKind(raw);
+
+  // Follow-up only: "Search Mexican" / "Mexican" — not when query already names grocery/park/etc.
+  if (isPlaceFollowUp(raw)) {
+    if (!cuisine) cuisine = placeCuisineHint(raw) || "";
+    kind = ctx && ctx.kind ? ctx.kind : kind;
+    if (kind === "restaurant" || (ctx && ctx.kind === "restaurant")) {
+      kind = "restaurant";
+      if (cuisine) subject = cuisine + " restaurant";
+      else if (/^search\s+/i.test(raw)) subject = placeSearchSubject(raw) + " restaurant";
+      else subject = (subject && subject !== "places" ? subject : "restaurant");
+      if (!/\brestaurant/.test(foldQ(subject))) subject = (subject + " restaurant").trim();
+    } else if (kind === "grocery" || (ctx && ctx.kind === "grocery")) {
+      kind = "grocery";
+      const tip = placeSearchSubject(raw);
+      subject = /\b(market|grocery|supermarket)\b/.test(foldQ(tip)) ? tip : (tip && tip !== "places" ? tip + " market" : "grocery");
+    } else if (kind === "park" || (ctx && ctx.kind === "park")) {
+      kind = "park";
+      const tip = placeSearchSubject(raw);
+      subject = /\bpark\b/.test(foldQ(tip)) ? tip : (tip && tip !== "places" ? tip + " park" : "park");
+    } else if (ctx && ctx.kind) {
+      kind = ctx.kind;
+      const tip = placeSearchSubject(raw);
+      if (tip && tip !== "places" && foldQ(tip) !== foldQ(ctx.kind)) {
+        subject = tip + " " + ctx.kind;
+      } else {
+        subject = ctx.subject || ctx.kind;
+      }
+    }
+  }
+
+  // typo resteraunt → restaurant in subject
+  subject = subject.replace(/\bresteraunts?\b/ig, "restaurant").replace(/\brestraunts?\b/ig, "restaurant");
+  return { subject: subject, cuisine: cuisine, kind: kind, raw: raw };
 }
 
 function placeSearchSubject(text) {
   let s = stripSearchFluff(text);
+  // Also strip leading bare "search" / "find" (stripSearchFluff misses "search Chinese…")
+  s = s.replace(/^(please\s+)?(search|find|look\s*up)\s+/i, "");
   s = s.replace(/^(for|a|an|the)\s+/i, "");
-  // Drop coarse region when we will pin to lat/lon city
   s = s.replace(/\s+\bin\s+(utah|usa|united states)\b/ig, "");
+  s = s.replace(/\bresteraunts?\b/ig, "restaurant").replace(/\brestraunts?\b/ig, "restaurant");
   return s.trim() || "places";
 }
 
@@ -3196,7 +3313,19 @@ function placeCuisineHint(text) {
 function placeOverpassFilters(subject, cuisine) {
   const s = foldQ(subject);
   const filters = [];
-  if (/\bgrocer|supermarket|food\s*mart\b/.test(s)) {
+  if (/\b(park|parks|playground)\b/.test(s)) {
+    filters.push('node["leisure"="park"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="park"](around:RAD,LAT,LON);');
+    filters.push('relation["leisure"="park"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(market|markets|farmers?)\b/.test(s) && !/\bsupermarket\b/.test(s)) {
+    filters.push('node["amenity"="marketplace"](around:RAD,LAT,LON);');
+    filters.push('node["shop"~"supermarket|convenience|greengrocer|farm"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="marketplace"](around:RAD,LAT,LON);');
+    return filters;
+  }
+    if (/\bgrocer|supermarket|food\s*mart|\bmarket\b/.test(s)) {
     filters.push('node["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
     filters.push('way["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
     return filters;
@@ -3351,11 +3480,47 @@ async function nominatimNearBox(lat, lon, radiusMi, q) {
   });
 }
 
-async function searchPlacesNearSeat(query) {
-  const subject = placeSearchSubject(query);
-  const cuisine = placeCuisineHint(query);
-  const radiusMi = placeRadiusMiles(query);
+async function fetchPlaceHits(lat, lon, radiusMi, subject, cuisine) {
   const radiusM = milesToMeters(radiusMi);
+  let hits = [];
+  try {
+    hits = await overpassPlaces(lat, lon, radiusM, subject, cuisine);
+  } catch (e) {
+    hits = [];
+  }
+  if (!hits.length) {
+    try {
+      // Clean nominatim query — subject already stripped
+      const qNom = subject;
+      hits = await nominatimNearBox(lat, lon, Math.max(radiusMi, 5), qNom);
+    } catch (e2) {
+      hits = [];
+    }
+  }
+  return hits.map(function (p) {
+    const km = haversineKm(lat, lon, p.lat, p.lon);
+    const rel = placeRelevanceScore(p.name, p.tags, subject, cuisine);
+    return Object.assign({}, p, { km: km, mi: km / 1.60934, rel: rel });
+  });
+}
+
+function rankPlaceHits(hits) {
+  const list = hits.slice();
+  list.sort(function (a, b) {
+    const band = Math.abs(a.mi - b.mi) < 0.35;
+    if (band && a.rel !== b.rel) return b.rel - a.rel;
+    if (a.mi !== b.mi) return a.mi - b.mi;
+    return b.rel - a.rel;
+  });
+  return list;
+}
+
+async function searchPlacesNearSeat(query) {
+  const resolved = resolvePlaceQuery(query);
+  const subject = resolved.subject;
+  const cuisine = resolved.cuisine;
+  const kind = resolved.kind;
+  const preferMi = placeRadiusMiles(query);
   const geo = await resolveDeviceGeo();
 
   if (!geo.ok) {
@@ -3375,7 +3540,7 @@ async function searchPlacesNearSeat(query) {
     }
     return (
       "Could not read device location (" + (geo.reason || "unavailable") + ").\n" +
-      "Allow Location when prompted, or say a city (e.g. massage near Salt Lake)."
+      "Allow Location when prompted, or say a city (e.g. park near Bluffdale)."
     );
   }
 
@@ -3402,72 +3567,102 @@ async function searchPlacesNearSeat(query) {
   }
 
   saveLastKnownGeo(geo);
+  savePlaceCtx({ kind: kind, subject: subject, cuisine: cuisine });
 
-  let hits = [];
-  try {
-    hits = await overpassPlaces(geo.lat, geo.lon, radiusM, subject, cuisine);
-  } catch (e) {
-    hits = [];
-  }
+  const widenSteps = [preferMi, 5, 10, 25];
+  // Dedupe steps
+  const steps = [];
+  widenSteps.forEach(function (m) {
+    if (m >= preferMi && steps.indexOf(m) < 0) steps.push(m);
+  });
 
-  const whereBits = [];
-  if (neighborhood) whereBits.push(neighborhood);
-  if (city && foldQ(city) !== foldQ(neighborhood)) whereBits.push(city);
-  if (!whereBits.length && placeLabel) whereBits.push(placeLabel);
-  const where = whereBits.join(", ") || "here";
-  const qNom = (subject + " " + where).replace(/\s+/g, " ").trim();
+  let hitsIn = [];
+  let usedMi = preferMi;
+  let widened = false;
+  let allHits = [];
 
-  if (!hits.length) {
-    try {
-      hits = await nominatimNearBox(geo.lat, geo.lon, radiusMi, qNom);
-    } catch (e2) {
-      hits = [];
+  for (let i = 0; i < steps.length; i++) {
+    const mi = steps[i];
+    const batch = await fetchPlaceHits(geo.lat, geo.lon, mi, subject, cuisine);
+    allHits = rankPlaceHits(batch);
+    hitsIn = allHits.filter(function (p) { return p.mi <= mi + 0.05; });
+    if (hitsIn.length) {
+      usedMi = mi;
+      widened = mi > preferMi + 0.01;
+      break;
     }
   }
 
-  // Enrich + filter hard radius
-  hits = hits.map(function (p) {
-    const km = haversineKm(geo.lat, geo.lon, p.lat, p.lon);
-    const rel = placeRelevanceScore(p.name, p.tags, subject, cuisine);
-    return Object.assign({}, p, { km: km, mi: km / 1.60934, rel: rel });
-  }).filter(function (p) {
-    return p.mi <= radiusMi + 0.05;
-  });
-
-  // Rank: distance first, then relevance (best nearby, not statewide)
-  hits.sort(function (a, b) {
-    if (a.mi !== b.mi) return a.mi - b.mi;
-    return b.rel - a.rel;
-  });
-  // Stable best-of nudge: among top by distance, prefer higher rel within 0.3 mi band
-  hits.sort(function (a, b) {
-    const band = Math.abs(a.mi - b.mi) < 0.3;
-    if (band && a.rel !== b.rel) return b.rel - a.rel;
-    return a.mi - b.mi;
-  });
+  // Absolute closest fallback: search 25mi and take best even if filter empty
+  if (!hitsIn.length && allHits.length) {
+    hitsIn = allHits.slice(0, 5);
+    usedMi = Math.ceil(hitsIn[0].mi * 10) / 10;
+    widened = true;
+  } else if (!hitsIn.length) {
+    // last resort: nominatim with city name, no hard box
+    try {
+      const where = [neighborhood, city].filter(Boolean).join(", ") || placeLabel;
+      const url =
+        "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=" +
+        encodeURIComponent(subject + " " + where);
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places; contact: rizalbot@rizal.institute)"
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        allHits = rankPlaceHits((Array.isArray(data) ? data : []).map(function (row) {
+          return {
+            name: String(row.display_name || "").split(",")[0].trim() || "Place",
+            lat: parseFloat(row.lat),
+            lon: parseFloat(row.lon),
+            tags: { display: row.display_name },
+            cuisine: "",
+            type: [row.type, row.class].filter(Boolean).join("/"),
+            full: String(row.display_name || ""),
+            km: haversineKm(geo.lat, geo.lon, parseFloat(row.lat), parseFloat(row.lon)),
+            mi: haversineKm(geo.lat, geo.lon, parseFloat(row.lat), parseFloat(row.lon)) / 1.60934,
+            rel: placeRelevanceScore(String(row.display_name || ""), {}, subject, cuisine)
+          };
+        }).filter(function (p) { return p.lat && p.lon; }));
+        if (allHits.length) {
+          hitsIn = allHits.slice(0, 5);
+          usedMi = Math.ceil(hitsIn[0].mi * 10) / 10;
+          widened = true;
+        }
+      }
+    } catch (e3) {}
+  }
 
   const srcNote = geo.live
     ? (geo.source === "core-location" ? "Core Location" : "device geolocation")
     : (geo.airplane ? "last known (airplane — not live GPS)" : "last known seat");
 
-  if (!hits.length) {
-    const nextMi = radiusMi < 5 ? 5 : Math.min(10, Math.ceil(radiusMi + 3));
+  if (!hitsIn.length) {
     return [
-      "No “" + subject + "” within " + radiusMi + " mi of " + placeLabel + ".",
+      "No “" + subject + "” found near " + placeLabel + " (searched out to 25 mi).",
       "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
-      "Say expand or search " + subject + " " + nextMi + " miles to widen — I will not invent places or fall back to statewide Utah / Bishop wiki."
+      "Try a sharper name, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(subject + " " + placeLabel)
     ].join("\n");
   }
 
+  const header = widened
+    ? "None inside " + preferMi + " mi — closest good “" + subject + "” near " + placeLabel
+    : "Best near " + placeLabel + " · within " + preferMi + " mi";
+
   const lines = [
-    "Best near " + placeLabel + " · within " + radiusMi + " mi",
+    header,
     "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
-    "Query: " + subject + (cuisine ? " · cuisine " + cuisine : "") + " · ranked distance + match"
+    "Query: " + subject + (cuisine ? " · cuisine " + cuisine : "") + " · " + kind + " · ranked distance + match" +
+      (widened ? " · auto-widened" : "")
   ];
-  hits.slice(0, 5).forEach(function (p, i) {
+  hitsIn.slice(0, 5).forEach(function (p, i) {
     const cuisineTag = p.cuisine ? " · " + p.cuisine : "";
     const type = p.type ? " · " + p.type : "";
-    lines.push((i + 1) + ". " + p.name + " · " + formatMiles(p.km) + cuisineTag + type);
+    const outside = p.mi > preferMi + 0.05 ? " · outside " + preferMi + " mi" : "";
+    lines.push((i + 1) + ". " + p.name + " · " + formatMiles(p.km) + cuisineTag + type + outside);
     if (p.full && p.full !== p.name) lines.push("   " + String(p.full).slice(0, 120));
     else if (p.tags && p.tags["addr:street"]) {
       const addr = [p.tags["addr:housenumber"], p.tags["addr:street"]].filter(Boolean).join(" ");
@@ -3476,18 +3671,21 @@ async function searchPlacesNearSeat(query) {
     lines.push("   https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lon + "#map=17/" + p.lat + "/" + p.lon);
   });
   lines.push("");
-  lines.push("Closest-first inside " + radiusMi + " mi — not Denver/CoS, not coarse Utah stamp. Say expand for wider radius. Browse <url> for Safari.");
+  lines.push(
+    widened
+      ? "No inventing — showed closest real OSM match beyond " + preferMi + " mi. Sticky place context on for follow-ups (e.g. Mexican after Chinese restaurant)."
+      : "Closest-first inside " + preferMi + " mi. Follow-ups keep this place kind (Mexican / park / grocery…). Browse <url> for Safari."
+  );
   try {
     if (typeof remember === "function") {
       remember(
-        "Places ≤" + radiusMi + "mi " + placeLabel + ": " + subject + " → " +
-        hits.slice(0, 3).map(function (p) { return p.name; }).join("; ")
+        "Places " + subject + " @" + placeLabel + ": " +
+        hitsIn.slice(0, 3).map(function (p) { return p.name + " " + formatMiles(p.km); }).join("; ")
       );
     }
   } catch (e) {}
   return lines.join("\n");
 }
-
 
 try {
   if (typeof window !== "undefined") {
