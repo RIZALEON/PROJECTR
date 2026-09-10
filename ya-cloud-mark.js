@@ -322,11 +322,12 @@
 
     ctx.save();
     ctx.translate(W / 2, H / 2 + 6);
-    ctx.scale(1, -1); // busy UPSIDE-DOWN
+    // upright — Decider: right side up (no busy flip)
 
     var breath = 1 + 0.07 * Math.sin(t * 2.5);
+    // Keep upright — gentle wobble only (no full spin invert)
     var tumble =
-      state === "spin" ? t * 2.8 :
+      state === "spin" ? Math.sin(t * 3.2) * 0.18 :
       state === "thunder" ? Math.sin(t * 16) * 0.16 :
       Math.sin(t * 1.2) * 0.12;
 
