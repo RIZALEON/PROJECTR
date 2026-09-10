@@ -2951,10 +2951,116 @@ function searchNudgeTarget(currentText) {
   return "";
 }
 
+
+function isPlaceSearchQuery(text) {
+  const q = foldQ(text);
+  if (!/\b(search|find|look\s*up|near|nearby|closest|around)\b/.test(q) && !/\bin\s+[a-z]{3,}/.test(q)) {
+    // still allow bare "restaurants in Utah"
+    if (!/\b(in|near|around)\b/.test(q)) return false;
+  }
+  return /\b(restaurants?|restraunts?|eatery|eateries|cafes?|coffee|bars?|grocer(y|ies)|supermarket|shopping|mall|massage|spa|gym|hotel|motel|pharmacy|hospital|gas\s*station|parking|museum|park|attractions?|takeout|delivery|food\s*near)\b/.test(q);
+}
+
+function placeSearchSubject(text) {
+  let s = stripSearchFluff(text);
+  s = s.replace(/^(for|a|an|the)\s+/i, "");
+  return s.trim() || "places";
+}
+
+function seatPlaceLabel() {
+  try {
+    if (typeof window !== "undefined" && typeof window.yaRaceSeatPlace === "function") {
+      const p = window.yaRaceSeatPlace();
+      if (p) return String(p);
+    }
+  } catch (e) {}
+  try {
+    if (state && state.lastRacePlace) return String(state.lastRacePlace);
+  } catch (e2) {}
+  try {
+    if (state && state.pingPlace) return String(state.pingPlace);
+  } catch (e3) {}
+  return "phone (Utah)";
+}
+
+function seatPlaceQuery() {
+  const label = foldQ(seatPlaceLabel());
+  if (/utah|denver|america\/denver|boise|phoenix/.test(label) || /phone \(utah\)/.test(label)) return "Utah, USA";
+  const m = label.match(/this seat ·\s*(.+)$/i);
+  if (m) return m[1].replace(/_/g, " ");
+  return "Utah, USA";
+}
+
+function isScientistBioHit(title, body) {
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (/\b(christopher bishop|richard o\.?\s*duda|pattern recognition and machine learning|\bprml\b)\b/.test(hay)) return true;
+  if (/\b(computer scientist|british computer scientist|microsoft technical fellow|professor emeritus)\b/.test(hay) && /\b(bishop|duda|vapnik|hastie)\b/.test(hay)) return true;
+  return false;
+}
+
+async function searchPlacesNearSeat(query) {
+  const subject = placeSearchSubject(query);
+  const where = seatPlaceQuery();
+  const q = (subject + " " + where).replace(/\s+/g, " ").trim();
+  const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=" + encodeURIComponent(q);
+  const res = await fetch(url, {
+    headers: {
+      "Accept": "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
+    }
+  });
+  if (!res.ok) throw new Error("nominatim " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) {
+    return "No places found near " + seatPlaceLabel() + " for “" + subject + "”. Try a sharper query, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(q);
+  }
+  const seat = seatPlaceLabel();
+  const lines = [
+    "Places near " + seat + " (OpenStreetMap)",
+    "Query: " + subject
+  ];
+  const maps = [];
+  data.slice(0, 5).forEach(function (row, i) {
+    const name = String(row.display_name || row.name || "Place").split(",")[0].trim();
+    const full = String(row.display_name || "").trim();
+    const lat = row.lat;
+    const lon = row.lon;
+    const type = [row.type, row.class].filter(Boolean).join("/");
+    lines.push((i + 1) + ". " + name + (type ? " · " + type : ""));
+    if (full && full !== name) lines.push("   " + full.slice(0, 120));
+    if (lat && lon) {
+      const link = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=17/" + lat + "/" + lon;
+      lines.push("   " + link);
+      maps.push(link);
+    }
+  });
+  lines.push("");
+  lines.push("Closest-first from public OSM for this seat — not Denver/CoS. Say browse <url> to open in Safari.");
+  try {
+    if (typeof remember === "function") {
+      remember("Places near " + seat + ": " + subject + " → " + data.slice(0, 3).map(function (r) {
+        return String(r.display_name || "").split(",")[0];
+      }).join("; "));
+    }
+  } catch (e) {}
+  return lines.join("\n");
+}
+
 async function lookUpAndKeep(query) {
   const raw = String(query || "").trim();
   if (!raw) return "I looked it up and did not find a page I will keep.";
   if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
+  // Place/local intent — OSM near seat; NEVER Bishop/wiki scientist path
+  if (isPlaceSearchQuery(raw)) {
+    try {
+      return await searchPlacesNearSeat(raw);
+    } catch (err) {
+      const sub = placeSearchSubject(raw);
+      const where = seatPlaceQuery();
+      const q = encodeURIComponent(sub + " " + where);
+      return "Place search hit a net snag. Try browse https://www.openstreetmap.org/search?query=" + q + " (seat: " + seatPlaceLabel() + ").";
+    }
+  }
   const candidates = splitSearchCandidates(raw);
   let list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
   if (isBishopPrmlQuery(raw) || isBishopOnlyQuery(raw)) {
@@ -2969,6 +3075,9 @@ async function lookUpAndKeep(query) {
     if (!title && !body) return false;
     if (isSearchInfraJunk(title, body, url || "")) return false;
     if (isSearchFalseFriendJunk(title, body, url || "", q || raw)) return false;
+    if (isPlaceSearchQuery(q || raw) || isPlaceSearchQuery(raw)) {
+      if (isScientistBioHit(title, body)) return false;
+    }
     if (!searchRelevant(q || raw, title, body)) return false;
     if (!bishopKeepAllowed(q || raw, title, body, url || "")) return false;
     return true;
@@ -3759,6 +3868,13 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (/^(vault|essences|my mints)\b/.test(q)) {
     if (!vault.length) return "Vault is empty. Say mint to seal this model.";
     return vault.map((e, i) => `${i + 1}. ${e.body.model.name} · ${e.body.id.slice(0, 8)} · ${new Date(e.body.mintedAt).toLocaleString()}`).join("\n");
+  }
+  if (isPlaceSearchQuery(userText)) {
+    if (!mindWantsWeb()) {
+      queueLearn(userText);
+      return "Place search needs green mind. Tap the light green — I will find places near " + seatPlaceLabel() + ".";
+    }
+    return await lookUpAndKeep(userText);
   }
   if (isSearchNudge(userText)) {
     const target = searchNudgeTarget(userText);
