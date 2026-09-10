@@ -4534,6 +4534,13 @@ async function answer(userText) {
       if (hc) return hc;
     }
   } catch (e) {}
+  // Offline CoS multi-turn mode (ya-cos-mode.js) — after hardcode, before compass
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleCosModeChat === "function") {
+      const cos = window.yaHandleCosModeChat(userText);
+      if (cos) return cos;
+    }
+  } catch (e) {}
   // Compass / bounce seat (never bare here once scripts load)
   try {
     if (typeof window !== "undefined" && typeof window.yaHandleCompassChat === "function") {

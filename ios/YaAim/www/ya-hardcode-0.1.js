@@ -63,6 +63,10 @@
     }
     if (/^(chief|cos slice|chief of staff slice|offline chief|embedded chief)$/i.test(q) ||
         /chief-of-staff-slice/i.test(q)) {
+      // Multi-turn CoS mode owns "chief" when seated
+      try {
+        if (typeof window !== "undefined" && typeof window.yaHandleCosModeChat === "function") return null;
+      } catch (e) {}
       return cosSliceCard();
     }
     // Light continuity nudges — do not steal normal chat

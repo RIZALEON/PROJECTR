@@ -8,47 +8,63 @@ MITHRIL (App Store *Local LLM: MITHRIL*) is a **borrow lab only** — never rena
 
 - 100% offline for core chat. **No cloud LLM fallback.**
 - Framework binary is built on **Mac** (this Linux box cannot emit `llama.xcframework`).
-- Signing team: **88HACKXHZL** · bundle `io.github.rizaleon.yaaim.cam` (see ANALYSIS notes). Empty `DEVELOPMENT_TEAM` in pbxproj until Mac fills it.
+- Signing team: **88HACKXHZL** · bundle `io.github.rizaleon.yaaim.cam`.
+- Empty `DEVELOPMENT_TEAM` in pbxproj until Mac fills it.
 
-## Build (borrow from llama.cpp)
+---
 
-```bash
-git clone https://github.com/ggml-org/llama.cpp
-cd llama.cpp
-./build-xcframework.sh
-# → build-apple/llama.xcframework
-```
+## Exact Embed & Sign checklist (Mac)
 
-Or borrow a known-good xcframework from a prior Mac archive / CI artifact. Keep **Metal** enabled.
-
-## Link in Xcode (Mac)
-
-1. Open `ios/YaAim.xcodeproj`.
-2. Drag `llama.xcframework` into the **YaAim** target.
-3. Target → General → Frameworks: **Embed & Sign**.
-4. Signing & Capabilities → Team **88HACKXHZL**.
-5. Build & run on device (USB). Not Simulator-only for Metal heart smoke.
+1. **Open** `ios/YaAim.xcodeproj` in Xcode.app (not CLI-only Simulator).
+2. **Team** → Signing & Capabilities → Team **88HACKXHZL** (not 7D3P5F4V9M).
+3. **Bundle ID** → `io.github.rizaleon.yaaim.cam`.
+4. **Build llama.xcframework** (or borrow known-good Metal build):
+   ```bash
+   git clone https://github.com/ggml-org/llama.cpp
+   cd llama.cpp
+   ./build-xcframework.sh
+   # → build-apple/llama.xcframework
+   ```
+5. **Drag** `llama.xcframework` into the **YaAim** target in the Project Navigator.
+6. Target → **General** → **Frameworks, Libraries, and Embedded Content**:
+   - `llama.xcframework` → **Embed & Sign** (not Do Not Embed).
+7. Confirm **Metal** is enabled in the framework build (device GPU path).
+8. **heart.gguf path** (pick one):
+   - Files → **On My iPhone → Я → heart.gguf**, or
+   - In-app seat via WebShell → NativeVault.seatHeart (pick `.gguf`).
+9. **Run on physical device (USB)** — **no Simulator-only** for Metal heart smoke.
+10. Force-quit Я · relaunch · smoke tokens (below).
 
 `NativeHeart.swift` already has `#if canImport(llama)` — once the module is visible, real load/generate compiles. If your llama.cpp tree renamed symbols (`llama_model_load_from_file` vs `llama_load_model_from_file`, etc.), adjust the two load calls — comments in NativeHeart mark the aliases.
+
+---
 
 ## Seat heart.gguf
 
 1. Copy SmolLM2 (or Decider’s heart) to **Files → On My iPhone → Я → heart.gguf**, **or**
 2. In-app pick a `.gguf` (WebShell → NativeVault.seatHeart).
 
-## Smoke (after force-quit)
+Path expectation: app Documents / vault root · filename **`heart.gguf`**.
+
+---
+
+## Smoke (after force-quit · device · Embed & Sign)
 
 1. Force-quit Я · relaunch.
-2. From www / chat: native `status` (or say **ping status** / mind status) — expect:
+2. From www / chat: native `status` (or **ping status** / mind status) — expect:
    - `frameworkLinked: true`
    - `seated: true`
-   - `tokensOff: false` / `tokensOn: true`
-   - `metal: true`
+   - `tokensOff: false` / **`tokensOn: true`**
+   - **`metal: true`**
 3. Chat a short prompt that routes to native generate (iOS spine + `engine === "llama.cpp"`).
 4. Expect real tokens — not the `tokensOff · … mithrilBorrow` stub string.
 
-Without the framework, status must stay honest: **`tokensOff` + `mithrilBorrow` hint**. Function 0 (rules+gut) still talks.
+Without the framework, status must stay honest: **`tokensOff` + `mithrilBorrow` hint**. Function 0 (rules+gut) + offline CoS mode still talk.
+
+**tokensOn still requires Mac Embed & Sign** — Linux tip cannot flip this.
+
+---
 
 ## Verify doc
 
-See `docs/VERIFY-HEART-TOKENS.md`.
+See `docs/VERIFY-HEART-TOKENS.md` and `docs/EMBED-OFFLINE-V0-2026-09-10.md`.

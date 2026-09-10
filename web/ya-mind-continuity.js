@@ -194,9 +194,12 @@
       touchContinuity();
       return "Continuity touched.\n" + continuityCard();
     }
-    // Enrich CoS slice commands with live continuity
+    // Enrich CoS slice commands with live continuity (defer when multi-turn CosMode seated)
     if (/^(chief|cos slice|chief of staff slice|offline chief|embedded chief)$/i.test(low) ||
         /chief-of-staff-slice/i.test(low)) {
+      try {
+        if (typeof window.yaHandleCosModeChat === "function") return null;
+      } catch (e0) {}
       var base = "";
       try {
         if (typeof window.yaCosSliceCard === "function") base = window.yaCosSliceCard() + "\n\n";
