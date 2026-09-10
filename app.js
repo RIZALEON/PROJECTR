@@ -3028,7 +3028,7 @@ function inferPlaceCtxFromRecent() {
       if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
       else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
       else if (/\b(coffee|cafe|café)\b/.test(qq)) kind = "cafe";
-      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq)) kind = "restaurant";
+      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq) || /\b(taco|chipotle|grill|express|pizza|sushi)\b/.test(foldQ(t))) kind = "restaurant";
       else if (/\bmassage|spa\b/.test(qq)) kind = "massage";
       else if (/\bpharmac/.test(qq)) kind = "pharmacy";
       else if (/\bgym|fitness\b/.test(qq)) kind = "gym";
@@ -3110,7 +3110,8 @@ function isPlaceFollowUp(text) {
   const ctx = inferPlaceCtxFromRecent();
   if (!ctx || !ctx.kind) return false;
   const age = Date.now() - (ctx.at || 0);
-  if (age > 20 * 60 * 1000) return false; // 20 min sticky
+  // Sticky up to 45 min; recent chat recovery always fresh enough for Decider context law
+  if (age > 45 * 60 * 1000) return false;
   const q = foldQ(text);
   if (!q || q.length > 80) return false;
   // Fresh place-noun query (grocery, park, restaurant…) is NOT a sticky follow-up
