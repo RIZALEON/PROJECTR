@@ -1,6 +1,7 @@
 /*! ya-ping-bounce.js — seated RIZALBOT ping never answers bare "here"
  * Seat LAST after ya-compass-race.js + ya-compass-br.js
- * Airplane: local-seat. Green: race closest (or lastBounce).
+ * Airplane: local-seat. Green: ALWAYS re-race closest from this seat (never frozen Utah).
+ * Denver/CoS never substitutes for closest bounce.
  */
 (function () {
   "use strict";
@@ -11,10 +12,25 @@
     brUrl: "https://registro.br/"
   };
 
+  function seatPlace() {
+    try {
+      if (typeof window.yaRaceSeatPlace === "function") return window.yaRaceSeatPlace();
+    } catch (e) {}
+    return "phone (Utah)";
+  }
+
   function stamp() {
     try {
+      if (typeof window.yaRaceSeatPlace === "function" && typeof Intl !== "undefined") {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Denver";
+        var place = seatPlace();
+        var use = place.indexOf("Utah") >= 0 ? "America/Denver" : tz;
+        return new Date().toLocaleString("en-US", { timeZone: use });
+      }
+    } catch (e) {}
+    try {
       return new Date().toLocaleString("en-US", { timeZone: "America/Denver" });
-    } catch (e) {
+    } catch (e2) {
       return new Date().toString();
     }
   }
@@ -30,7 +46,7 @@
   }
 
   function pongLine(host) {
-    return "Pong · first bounce · " + host + " · " + stamp() + " · RIZALBOT🤖";
+    return "Pong · first bounce · " + host + " · " + seatPlace() + " · " + stamp() + " · RIZALBOT🤖";
   }
 
   function handlePing(raw) {
@@ -47,14 +63,14 @@
       return lineA;
     }
 
-    // Capital Ping / ping bounce → full race then closest (+ board via compass handler preferred)
+    // Capital Ping / ping bounce → full race then closest (+ board)
     if (q === "Ping" || low === "ping bounce") {
       if (typeof window.yaHandleCompassChat === "function") {
         return window.yaHandleCompassChat("Ping");
       }
     }
 
-    // bare ping: race for closest if possible
+    // bare ping: ALWAYS re-race for closest from this seat (never lastBounce-only)
     if (typeof window.yaRunCompassRace === "function") {
       return window.yaRunCompassRace().then(function (b) {
         var host = (b && b.closest && b.closest.id) || BOUNCE.local;
@@ -64,6 +80,7 @@
           if (typeof state !== "undefined" && state) {
             state.lastBounce = host;
             state.lastPong = line;
+            state.lastRacePlace = (b && b.place) || seatPlace();
             if (typeof save === "function") save();
           }
         } catch (e2) {}
@@ -71,11 +88,8 @@
       });
     }
 
-    var host = BOUNCE.local;
-    try {
-      if (typeof state !== "undefined" && state && state.lastBounce) host = String(state.lastBounce);
-    } catch (e) {}
-    var line = pongLine(host);
+    // No race script: local-seat only — never invent Denver/CoS as closest
+    var line = pongLine(BOUNCE.local);
     try { if (typeof remember === "function") remember(line); } catch (e) {}
     return line;
   }
@@ -87,6 +101,6 @@
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-ping-bounce] seated — never bare here · race-aware");
+    if (typeof console !== "undefined") console.log("[ya-ping-bounce] re-race each ping · Denver≠closest · never bare here");
   } catch (e) {}
 })();

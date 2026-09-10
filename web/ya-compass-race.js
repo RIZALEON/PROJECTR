@@ -1,6 +1,8 @@
 /*! ya-compass-race.js — N/E/S/W + closest + furthest Tower
  * Named origins only. No IP sweep. CDN clocks labeled clock only.
  * South: S-BR-registro.br in the live race.
+ * Location-relative: every Ping/compass ping/furthest RE-RACES from this seat.
+ * Denver/CoS never substitutes for closest. Airplane → local-seat.
  * Seat after app.js; before ya-ping-bounce.js
  */
 (function () {
@@ -15,10 +17,36 @@
   ];
 
   var lastBoard = null;
+  var UTAH_TZ = "America/Denver";
 
-  function stamp() {
+  function deviceTz() {
     try {
-      return new Date().toLocaleString("en-US", { timeZone: "America/Denver" });
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || UTAH_TZ;
+    } catch (e) {
+      return UTAH_TZ;
+    }
+  }
+
+  /** Seat label for board — phone Utah home vs abroad device TZ. Not CoS Denver as bounce. */
+  function seatPlace() {
+    try {
+      if (typeof state !== "undefined" && state && state.pingPlace) {
+        return String(state.pingPlace);
+      }
+    } catch (e) {}
+    var tz = deviceTz();
+    if (tz === UTAH_TZ || tz === "America/Boise" || tz === "America/Phoenix") {
+      return "phone (Utah)";
+    }
+    return "this seat · " + tz;
+  }
+
+  function seatStamp() {
+    var tz = deviceTz();
+    // Home phone: Utah clock. Abroad: local device clock so place matches RTT seat.
+    var use = (seatPlace().indexOf("Utah") >= 0) ? UTAH_TZ : tz;
+    try {
+      return new Date().toLocaleString("en-US", { timeZone: use });
     } catch (e) {
       return new Date().toString();
     }
@@ -63,11 +91,15 @@
       });
   }
 
+  /** Always fresh RTT from this seat — never frozen Utah winners. */
   function runRace() {
+    var place = seatPlace();
+    var st = seatStamp();
     if (isAirplane()) {
       lastBoard = {
         at: Date.now(),
-        stamp: stamp(),
+        stamp: st,
+        place: place,
         airplane: true,
         rows: [],
         closest: null,
@@ -86,7 +118,8 @@
       }
       lastBoard = {
         at: Date.now(),
-        stamp: stamp(),
+        stamp: st,
+        place: place,
         airplane: false,
         rows: rows,
         closest: closest,
@@ -96,6 +129,8 @@
         if (typeof state !== "undefined" && state) {
           if (closest) state.lastBounce = closest.id;
           if (furthest) state.lastFurthest = furthest.id;
+          state.lastRacePlace = place;
+          state.lastRaceAt = lastBoard.at;
           if (typeof save === "function") save();
         }
       } catch (e) {}
@@ -113,7 +148,11 @@
   function boardText(board) {
     board = board || lastBoard;
     if (!board) return "Compass · no race yet. Say compass ping (green).";
-    var lines = ["Compass race · " + board.stamp];
+    var place = board.place || seatPlace();
+    var lines = [
+      "Compass race · " + place + " · " + board.stamp,
+      "Law · winners = RTT from this seat (re-raced). Denver/CoS ≠ closest."
+    ];
     if (board.airplane) {
       lines.push("Airplane · local-seat (no radio)");
       lines.push("Closest · local-seat");
@@ -137,25 +176,30 @@
   }
 
   function pongClosest(board) {
+    var st = (board && board.stamp) || seatStamp();
+    var place = (board && board.place) || seatPlace();
     if (!board || board.airplane || !board.closest) {
-      return "Pong · first bounce · local-seat · " + stamp() + " · RIZALBOT🤖";
+      return "Pong · first bounce · local-seat · " + place + " · " + st + " · RIZALBOT🤖";
     }
-    return "Pong · first bounce · " + board.closest.id + " · " + stamp() + " · RIZALBOT🤖";
+    return "Pong · first bounce · " + board.closest.id + " · " + place + " · " + st + " · RIZALBOT🤖";
   }
 
   function pongFurthest(board) {
+    var st = (board && board.stamp) || seatStamp();
+    var place = (board && board.place) || seatPlace();
     if (!board || board.airplane || !board.furthest) {
-      return "Pong · Furthest Tower · local-seat · " + stamp() + " · RIZALBOT🤖";
+      return "Pong · Furthest Tower · local-seat · " + place + " · " + st + " · RIZALBOT🤖";
     }
-    return "Pong · Furthest Tower · " + board.furthest.id + " · " + stamp() + " · RIZALBOT🤖";
+    return "Pong · Furthest Tower · " + board.furthest.id + " · " + place + " · " + st + " · RIZALBOT🤖";
   }
 
-  /** Chat entry: compass / compass ping / Ping (capital) */
+  /** Chat entry: compass / compass ping / Ping (capital) — Ping always re-races */
   function handleCompassChat(raw) {
     var q = String(raw || "").trim();
     var low = q.toLowerCase();
     if (low === "compass" || low === "compass board" || low === "race board") {
-      if (lastBoard) return boardText(lastBoard);
+      // Show last board if fresh (<30s); else re-race so travel/abroad updates
+      if (lastBoard && (Date.now() - (lastBoard.at || 0) < 30000)) return boardText(lastBoard);
       return runRace().then(boardText);
     }
     if (low === "compass ping" || low === "race ping" || q === "Ping" || low === "ping race") {
@@ -169,12 +213,9 @@
       });
     }
     if (low === "furthest" || low === "furthest tower" || low === "ping furthest") {
-      var go = lastBoard ? Promise.resolve(lastBoard) : runRace();
-      return go.then(function (b) {
-        if (!lastBoard || (Date.now() - (lastBoard.at || 0) > 60000)) {
-          return runRace().then(function (b2) { return pongFurthest(b2) + "\n\n" + boardText(b2); });
-        }
-        return pongFurthest(b) + "\n\n" + boardText(b);
+      // Always re-race — location-relative law
+      return runRace().then(function (b2) {
+        return pongFurthest(b2) + "\n\n" + boardText(b2);
       });
     }
     return null;
@@ -187,9 +228,10 @@
     window.yaHandleCompassChat = handleCompassChat;
     window.yaPongClosest = pongClosest;
     window.yaPongFurthest = pongFurthest;
+    window.yaRaceSeatPlace = seatPlace;
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-compass-race] N/E/S/W + furthest · S-BR-registro.br seated");
+    if (typeof console !== "undefined") console.log("[ya-compass-race] location-relative re-race · S-BR · Denver≠closest");
   } catch (e) {}
 })();
