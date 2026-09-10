@@ -33,7 +33,7 @@
       '<div class="ya-cloud-stage">' +
       '<div class="ya-cloud-tumble">' +
       '<canvas class="ya-cloud-canvas" width="120" height="72"></canvas>' +
-      '<div class="ya-cloud-ya">Я</div>' +
+      '<div class="ya-cloud-ya" aria-hidden="true">Я</div>' +
       "</div></div>";
     if (host && host.parentNode) host.parentNode.insertBefore(el, host);
     else document.body.appendChild(el);
@@ -65,27 +65,42 @@
     }
   }
 
-  function drawCloudBody(g, ox, oy, sc, alpha) {
+  function drawCloudBody(g, ox, oy, sc, alpha, withEyes) {
     g.save();
     g.translate(ox, oy);
     g.scale(sc, sc);
     g.globalAlpha = alpha;
-    // upside-down puff: draw then flip via caller scale
+    // Fluffy purple avatar cloud (bumps = "top" of character; scene is Y-flipped so busy = upside-down)
     g.beginPath();
-    g.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
-    g.ellipse(-16, 2, 14, 10, 0, 0, Math.PI * 2);
-    g.ellipse(16, 3, 15, 10, 0, 0, Math.PI * 2);
-    g.ellipse(-6, -6, 12, 9, 0, 0, Math.PI * 2);
-    g.ellipse(10, -5, 11, 8, 0, 0, Math.PI * 2);
-    var grd = g.createLinearGradient(0, -14, 0, 14);
-    grd.addColorStop(0, "rgba(230,240,255,0.75)");
-    grd.addColorStop(0.5, "rgba(140,185,255,0.4)");
-    grd.addColorStop(1, "rgba(50,80,130,0.45)");
+    g.ellipse(0, 2, 26, 16, 0, 0, Math.PI * 2);
+    g.ellipse(-18, 0, 16, 14, 0, 0, Math.PI * 2);
+    g.ellipse(18, 0, 16, 14, 0, 0, Math.PI * 2);
+    g.ellipse(-8, -10, 14, 12, 0, 0, Math.PI * 2);
+    g.ellipse(10, -11, 13, 12, 0, 0, Math.PI * 2);
+    g.ellipse(0, -14, 12, 11, 0, 0, Math.PI * 2);
+    var grd = g.createLinearGradient(0, -20, 0, 18);
+    grd.addColorStop(0, "rgba(230, 210, 255, 0.95)");
+    grd.addColorStop(0.45, "rgba(186, 150, 235, 0.92)");
+    grd.addColorStop(1, "rgba(130, 95, 190, 0.88)");
     g.fillStyle = grd;
     g.fill();
-    g.strokeStyle = "rgba(190,220,255,0.7)";
-    g.lineWidth = 1.2;
+    g.strokeStyle = "rgba(255, 240, 255, 0.45)";
+    g.lineWidth = 1.1;
     g.stroke();
+    if (withEyes) {
+      // Two dark oval eyes (avatar energy) — drawn in cloud local space
+      g.fillStyle = "rgba(28, 22, 40, 0.92)";
+      g.beginPath();
+      g.ellipse(-7, -2, 3.2, 5.2, 0, 0, Math.PI * 2);
+      g.ellipse(7, -2, 3.2, 5.2, 0, 0, Math.PI * 2);
+      g.fill();
+      // tiny highlight
+      g.fillStyle = "rgba(255,255,255,0.35)";
+      g.beginPath();
+      g.ellipse(-6, -4, 1.1, 1.6, 0, 0, Math.PI * 2);
+      g.ellipse(8, -4, 1.1, 1.6, 0, 0, Math.PI * 2);
+      g.fill();
+    }
     g.restore();
   }
 
@@ -117,10 +132,10 @@
       ctx.rotate(tumble);
     }
 
-    // back / mid / front parallax layers
-    drawCloudBody(ctx, driftB * 0.6, 2, 1.15 * breath, 0.35);
-    drawCloudBody(ctx, 0, 0, 1.0 * breath, 0.85);
-    drawCloudBody(ctx, driftF * 0.5, -2, 0.82 * breath, 0.55);
+    // back / mid / front parallax — mid has eyes (avatar); Y-flip makes busy UPSIDE-DOWN
+    drawCloudBody(ctx, driftB * 0.6, 3, 1.18 * breath, 0.4, false);
+    drawCloudBody(ctx, 0, 0, 1.05 * breath, 0.98, true);
+    drawCloudBody(ctx, driftF * 0.5, -3, 0.78 * breath, 0.5, false);
 
     // rain (drawn in flipped space so it falls "up" on screen toward chrome)
     if (state === "rain" || state === "thunder" || state === "spin") {
@@ -325,6 +340,6 @@
   else boot();
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-cloud-mark] canvas 3D tumble · iOS-safe · spin/think/rain/thunder");
+    if (typeof console !== "undefined") console.log("[ya-cloud-mark] purple avatar cloud · eyes · upside-down busy · tumble/rain/thunder");
   } catch (e) {}
 })();

@@ -139,7 +139,7 @@
   width: 120px;
   height: 72px;
   position: relative;
-  filter: drop-shadow(0 0 12px rgba(120, 190, 255, 0.65));
+  filter: drop-shadow(0 0 14px rgba(180, 130, 255, 0.75));
 }
 #ya-cloud-mark .ya-cloud-tumble {
   width: 120px;
@@ -160,10 +160,10 @@
   top: 38%;
   text-align: center;
   font: 700 14px/1 -apple-system, system-ui, sans-serif;
-  color: rgba(200, 230, 255, 0.55);
+  color: rgba(230, 210, 255, 0.4);
   letter-spacing: 0.04em;
   pointer-events: none;
-  text-shadow: 0 0 8px rgba(120, 200, 255, 0.8);
+  text-shadow: 0 0 10px rgba(180, 120, 255, 0.7);
   transform: scaleY(-1);
 }
 
@@ -207,6 +207,6 @@
   80% { transform: translate(2px, -2px) rotate(3deg); }
 }
 @keyframes ya-cloud-glow-flash {
-  0%, 49% { filter: drop-shadow(0 0 16px rgba(180, 230, 255, 0.95)); }
-  50%, 100% { filter: drop-shadow(0 0 4px rgba(80, 120, 180, 0.4)); }
+  0%, 49% { filter: drop-shadow(0 0 18px rgba(210, 170, 255, 0.95)); }
+  50%, 100% { filter: drop-shadow(0 0 5px rgba(100, 60, 160, 0.45)); }
 }
