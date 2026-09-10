@@ -751,6 +751,8 @@ function recall(query, limit) {
     if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
     if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
     if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return { m, score: 0, longHit: false, core: false };
+    if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(qFull)) return { m, score: 0, longHit: false, core: false };
     if (/^Used evolved function\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
     if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
@@ -1141,9 +1143,21 @@ function classifyAsk(userText) {
   return "talk";
 }
 
-function coreHitText(hits, kind) {
+function coreHitText(hits, kind, userText) {
   const list = Array.isArray(hits) ? hits : [];
-  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text) && !(typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) && !/^Pong\s*·/i.test(m.text));
+  const q = foldQ(userText || "");
+  const facts = list.filter((m) => {
+    if (!m || !m.text) return false;
+    if (/^Core:/i.test(m.text) || /^user said:/i.test(m.text) || /^From talk:/i.test(m.text)) return false;
+    if (isHygieneJunkMemory(m.text) || isSearchInfraJunkMemory(m.text)) return false;
+    if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return false;
+    if (/^Pong\s*·/i.test(m.text)) return false;
+    if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+    // Never sticky-replay Duda bio for Bishop/Recognition academic asks
+    if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(q)) return false;
+    if (/^(recognition|pattern|bishop)$/i.test(q.trim()) && /\bduda\b/i.test(m.text) && !/\bchristopher\b/i.test(m.text)) return false;
+    return true;
+  });
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
   if (facts.length) return facts[0].text;
   const core = list.find((m) => m && /^Core:/i.test(m.text));
@@ -1156,7 +1170,7 @@ function coreReply(userText, hits) {
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
   }
   const kind = classifyAsk(t);
-  const held = coreHitText(hits, kind);
+  const held = coreHitText(hits, kind, t);
   if (kind === "care") {
     if (held) return "I am here with you on this device. I hold: " + held + " One step: name one thing that would help in the next hour.";
     return "I am here on this device with you. I will not pretend to know your whole story. One step: name one thing that would help in the next hour.";
@@ -1329,7 +1343,12 @@ function retrieveBeforeReply(userText) {
   } catch (e2) {}
   function scrubRace(arr) {
     return (arr || []).filter(function (m) {
-      return m && m.text && !isRaceBoardText(m.text) && !/^Used evolved function\b/i.test(m.text) && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text));
+      if (!m || !m.text) return false;
+      if (isRaceBoardText(m.text) || /^Used evolved function\b/i.test(m.text) || /^Core:/i.test(m.text)) return false;
+      if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text)) return false;
+      if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+      if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/i.test(foldQ(q))) return false;
+      return true;
     });
   }
   const shelfHits = scrubRace((hits || []).filter(function (m) { return m && isShelfMemory(m.text); }));
@@ -1370,6 +1389,11 @@ function localEngine(userText) {
   if (isEngineNameAsk(userText)) return explainEngine();
   if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
+  // Academic: bare Recognition / Bishop+pattern must search — never sticky Duda gut
+  const qFold = foldQ(userText).replace(/[.?!]+$/g, "").trim();
+  if (/^(recognition|pattern|bishop)$/i.test(qFold) || isBishopPrmlQuery(userText)) {
+    if (state.mindOnline) return "SEARCH_NOW";
+  }
   const bag = retrieveBeforeReply(userText);
   // Never fall back to unfiltered recall() — that re-leaked Pong/Top3 after scrub
   const hits = (bag.hits && bag.hits.length) ? bag.hits : [];
@@ -1450,26 +1474,63 @@ async function webSearch(query, force) {
   async function searchOnce(q) {
     const term = String(q || "").trim();
     if (!term) return null;
-    const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(term);
+    const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=5&srsearch=" + encodeURIComponent(term);
     const res = await fetch(api);
     if (!res.ok) throw new Error("search failed");
     const data = await res.json();
     const hits = (data.query && data.query.search) || [];
     if (!hits.length) return null;
-    const title = hits[0].title;
-    const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
-    let extract = String(hits[0].snippet || "").replace(/<[^>]+>/g, "");
-    if (sumRes.ok) {
-      const sum = await sumRes.json();
-      if (sum.extract) extract = sum.extract;
+    function scoreWikiHit(title, extract) {
+      const hay = foldQ((title || "") + " " + (extract || ""));
+      let score = 0;
+      if (/^christopher bishop$/i.test(String(title || "").trim())) score += 100;
+      if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) score += 50;
+      if (/\bprml\b/.test(hay) || /\bpattern recognition and machine learning\b/.test(hay)) score += 40;
+      if (/\bbishop\b/.test(hay) && /\bmachine learning\b/.test(hay)) score += 20;
+      if (isDudaNotBishop(title, extract)) score -= 80;
+      if (isTop3GamesJunk(title, extract, "")) score -= 100;
+      if (isIndustrialDcsFalseFriend(title, extract)) score -= 80;
+      if (/^pattern recognition$/i.test(String(title || "").trim()) && isBishopPrmlQuery(term)) score -= 30;
+      return score;
     }
-    if (wikiJunk(title, extract)) return null;
-    if (nuclearBlocked(title + " " + extract)) return null;
-    if (isSearchInfraJunk(title, extract, "")) return null;
-    if (!searchRelevant(term, title, extract)) return null;
-    remember(title + ": " + extract.slice(0, 500));
-    const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
-    return { title, extract: extract.slice(0, 700), extras, source: "wikipedia" };
+    let best = null;
+    let bestScore = -1e9;
+    const extras = [];
+    for (let i = 0; i < hits.length; i++) {
+      const title = hits[i].title;
+      if (!title) continue;
+      extras.push(title);
+      let extract = String(hits[i].snippet || "").replace(/<[^>]+>/g, "");
+      try {
+        const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+        if (sumRes.ok) {
+          const sum = await sumRes.json();
+          if (sum.extract) extract = sum.extract;
+        }
+      } catch (e) {}
+      if (wikiJunk(title, extract)) continue;
+      if (nuclearBlocked(title + " " + extract)) continue;
+      if (isSearchInfraJunk(title, extract, "")) continue;
+      if (isTop3GamesJunk(title, extract, "")) continue;
+      if (!searchRelevant(term, title, extract)) continue;
+      const sc = scoreWikiHit(title, extract);
+      if (!best || sc > bestScore) {
+        best = { title, extract: extract.slice(0, 700), source: "wikipedia" };
+        bestScore = sc;
+      }
+    }
+    if (!best) return null;
+    // For Bishop/PRML queries, refuse a non-Christopher winner even if it scraped through
+    if (isBishopPrmlQuery(term) || isBishopOnlyQuery(term)) {
+      const hay = foldQ(best.title + " " + best.extract);
+      if (!(/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) && !/\bprml\b/.test(hay)) {
+        return null;
+      }
+      if (isDudaNotBishop(best.title, best.extract)) return null;
+    }
+    remember(best.title + ": " + best.extract.slice(0, 500));
+    best.extras = extras.filter(function (t) { return t !== best.title; }).slice(0, 4);
+    return best;
   }
   async function searchPublic(q) {
     if (typeof window.yaPublicSearch !== "function") return null;
@@ -2768,8 +2829,10 @@ async function lookUpAndKeep(query) {
   let list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
   if (isBishopPrmlQuery(raw) || isBishopOnlyQuery(raw)) {
     list = [
+      "Christopher Bishop",
       "Christopher Bishop Pattern Recognition and Machine Learning",
-      "Christopher M. Bishop PRML"
+      "Christopher M. Bishop PRML",
+      "Pattern Recognition and Machine Learning Bishop"
     ];
   }
   try {

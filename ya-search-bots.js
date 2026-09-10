@@ -18,6 +18,28 @@
     return /nuclear (weapon|warhead|bomb|missile|enrichment|implosion)|build a (nuke|warhead)|how to make (a )?nuclear/.test(q);
   }
 
+  function isTop3Gamesish(title, extract, url) {
+    var hay = (String(title || "") + "\n" + String(extract || "") + "\n" + String(url || "")).toLowerCase();
+    if (/top3game\.com/.test(hay)) return true;
+    if (/top\s*3\s*!\s*games/.test(hay)) return true;
+    if (/\btop\s*3\b/.test(hay) && /\b(games?|alien stage|youtube)\b/.test(hay)) return true;
+    return false;
+  }
+
+  function isDudaish(title, extract) {
+    var hay = (String(title || "") + " " + String(extract || "")).toLowerCase();
+    return /\b(richard o\.?\s*duda|richard duda|\bduda\b)/.test(hay) && !/\bchristopher\b/.test(hay) && !/\bprml\b/.test(hay);
+  }
+
+  function wantsBishopPrml(query) {
+    var q = String(query || "").toLowerCase();
+    return /\bbishop\b/.test(q) && (/\bpattern\b/.test(q) && /\brecognition\b/.test(q) || /\b(prml|machine learning)\b/.test(q));
+  }
+
+  function wantsBishop(query) {
+    return /\bbishop\b/.test(String(query || "").toLowerCase());
+  }
+
   function junkish(title, extract) {
     if (typeof global.wikiJunk === "function") {
       try { return !!global.wikiJunk(title, extract); } catch (e) {}
@@ -65,6 +87,12 @@
 
   function relevantToQuery(query, title, body) {
     if (isInfraJunk(title, body, "")) return false;
+    if (isTop3Gamesish(title, body, "") && !/\b(game|games|gaming)\b/i.test(String(query || ""))) return false;
+    if (wantsBishop(query) && isDudaish(title, body) && !/\bduda\b/i.test(String(query || ""))) return false;
+    if (wantsBishopPrml(query)) {
+      var hay = (String(title || "") + " " + String(body || "")).toLowerCase();
+      if (!(/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) && !/\bprml\b/.test(hay)) return false;
+    }
     var terms = contentTerms(query);
     if (!terms.length) return true;
     var hay = (String(title || "") + " " + String(body || "")).toLowerCase();
@@ -118,7 +146,9 @@
     return out;
   }
 
-  function rememberFact(title, extract) {
+  function rememberFact(title, extract, query) {
+    if (isTop3Gamesish(title, extract, "")) return;
+    if (wantsBishop(query) && isDudaish(title, extract) && !/\bduda\b/i.test(String(query || ""))) return;
     if (typeof global.remember === "function") {
       try { global.remember(title + ": " + String(extract || "").slice(0, 500)); } catch (e) {}
     }
@@ -246,7 +276,7 @@
           for (var k = 0; k < texts.length && remembered < 5; k++) {
             var fact = stripHtml(texts[k]);
             if (fact && fact.length >= 12) {
-              rememberFact(fact.split(" - ")[0].slice(0, 80), fact);
+              rememberFact(fact.split(" - ")[0].slice(0, 80), fact, term);
               remembered++;
             }
           }
@@ -255,7 +285,7 @@
       if (extract && extract.length >= 8) {
         var title = stripHtml(data.Heading || "") || term;
         if (!nuclearish(title + " " + extract) && !junkish(title, extract) && !isInfraJunk(title, extract, "") && relevantToQuery(term, title, extract)) {
-          rememberFact(title, extract);
+          rememberFact(title, extract, term);
           return {
             title: title,
             extract: extract.slice(0, 700),
@@ -281,7 +311,7 @@
     if (!keptHits.length) {
       // Whole-extract fallback only if relevant
       if (!relevantToQuery(term, htmlHit.title, htmlHit.extract)) return null;
-      rememberFact(htmlHit.title, htmlHit.extract);
+      rememberFact(htmlHit.title, htmlHit.extract, term);
       return {
         title: htmlHit.title,
         extract: String(htmlHit.extract).slice(0, 900),
@@ -290,7 +320,7 @@
       };
     }
     keptHits.forEach(function (h) {
-      rememberFact(h.title, h.snippet || h.title);
+      rememberFact(h.title, h.snippet || h.title, term);
     });
     var extract2 = keptHits.map(function (h, n) {
       return (n + 1) + ". " + h.title + (h.snippet ? " — " + h.snippet : "");
