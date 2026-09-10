@@ -723,19 +723,26 @@ function recall(query, limit) {
     if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
     if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
     if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return { m, score: 0, longHit: false, core: false };
-    if (/^Pong\s*·/i.test(m.text) || /^Compass race\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (/^Used evolved function\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
     if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
     let longHit = false;
+    let overlap = 0;
     words.forEach((w) => {
       if (hay.includes(w)) {
         score += 1;
+        overlap += 1;
         if (w.length >= 4) longHit = true;
       }
     });
-    if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
-    if (!core) score += 2;
+    if (qFull.length >= 4 && hay.includes(qFull)) {
+      score += 3;
+      overlap += 1;
+    }
+    // No free +2 — zero-overlap must not surface stale Pong/Top3/random gut
+    if (overlap === 0) return { m, score: 0, longHit: false, core: core };
+    if (!core) score += 1;
     if (/^(user'?s name is|likes |lives in )/i.test(m.text)) score += 4;
     if (typeof isShelfMemory === "function" && isShelfMemory(m.text)) score += 5;
     return { m, score, longHit, core: core };
@@ -925,53 +932,57 @@ function dropEvolvedFunction(name) {
 }
 
 function isRaceChatCommand(q) {
-  const low = String(q || "").toLowerCase().trim();
+  const low = String(q || "").toLowerCase().trim().replace(/[.?!]+$/g, "");
   return (
     low === "top 3" || low === "fastest 3" || low === "top three" || low === "top three pong" ||
     low === "fastest three" || low === "top3" || low === "ping" || low === "ping bounce" ||
     low === "compass" || low === "compass board" || low === "race board" || low === "compass ping" ||
     low === "race ping" || low === "ping race" || low === "furthest" || low === "furthest tower" ||
-    low === "ping furthest" || low === "ping"
+    low === "ping furthest"
   );
 }
 
 function isRaceBoardText(text) {
   const s = String(text || "");
-  return /^Pong\s*·/i.test(s) || /^Compass race\b/i.test(s) || /\bTop 3\s*·/i.test(s) || /\bFurthest Tower\b/i.test(s) && /\bClosest\s*·/i.test(s);
+  if (!s) return false;
+  if (/^Pong\s*[·.•:-]/i.test(s)) return true;
+  if (/^Compass\s+race\b/i.test(s)) return true;
+  if (/\bTop\s*3\s*[·.•:-]/i.test(s)) return true;
+  if (/\bFurthest\s+Tower\b/i.test(s) && /\bClosest\b/i.test(s)) return true;
+  if (/\bclosest bounce\b/i.test(s) && /\b(local-seat|Pong)\b/i.test(s)) return true;
+  if (/^Law\s*·\s*winners\s*=\s*RTT/i.test(s)) return true;
+  return false;
+}
+
+/** Academic / common English — never substring-fire as evolve triggers. */
+function isAcademicOrUnsafeTrigger(trig) {
+  const t = String(trig || "").toLowerCase().trim();
+  if (!t) return true;
+  if (/\b(pattern|recognition|bishop|classification|neural|statistical|machine\s*learning|book|theory|algorithm|matrix|vector|probability|bayes|gaussian|regression|cluster)\b/.test(t)) return true;
+  return false;
 }
 
 function matchEvolved(userText) {
-  const q = String(userText || "").toLowerCase().trim();
+  const q = String(userText || "").toLowerCase().trim().replace(/[.?!]+$/g, "");
   const list = state.evolved || [];
   for (const s of list) {
     if (!s || s.enabled === false) continue;
     if (!s.trigger) continue;
-    const trig = String(s.trigger).toLowerCase().trim();
+    const trig = String(s.trigger).toLowerCase().trim().replace(/[.?!]+$/g, "");
     if (!trig) continue;
     const action = String(s.action || "");
     // Stale race-board actions must NEVER fire on academic/freeform chat
     if (isRaceBoardText(action) && !isRaceChatCommand(q)) continue;
-    // Race-like triggers: full-string equality only
-    if (isRaceChatCommand(trig) || /^(top\s*3|fastest|compass|furthest|ping)\b/.test(trig)) {
-      if (q === trig) return s;
-      continue;
-    }
-    // Exact match always OK
-    if (q === trig) return s;
-    // Whole-phrase boundary match — NEVER bare includes() (blocks "recognition" inside longer queries only when trig===recognition via boundary with length guard)
-    const esc = trig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (!new RegExp("(?:^|\\W)" + esc + "(?:\\W|$)", "i").test(q)) continue;
-    const qWords = q.split(/\W+/).filter(Boolean);
-    const tWords = trig.split(/\W+/).filter(Boolean);
-    // Academic / longer utterances are not evolve triggers
-    if (qWords.length > tWords.length + 1) continue;
-    // Single-token triggers only match exact q (Recognition ≠ Top3; Bishop pattern recognition ≠ recognition skill)
-    if (tWords.length === 1 && q !== trig) continue;
+    if (/\bYA_LAST_RACE\b/i.test(action) && !isRaceChatCommand(q)) continue;
+    // HARD LAW: exact phrase equality only — never includes()/substring/boundary.
+    // "Bishop pattern recognition" must NOT match trigger "recognition" or "pattern".
+    if (q !== trig) continue;
+    // Race-like triggers: still exact (already), but refuse academic trigger words even on exact if action looks like race board
+    if (isAcademicOrUnsafeTrigger(trig) && isRaceBoardText(action)) continue;
     return s;
   }
   return null;
 }
-
 
 function isEatAsk(text) {
   const q = String(text || "").toLowerCase();
@@ -1288,22 +1299,31 @@ function retrieveBeforeReply(userText) {
       window.yaTouchContinuity();
     }
   } catch (e2) {}
-  const shelfHits = (hits || []).filter(function (m) { return m && isShelfMemory(m.text); });
-  const cleanHits = (hits || []).filter(function (m) {
-    return m && m.text && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text)) && !(typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) && !/^Used evolved function/i.test(m.text);
-  });
+  function scrubRace(arr) {
+    return (arr || []).filter(function (m) {
+      return m && m.text && !isRaceBoardText(m.text) && !/^Used evolved function\b/i.test(m.text) && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text));
+    });
+  }
+  const shelfHits = scrubRace((hits || []).filter(function (m) { return m && isShelfMemory(m.text); }));
+  const cleanHits = scrubRace(hits || []);
+  if (cont && isRaceBoardText(cont)) cont = "";
+  if (cont && /\b(Top\s*3|Pong\s*[·.•]|Compass race|Furthest Tower|YA_LAST_RACE)\b/i.test(cont)) cont = "";
   let direct = "";
+  // Direct gut answers only for clear ask-forms — never for academic bare phrases like "Recognition"
   const askish = /\?$|^(who|what|when|where|which|why|how|do you|did you|is |are |can you|recall|remember)\b/i.test(q);
-  if (askish && (shelfHits.length || cleanHits.length)) {
+  const raceCmd = typeof isRaceChatCommand === "function" && isRaceChatCommand(q);
+  if (askish && !raceCmd && (shelfHits.length || cleanHits.length)) {
     const top = shelfHits[0] || cleanHits[0];
-    if (top && top.text) {
+    if (top && top.text && !isRaceBoardText(top.text)) {
       direct = String(top.text);
       if (cont) {
         const c0 = String(cont).split("\n")[0];
-        if (c0 && direct.indexOf(c0) < 0) direct = direct + "\n(Continuity) " + c0;
+        if (c0 && !isRaceBoardText(c0) && direct.indexOf(c0) < 0) direct = direct + "\n(Continuity) " + c0;
       }
     }
   }
+  // Never return YA_LAST_RACE / race boards as direct for non-ping chats
+  if (direct && isRaceBoardText(direct) && !raceCmd) direct = "";
   return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: direct };
 }
 
@@ -1319,8 +1339,9 @@ function localEngine(userText) {
   if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
   const bag = retrieveBeforeReply(userText);
-  const hits = (bag.hits && bag.hits.length) ? bag.hits : recall(userText);
-  if (bag.direct && /\?$|^(who|what|when|where|which|why|how)/i.test(q)) return bag.direct;
+  // Never fall back to unfiltered recall() — that re-leaked Pong/Top3 after scrub
+  const hits = (bag.hits && bag.hits.length) ? bag.hits : [];
+  if (bag.direct && /\?$|^(who|what|when|where|which|why|how)\b/i.test(q)) return bag.direct;
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
     return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
@@ -3417,15 +3438,15 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   const evolvedHit = matchEvolved(userText);
   if (evolvedHit) {
     const evAct = String(evolvedHit.action || "");
-    if (typeof isRaceBoardText === "function" && isRaceBoardText(evAct) && typeof isRaceChatCommand === "function" && !isRaceChatCommand(userText)) {
-      // fall through — academic chat must not replay stale Top3/Pong boards
-    } else {
+    const raceLeak = (isRaceBoardText(evAct) || /\bYA_LAST_RACE\b/i.test(evAct)) && !isRaceChatCommand(userText);
+    if (!raceLeak) {
       remember("Used evolved function " + evolvedHit.name);
       if (evAct === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
         return pingStatusLine();
       }
       return evAct;
     }
+    // fall through — academic/freeform must not replay stale Top3/Pong/YA_LAST_RACE
   }
   if (typeof trySenseCommand === "function") {
     const senseTalk = trySenseCommand(userText);
@@ -3438,8 +3459,8 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     if (localOff === "DATE_LOOKUP") return sayUtahNow();
     const line = String(localOff || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
     if (line && !/^I do not know that\b/.test(line) && !/^I am listening\b/.test(line)) return line;
-    if (bag.hits && bag.hits.length) return bag.hits[0].text;
-    if (bag.continuity) return bag.continuity;
+    if (bag.hits && bag.hits.length && !isRaceBoardText(bag.hits[0].text)) return bag.hits[0].text;
+    if (bag.continuity && !isRaceBoardText(bag.continuity) && !/\b(Top\s*3|Pong\s*[·.•]|Compass race)\b/i.test(bag.continuity)) return bag.continuity;
     return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or Shelf: … or add function NAME: …";
   }
 

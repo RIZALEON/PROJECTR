@@ -76,6 +76,8 @@
         if (/^Core:/i.test(t2) || /^user said:/i.test(t2) || /^From talk:/i.test(t2)) continue;
         if (/^(Shelf:|ASTA:|Bookshelf:)/i.test(t2)) continue;
         if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(t2)) continue;
+        if (typeof isRaceBoardText === "function" && isRaceBoardText(t2)) continue;
+        if (/^Pong\s*[·.•]/i.test(t2) || /\bTop\s*3\s*[·.•]/i.test(t2) || /^Compass\s+race\b/i.test(t2)) continue;
         if (/^Utah time/i.test(t2)) continue;
         pushOne(t2, mems[j].at);
       }
@@ -153,17 +155,29 @@
     return lines.join("\n");
   }
 
+  function isRaceFact(tx) {
+    tx = String(tx || "");
+    try {
+      if (typeof isRaceBoardText === "function" && isRaceBoardText(tx)) return true;
+    } catch (e) {}
+    return /^Pong\s*[·.•]/i.test(tx) || /\bTop\s*3\s*[·.•]/i.test(tx) || /^Compass\s+race\b/i.test(tx) || /\bFurthest\s+Tower\b/i.test(tx);
+  }
+
   function continuityRecallSnippet(query) {
     var c = loadContinuity();
-    var q = String(query || "").toLowerCase();
+    var q = String(query || "").toLowerCase().trim();
     var bits = [];
+    // Never dump race boards / YA_LAST_RACE into freeform chat continuity
     (c.facts || []).forEach(function (f) {
       if (!f || !f.text) return;
-      if (!q || f.text.toLowerCase().indexOf(q.split(/\s+/)[0] || "") >= 0 || !q) {
+      if (isRaceFact(f.text)) return;
+      if (!q) return;
+      var first = q.split(/\s+/).filter(Boolean)[0] || "";
+      if (first.length >= 4 && f.text.toLowerCase().indexOf(first) >= 0) {
         bits.push(f.text);
       }
     });
-    if (!bits.length && c.facts && c.facts[0]) bits.push(c.facts[0].text);
+    // No fallback to facts[0] — that re-leaked stale Top3 for "Recognition"
     return bits.slice(0, 4).join("\n");
   }
 
