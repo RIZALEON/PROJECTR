@@ -888,6 +888,22 @@ function dropEvolvedFunction(name) {
   return { ok: true, name: label, id: id };
 }
 
+function isRaceChatCommand(q) {
+  const low = String(q || "").toLowerCase().trim();
+  return (
+    low === "top 3" || low === "fastest 3" || low === "top three" || low === "top three pong" ||
+    low === "fastest three" || low === "top3" || low === "ping" || low === "ping bounce" ||
+    low === "compass" || low === "compass board" || low === "race board" || low === "compass ping" ||
+    low === "race ping" || low === "ping race" || low === "furthest" || low === "furthest tower" ||
+    low === "ping furthest" || low === "ping"
+  );
+}
+
+function isRaceBoardText(text) {
+  const s = String(text || "");
+  return /^Pong\s*·/i.test(s) || /^Compass race\b/i.test(s) || /\bTop 3\s*·/i.test(s) || /\bFurthest Tower\b/i.test(s) && /\bClosest\s*·/i.test(s);
+}
+
 function matchEvolved(userText) {
   const q = String(userText || "").toLowerCase().trim();
   const list = state.evolved || [];
@@ -896,18 +912,29 @@ function matchEvolved(userText) {
     if (!s.trigger) continue;
     const trig = String(s.trigger).toLowerCase().trim();
     if (!trig) continue;
-    // Short triggers (≤4): word-boundary or full-trim equality — avoid "top" inside "stop"/"bishop"
-    if (trig.length <= 4) {
+    const action = String(s.action || "");
+    // Stale race-board actions must NEVER fire on academic/freeform chat
+    if (isRaceBoardText(action) && !isRaceChatCommand(q)) continue;
+    // Race-like triggers: full-string equality only
+    if (isRaceChatCommand(trig) || /^(top\s*3|fastest|compass|furthest|ping)\b/.test(trig)) {
       if (q === trig) return s;
-      const esc = trig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      if (new RegExp("(?:^|\\W)" + esc + "(?:\\W|$)", "i").test(q)) return s;
       continue;
     }
-    if (q.includes(trig)) return s;
+    // Exact match always OK
+    if (q === trig) return s;
+    // Whole-phrase boundary match — NEVER bare includes() (blocks "recognition" inside longer queries only when trig===recognition via boundary with length guard)
+    const esc = trig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp("(?:^|\\W)" + esc + "(?:\\W|$)", "i").test(q)) continue;
+    const qWords = q.split(/\W+/).filter(Boolean);
+    const tWords = trig.split(/\W+/).filter(Boolean);
+    // Academic / longer utterances are not evolve triggers
+    if (qWords.length > tWords.length + 1) continue;
+    // Single-token triggers only match exact q (Recognition ≠ Top3; Bishop pattern recognition ≠ recognition skill)
+    if (tWords.length === 1 && q !== trig) continue;
+    return s;
   }
   return null;
 }
-
 
 
 function isEatAsk(text) {
@@ -1227,7 +1254,7 @@ function retrieveBeforeReply(userText) {
   } catch (e2) {}
   const shelfHits = (hits || []).filter(function (m) { return m && isShelfMemory(m.text); });
   const cleanHits = (hits || []).filter(function (m) {
-    return m && m.text && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text));
+    return m && m.text && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text)) && !(typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) && !/^Used evolved function/i.test(m.text);
   });
   let direct = "";
   const askish = /\?$|^(who|what|when|where|which|why|how|do you|did you|is |are |can you|recall|remember)\b/i.test(q);
@@ -3345,11 +3372,16 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
   if (evolvedHit) {
-    remember("Used evolved function " + evolvedHit.name);
-    if (String(evolvedHit.action || "") === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
-      return pingStatusLine();
+    const evAct = String(evolvedHit.action || "");
+    if (typeof isRaceBoardText === "function" && isRaceBoardText(evAct) && typeof isRaceChatCommand === "function" && !isRaceChatCommand(userText)) {
+      // fall through — academic chat must not replay stale Top3/Pong boards
+    } else {
+      remember("Used evolved function " + evolvedHit.name);
+      if (evAct === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
+        return pingStatusLine();
+      }
+      return evAct;
     }
-    return evolvedHit.action;
   }
   if (typeof trySenseCommand === "function") {
     const senseTalk = trySenseCommand(userText);

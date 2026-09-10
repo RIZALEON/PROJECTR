@@ -298,6 +298,9 @@
   function handleCompassChat(raw) {
     var q = String(raw || "").trim();
     var low = q.toLowerCase();
+    // Exact race phrases only — never substring of "Bishop pattern recognition" / "Recognition"
+    var wordCountRace = low.split(/\s+/).filter(Boolean).length;
+    if (wordCountRace > 4) return null;
     if (low === "compass" || low === "compass board" || low === "race board") {
       if (lastBoard && (Date.now() - (lastBoard.at || 0) < 30000)) return boardText(lastBoard);
       return runRace().then(boardText);
