@@ -557,6 +557,11 @@ function isBishopPrmlQuery(query) {
   return hasBishop && (hasPat || hasML || /\bpattern recognition\b/.test(q));
 }
 
+function isVagueSingleTokenAsk(query) {
+  const toks = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query).split(/\W+/).filter(Boolean);
+  return toks.length === 1 && /^(recognition|pattern|bishop|mutual)$/i.test(toks[0]);
+}
+
 function isBishopOnlyQuery(query) {
   const q = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query);
   return /\bbishop\b/.test(q);
@@ -1642,8 +1647,11 @@ async function webSearch(query, force) {
     }
     if (!bishopKeepAllowed(term, best.title, best.extract, "")) return null;
     if (isSearchFalseFriendJunk(best.title, best.extract, "", term)) return null;
-    remember(best.title + ": " + best.extract.slice(0, 500));
+    if (!isVagueSingleTokenAsk(term)) {
+      remember(best.title + ": " + best.extract.slice(0, 500));
+    }
     best.extras = extras.filter(function (t) { return t !== best.title; }).slice(0, 4);
+    best.kept = !isVagueSingleTokenAsk(term);
     return best;
   }
   async function searchPublic(q) {
@@ -2965,6 +2973,8 @@ async function lookUpAndKeep(query) {
     if (!bishopKeepAllowed(q || raw, title, body, url || "")) return false;
     return true;
   }
+  const vagueTok = isVagueSingleTokenAsk(raw);
+
   try {
     const kept = [];
     for (const item of list) {
@@ -2997,10 +3007,13 @@ async function lookUpAndKeep(query) {
     }
     // Drop any that still fail false-friend / bishop law (Saved N only after gates)
     const gated = kept.filter((k) => keepGate(raw, k.title, k.extract, ""));
-    if (!gated.length) return "I looked it up and did not find a page I will keep.";
+        if (!gated.length) return "I looked it up and did not find a page I will keep.";
     state.lastAsk = "";
     save();
     const parts = gated.map((k, i) => (gated.length > 1 ? (i + 1) + ". " : "") + k.extract + "\n(Source: " + k.title + ")");
+    if (typeof vagueTok !== "undefined" && vagueTok) {
+      return parts.join("\n\n") + "\n\nLooked up — not saved (single-word ask). Say Christopher Bishop or PRML if you want it kept.";
+    }
     return parts.join("\n\n") + "\n\nSaved " + gated.length + " note" + (gated.length === 1 ? "" : "s") + " into the offline mind. Ask me again anytime.";
   } catch (err) {
     queueLearn(raw);
