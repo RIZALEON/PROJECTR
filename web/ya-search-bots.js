@@ -26,6 +26,23 @@
     return false;
   }
 
+  function isPingCompassish(title, extract, url, query) {
+    var q = String(query || "").toLowerCase();
+    if (/\b(minecraft|spigot|bukkit|paper\s*mc|pingcompass)\b/.test(q)) return false;
+    var hay = (String(title || "") + "\n" + String(extract || "") + "\n" + String(url || "")).toLowerCase();
+    if (/spigotmc|\bpingcompass\b|solid compass and ping/.test(hay)) return true;
+    if (/\bspigot\b/.test(hay) && /\b(plugin|minecraft|bukkit|paper)\b/.test(hay)) return true;
+    if (/minecraft plugin|\bbukkit\b|paper\s*mc/.test(hay)) return true;
+    if (/\bminecraft\b/.test(hay) && /\b(compass|plugin)\b/.test(hay)) return true;
+    return false;
+  }
+
+  function isSearchFalseFriendish(title, extract, url, query) {
+    if (isTop3Gamesish(title, extract, url)) return true;
+    if (isPingCompassish(title, extract, url, query)) return true;
+    return false;
+  }
+
   function isDudaish(title, extract) {
     var hay = (String(title || "") + " " + String(extract || "")).toLowerCase();
     return /\b(richard o\.?\s*duda|richard duda|\bduda\b)/.test(hay) && !/\bchristopher\b/.test(hay) && !/\bprml\b/.test(hay);
@@ -33,11 +50,37 @@
 
   function wantsBishopPrml(query) {
     var q = String(query || "").toLowerCase();
-    return /\bbishop\b/.test(q) && (/\bpattern\b/.test(q) && /\brecognition\b/.test(q) || /\b(prml|machine learning)\b/.test(q));
+    return /\bbishop\b/.test(q) && (/\bpattern\b/.test(q) && /\brecognition\b/.test(q) || /\b(prml|machine learning|\bml\b)\b/.test(q));
   }
 
   function wantsBishop(query) {
     return /\bbishop\b/.test(String(query || "").toLowerCase());
+  }
+
+  function bishopKeepOk(query, title, extract, url) {
+    if (typeof global.bishopKeepAllowed === "function") {
+      try { return !!global.bishopKeepAllowed(query, title, extract, url || ""); } catch (e) {}
+    }
+    if (isSearchFalseFriendish(title, extract, url || "", query)) return false;
+    var q = String(query || "").toLowerCase();
+    var hay = (String(title || "") + " " + String(extract || "")).toLowerCase();
+    if (wantsBishopPrml(query) || (wantsBishop(query) && /\b(pattern|recognition|prml|ml)\b/.test(q))) {
+      var hasChris = /\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay);
+      var hasPrml = /\bprml\b/.test(hay) || /pattern recognition and machine learning/.test(hay);
+      if (!hasChris && !hasPrml) return false;
+      if (isDudaish(title, extract) && !/\bduda\b/.test(q)) return false;
+      return true;
+    }
+    if (wantsBishop(query)) {
+      if (isPingCompassish(title, extract, url || "", query)) return false;
+      if (isDudaish(title, extract) && !/\bduda\b/.test(q)) return false;
+      if (/pingcompass|spigot|minecraft|top3game/.test(hay) && !/\bchristopher\b/.test(hay)) return false;
+      if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+      if (/\bprml\b/.test(hay)) return true;
+      if (/\bbishop\b/.test(hay) && !/spigot|minecraft|pingcompass|plugin/.test(hay)) return true;
+      return false;
+    }
+    return true;
   }
 
   function junkish(title, extract) {
@@ -87,8 +130,9 @@
 
   function relevantToQuery(query, title, body) {
     if (isInfraJunk(title, body, "")) return false;
-    if (isTop3Gamesish(title, body, "") && !/\b(game|games|gaming)\b/i.test(String(query || ""))) return false;
+    if (isSearchFalseFriendish(title, body, "", query) && !/\b(game|games|gaming|minecraft|spigot)\b/i.test(String(query || ""))) return false;
     if (wantsBishop(query) && isDudaish(title, body) && !/\bduda\b/i.test(String(query || ""))) return false;
+    if (!bishopKeepOk(query, title, body, "")) return false;
     if (wantsBishopPrml(query)) {
       var hay = (String(title || "") + " " + String(body || "")).toLowerCase();
       if (!(/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) && !/\bprml\b/.test(hay)) return false;
@@ -147,8 +191,17 @@
   }
 
   function rememberFact(title, extract, query) {
-    if (isTop3Gamesish(title, extract, "")) return;
+    if (isSearchFalseFriendish(title, extract, "", query)) return;
+    if (isPingCompassish(title, extract, "", query)) return;
     if (wantsBishop(query) && isDudaish(title, extract) && !/\bduda\b/i.test(String(query || ""))) return;
+    if (!bishopKeepOk(query, title, extract, "")) return;
+    // Prefer app.js gates when present
+    if (typeof global.isSearchFalseFriendJunk === "function") {
+      try { if (global.isSearchFalseFriendJunk(title, extract, "", query)) return; } catch (e) {}
+    }
+    if (typeof global.bishopKeepAllowed === "function") {
+      try { if (!global.bishopKeepAllowed(query, title, extract, "")) return; } catch (e2) {}
+    }
     if (typeof global.remember === "function") {
       try { global.remember(title + ": " + String(extract || "").slice(0, 500)); } catch (e) {}
     }
@@ -276,8 +329,11 @@
           for (var k = 0; k < texts.length && remembered < 5; k++) {
             var fact = stripHtml(texts[k]);
             if (fact && fact.length >= 12) {
-              rememberFact(fact.split(" - ")[0].slice(0, 80), fact, term);
-              remembered++;
+              var lab = fact.split(" - ")[0].slice(0, 80);
+              if (relevantToQuery(term, lab, fact) && bishopKeepOk(term, lab, fact, "")) {
+                rememberFact(lab, fact, term);
+                remembered++;
+              }
             }
           }
         }

@@ -190,6 +190,7 @@ function hydrateActiveMind() {
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
   try { scrubSearchInfraJunk(); } catch (e) {}
+  try { scrubSearchFalseFriendJunk(); } catch (e) {}
   try { scrubHygieneJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
   vault = loadVault();
@@ -273,6 +274,7 @@ let state = load();
 try { scrubWikiJunk(); } catch (e) {}
 try { scrubLinkJunk(); } catch (e) {}
 try { scrubSearchInfraJunk(); } catch (e) {}
+try { scrubSearchFalseFriendJunk(); } catch (e) {}
 try { scrubHygieneJunk(); } catch (e) {}
 let creator = null;
 let vault = loadVault();
@@ -530,6 +532,7 @@ function isHygieneJunkMemory(text) {
   const s = String(text || "");
   if (!s) return false;
   if (isWikiJunkMemory(s) || isLinkJunkMemory(s) || isSearchInfraJunkMemory(s)) return true;
+  if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(s)) return true;
   return false;
 }
 
@@ -568,6 +571,67 @@ function isTop3GamesJunk(title, body, url) {
   return false;
 }
 
+/** Spigot/Minecraft PingCompass false friend — never for non-minecraft queries. */
+function isPingCompassJunk(title, body, url, query) {
+  const q = foldQ(query || "");
+  if (/\b(minecraft|spigot|bukkit|paper\s*mc|pingcompass|plugin)\b/.test(q) && /\b(minecraft|spigot|bukkit|pingcompass)\b/.test(q)) return false;
+  const hay = foldQ((title || "") + "\n" + (body || "") + "\n" + (url || ""));
+  if (/spigotmc|\bpingcompass\b|solid compass and ping/.test(hay)) return true;
+  if (/\bspigot\b/.test(hay) && /\b(plugin|minecraft|bukkit|paper)\b/.test(hay)) return true;
+  if (/minecraft plugin|\bbukkit\b|paper\s*mc/.test(hay)) return true;
+  if (/\bminecraft\b/.test(hay) && /\b(compass|plugin)\b/.test(hay) && /\b(spigot|bukkit|paper|plugin)\b/.test(hay)) return true;
+  return false;
+}
+
+/** top3game + pingcompass + spigot false friends (query-aware when query passed). */
+function isSearchFalseFriendJunk(title, body, url, query) {
+  if (isTop3GamesJunk(title, body, url || "")) return true;
+  if (isPingCompassJunk(title, body, url || "", query || "")) return true;
+  return false;
+}
+
+function isSearchFalseFriendJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (isSearchFalseFriendJunk(s, "", "", "")) return true;
+  // Poisoned Duda bios kept under Bishop/Recognition asks
+  if (typeof isDudaNotBishop === "function" && isDudaNotBishop(s, "")) return true;
+  if (/pingcompass|spigotmc|top3game|solid compass and ping/i.test(s)) return true;
+  return false;
+}
+
+function scrubSearchFalseFriendJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isSearchFalseFriendJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
+/** Bishop keep law — call before ANY remember of web search extract. */
+function bishopKeepAllowed(query, title, body, url) {
+  const q = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query);
+  const hay = foldQ((title || "") + " " + (body || "") + " " + (url || ""));
+  if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+  const bishopPat = /\bbishop\b/.test(q) && (/\b(pattern|recognition|prml|ml)\b/.test(q) || /\bpattern recognition\b/.test(q));
+  if (bishopPat || isBishopPrmlQuery(query)) {
+    const hasChris = /\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay);
+    const hasPrml = /\bprml\b/.test(hay) || /\bpattern recognition and machine learning\b/.test(hay);
+    if (!hasChris && !hasPrml) return false;
+    if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+    return true;
+  }
+  if (isBishopOnlyQuery(query)) {
+    if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+    if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+    if (/pingcompass|spigot|minecraft|top3game|top\s*3\s*!\s*games/i.test(hay) && !/\bchristopher\b/.test(hay)) return false;
+    // Prefer Christopher/PRML; reject unrelated bishop false friends
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
+    if (/\bbishop\b/.test(hay) && !/spigot|minecraft|pingcompass|plugin/i.test(hay)) return true;
+    return false;
+  }
+  return true;
+}
+
 function isIndustrialDcsFalseFriend(title, body) {
   const hay = foldQ((title || "") + " " + (body || ""));
   if (/\b(christopher bishop|pattern recognition and machine learning|\bprml\b|springer)\b/.test(hay)) return false;
@@ -583,8 +647,9 @@ function isDudaNotBishop(title, body) {
 
 function searchPreferBishopPrml(query, title, body, url) {
   const q = foldQ(query);
-  if (isTop3GamesJunk(title, body, url || "") && !/\b(game|games|gaming)\b/.test(q)) return false;
+  if (isSearchFalseFriendJunk(title, body, url || "", query) && !/\b(game|games|gaming|minecraft|spigot)\b/.test(q)) return false;
   if (!isBishopPrmlQuery(query) && !isBishopOnlyQuery(query)) return true;
+  if (!bishopKeepAllowed(query, title, body, url || "")) return false;
   if (isIndustrialDcsFalseFriend(title, body)) return false;
   if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
   const hay = foldQ((title || "") + " " + (body || ""));
@@ -595,8 +660,10 @@ function searchPreferBishopPrml(query, title, body, url) {
     return false;
   }
   if (isBishopOnlyQuery(query)) {
+    if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
     if (!/\bbishop\b/.test(hay)) return false;
-    if (isTop3GamesJunk(title, body, url || "")) return false;
   }
   return true;
 }
@@ -604,7 +671,7 @@ function searchPreferBishopPrml(query, title, body, url) {
 /** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
 function searchRelevant(query, title, body) {
   if (isSearchInfraJunk(title, body, "")) return false;
-  if (isTop3GamesJunk(title, body, "") && !/\b(game|games|gaming)\b/.test(foldQ(query))) return false;
+  if (isSearchFalseFriendJunk(title, body, "", query) && !/\b(game|games|gaming|minecraft|spigot)\b/.test(foldQ(query))) return false;
   const terms = searchContentTerms(query);
   if (!terms.length) return true;
   const hay = foldQ((title || "") + " " + (body || ""));
@@ -709,6 +776,7 @@ function remember(text) {
   if (isLinkJunkMemory(clean)) return;
   // Never persist ntfy / push-notification / interact infra (Link notes or otherwise)
   if (isSearchInfraJunkMemory(clean)) return;
+  if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(clean)) return;
   if (typeof isRaceBoardText === "function" && isRaceBoardText(clean)) return;
   if (/^Pong\s*·/i.test(clean) || /^Compass race\b/i.test(clean)) return;
   if (/^Link note:/i.test(clean) && /ntfy\.sh/i.test(clean)) return;
@@ -752,6 +820,12 @@ function recall(query, limit) {
     if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
     if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return { m, score: 0, longHit: false, core: false };
     if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return { m, score: 0, longHit: false, core: false };
+    if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", qFull)) return { m, score: 0, longHit: false, core: false };
+    if (/\bbishop\b/.test(qFull) && !/\bduda\b/.test(qFull)) {
+      if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "")) return { m, score: 0, longHit: false, core: false };
+      if (/pingcompass|spigotmc|solid compass and ping/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
+    }
     if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(qFull)) return { m, score: 0, longHit: false, core: false };
     if (/^Used evolved function\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
@@ -1153,9 +1227,12 @@ function coreHitText(hits, kind, userText) {
     if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return false;
     if (/^Pong\s*·/i.test(m.text)) return false;
     if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+    if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return false;
+    if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", q)) return false;
     // Never sticky-replay Duda bio for Bishop/Recognition academic asks
     if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(q)) return false;
-    if (/^(recognition|pattern|bishop)$/i.test(q.trim()) && /\bduda\b/i.test(m.text) && !/\bchristopher\b/i.test(m.text)) return false;
+    if (/\bbishop\b/.test(q) && !/\bduda\b/.test(q) && typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "")) return false;
+    if (/^(recognition|pattern|bishop)$/i.test(q.trim()) && (/\bduda\b/i.test(m.text) || /\bbishop\b/i.test(m.text))) return false;
     return true;
   });
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
@@ -1168,6 +1245,16 @@ function coreReply(userText, hits) {
   const t = String(userText || "").trim();
   if (nuclearBlocked(t)) {
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
+  }
+  const qBare = foldQ(t).replace(/[.?!]+$/g, "").trim();
+  // Bare Recognition/pattern: never return Duda/Bishop bios from gut as direct answer
+  if (/^(recognition|pattern)$/i.test(qBare)) {
+    if (typeof mindWantsWeb === "function" && mindWantsWeb()) return "SEARCH_NOW";
+    return "I am listening. Ask what you need, or tap the light green to search.";
+  }
+  // Online Bishop/PRML: do NOT sticky-replay held bios — fall through to search
+  if (typeof mindWantsWeb === "function" && mindWantsWeb() && (isBishopPrmlQuery(t) || isBishopOnlyQuery(t))) {
+    return "SEARCH_NOW";
   }
   const kind = classifyAsk(t);
   const held = coreHitText(hits, kind, t);
@@ -1360,6 +1447,8 @@ function retrieveBeforeReply(userText) {
       if (isRaceBoardText(m.text) || /^Used evolved function\b/i.test(m.text) || /^Core:/i.test(m.text)) return false;
       if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text)) return false;
       if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+      if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return false;
+      if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", q)) return false;
       if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/i.test(foldQ(q))) return false;
       return true;
     });
@@ -1371,6 +1460,9 @@ function retrieveBeforeReply(userText) {
   let direct = "";
   const qToks = foldQ(q).split(/\W+/).filter(Boolean);
   if (qToks.length === 1 && /^(recognition|pattern|bishop)$/i.test(qToks[0])) {
+    return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: "" };
+  }
+  if ((isBishopPrmlQuery(q) || (isBishopOnlyQuery(q) && !/\bduda\b/i.test(foldQ(q)))) && typeof mindWantsWeb === "function" && mindWantsWeb()) {
     return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: "" };
   }
   // Direct gut answers only for clear ask-forms — never for academic bare phrases like "Recognition"
@@ -1404,8 +1496,12 @@ function localEngine(userText) {
   if (isSelfMindAsk(userText)) return explainSelfMind();
   // Academic: bare Recognition / Bishop+pattern must search — never sticky Duda gut
   const qFold = foldQ(userText).replace(/[.?!]+$/g, "").trim();
-  if (/^(recognition|pattern|bishop)$/i.test(qFold) || isBishopPrmlQuery(userText)) {
-    if (state.mindOnline) return "SEARCH_NOW";
+  if (/^(recognition|pattern)$/i.test(qFold)) {
+    if (state.mindOnline || (typeof mindWantsWeb === "function" && mindWantsWeb())) return "SEARCH_NOW";
+    return "I am listening. Ask what you need, or tap the light green to search.";
+  }
+  if (/^bishop$/i.test(qFold) || isBishopPrmlQuery(userText) || isBishopOnlyQuery(userText)) {
+    if (state.mindOnline || (typeof mindWantsWeb === "function" && mindWantsWeb())) return "SEARCH_NOW";
   }
   const bag = retrieveBeforeReply(userText);
   // Never fall back to unfiltered recall() — that re-leaked Pong/Top3 after scrub
@@ -1502,6 +1598,7 @@ async function webSearch(query, force) {
       if (/\bbishop\b/.test(hay) && /\bmachine learning\b/.test(hay)) score += 20;
       if (isDudaNotBishop(title, extract)) score -= 80;
       if (isTop3GamesJunk(title, extract, "")) score -= 100;
+      if (isSearchFalseFriendJunk(title, extract, "", term)) score -= 100;
       if (isIndustrialDcsFalseFriend(title, extract)) score -= 80;
       if (/^pattern recognition$/i.test(String(title || "").trim()) && isBishopPrmlQuery(term)) score -= 30;
       return score;
@@ -1525,7 +1622,9 @@ async function webSearch(query, force) {
       if (nuclearBlocked(title + " " + extract)) continue;
       if (isSearchInfraJunk(title, extract, "")) continue;
       if (isTop3GamesJunk(title, extract, "")) continue;
+      if (isSearchFalseFriendJunk(title, extract, "", term)) continue;
       if (!searchRelevant(term, title, extract)) continue;
+      if (!bishopKeepAllowed(term, title, extract, "")) continue;
       const sc = scoreWikiHit(title, extract);
       if (!best || sc > bestScore) {
         best = { title, extract: extract.slice(0, 700), source: "wikipedia" };
@@ -1541,6 +1640,8 @@ async function webSearch(query, force) {
       }
       if (isDudaNotBishop(best.title, best.extract)) return null;
     }
+    if (!bishopKeepAllowed(term, best.title, best.extract, "")) return null;
+    if (isSearchFalseFriendJunk(best.title, best.extract, "", term)) return null;
     remember(best.title + ": " + best.extract.slice(0, 500));
     best.extras = extras.filter(function (t) { return t !== best.title; }).slice(0, 4);
     return best;
@@ -1555,7 +1656,9 @@ async function webSearch(query, force) {
       if (nuclearBlocked((bot.title || "") + " " + bot.extract)) return null;
       if (wikiJunk(bot.title, bot.extract)) return null;
       if (isSearchInfraJunk(bot.title, bot.extract, "")) return null;
+      if (isSearchFalseFriendJunk(bot.title, bot.extract, "", term)) return null;
       if (!searchRelevant(term, bot.title, bot.extract)) return null;
+      if (!bishopKeepAllowed(term, bot.title, bot.extract, "")) return null;
       return {
         title: bot.title || term,
         extract: String(bot.extract).slice(0, 700),
@@ -2819,6 +2922,12 @@ function isSearchNudge(text) {
 }
 
 function searchNudgeTarget(currentText) {
+  // "search online bishop" → subject "bishop" from THIS message (not stale lastAsk)
+  const stripped = typeof stripSearchFluff === "function" ? stripSearchFluff(currentText) : "";
+  const rawCur = String(currentText || "").trim();
+  if (stripped && foldQ(stripped) !== foldQ(rawCur) && stripped.length >= 2) {
+    return stripped;
+  }
   const ask = String(state.lastAsk || "").trim();
   if (ask) return ask;
   const pend = (state.pendingLearn || [])[0];
@@ -2848,6 +2957,14 @@ async function lookUpAndKeep(query) {
       "Pattern Recognition and Machine Learning Bishop"
     ];
   }
+  function keepGate(q, title, body, url) {
+    if (!title && !body) return false;
+    if (isSearchInfraJunk(title, body, url || "")) return false;
+    if (isSearchFalseFriendJunk(title, body, url || "", q || raw)) return false;
+    if (!searchRelevant(q || raw, title, body)) return false;
+    if (!bishopKeepAllowed(q || raw, title, body, url || "")) return false;
+    return true;
+  }
   try {
     const kept = [];
     for (const item of list) {
@@ -2855,7 +2972,7 @@ async function lookUpAndKeep(query) {
       if (isSearchInfraJunk(item, "", "") || isSearchInfraHost(item)) continue;
       // Prefer wiki/public search — never keep infra hosts as academic hits
       const web = await webSearch(item, true);
-      if (web && web.extract && searchRelevant(item, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) {
+      if (web && web.extract && keepGate(item, web.title, web.extract, "")) {
         kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
         continue;
       }
@@ -2863,7 +2980,7 @@ async function lookUpAndKeep(query) {
       const href = /https?:\/\//i.test(item) ? extractHttpUrl(item) : null;
       if (href && !isSearchInfraHost(href) && !/\bntfy\.sh\b/i.test(href)) {
         const d = await describeLink(href, item);
-        if (d && searchRelevant(item, d.title, d.body) && !isSearchInfraJunk(d.title, d.body, href)) {
+        if (d && keepGate(item, d.title, d.body, href)) {
           kept.push({ title: d.title, extract: (d.body || "").slice(0, 700), source: "link" });
         }
       }
@@ -2873,16 +2990,18 @@ async function lookUpAndKeep(query) {
       const first = stripSearchFluff(raw).split(/[,;\n]/)[0].trim();
       if (first.length >= 4) {
         const web = await webSearch(first, true);
-        if (web && searchRelevant(first, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) {
+        if (web && keepGate(first, web.title, web.extract, "")) {
           kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
         }
       }
     }
-    if (!kept.length) return "I looked it up and did not find a page I will keep.";
+    // Drop any that still fail false-friend / bishop law (Saved N only after gates)
+    const gated = kept.filter((k) => keepGate(raw, k.title, k.extract, ""));
+    if (!gated.length) return "I looked it up and did not find a page I will keep.";
     state.lastAsk = "";
     save();
-    const parts = kept.map((k, i) => (kept.length > 1 ? (i + 1) + ". " : "") + k.extract + "\n(Source: " + k.title + ")");
-    return parts.join("\n\n") + "\n\nSaved " + kept.length + " note" + (kept.length === 1 ? "" : "s") + " into the offline mind. Ask me again anytime.";
+    const parts = gated.map((k, i) => (gated.length > 1 ? (i + 1) + ". " : "") + k.extract + "\n(Source: " + k.title + ")");
+    return parts.join("\n\n") + "\n\nSaved " + gated.length + " note" + (gated.length === 1 ? "" : "s") + " into the offline mind. Ask me again anytime.";
   } catch (err) {
     queueLearn(raw);
     return "I could not reach the web. I queued that and will try on the next green light.";
