@@ -495,26 +495,78 @@
   }
 
 
+  function chatNearBottom(log, thresholdPx) {
+    if (!log) return true;
+    var gap = log.scrollHeight - log.scrollTop - log.clientHeight;
+    return gap <= (thresholdPx == null ? 32 : thresholdPx);
+  }
+
+  function syncJumpFabVisibility(btn) {
+    btn = btn || document.getElementById("ya-jump-bottom");
+    if (!btn) return;
+    var log = document.getElementById("log");
+    var atBase = chatNearBottom(log, 32);
+    if (atBase) {
+      btn.hidden = true;
+      btn.setAttribute("aria-hidden", "true");
+      btn.style.pointerEvents = "none";
+      btn.style.opacity = "0";
+    } else {
+      btn.hidden = false;
+      btn.setAttribute("aria-hidden", "false");
+      btn.style.pointerEvents = "auto";
+      btn.style.opacity = "1";
+    }
+  }
+
   function ensureJumpFab() {
     var btn = document.getElementById("ya-jump-bottom");
-    if (btn) return btn;
-    btn = document.createElement("button");
-    btn.id = "ya-jump-bottom";
-    btn.type = "button";
-    btn.title = "Jump to bottom";
-    btn.setAttribute("aria-label", "Jump to bottom of chat");
-    btn.innerHTML = "↓";
-    btn.addEventListener("click", function (ev) {
-      ev.preventDefault();
+    var created = false;
+    if (!btn) {
+      created = true;
+      btn = document.createElement("button");
+      btn.id = "ya-jump-bottom";
+      btn.type = "button";
+      btn.title = "Jump to bottom";
+      btn.setAttribute("aria-label", "Jump to bottom of chat");
+      btn.innerHTML = "↓";
+      btn.hidden = true;
+      btn.style.opacity = "0";
+      btn.style.pointerEvents = "none";
+      btn.style.transition = "opacity 0.15s ease";
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var log = document.getElementById("log");
+        if (log) {
+          log.scrollTop = log.scrollHeight;
+          try { log.scrollTo({ top: log.scrollHeight, behavior: "smooth" }); } catch (e) {}
+        } else {
+          try { window.scrollTo(0, document.body.scrollHeight); } catch (e2) {}
+        }
+        setTimeout(function () { syncJumpFabVisibility(btn); }, 80);
+        setTimeout(function () { syncJumpFabVisibility(btn); }, 320);
+      });
+      document.body.appendChild(btn);
+    }
+    if (!btn.__yaScrollWired) {
+      btn.__yaScrollWired = true;
       var log = document.getElementById("log");
+      var onScroll = function () { syncJumpFabVisibility(btn); };
       if (log) {
-        log.scrollTop = log.scrollHeight;
-        try { log.scrollTo({ top: log.scrollHeight, behavior: "smooth" }); } catch (e) {}
-      } else {
-        try { window.scrollTo(0, document.body.scrollHeight); } catch (e2) {}
+        log.addEventListener("scroll", onScroll, { passive: true });
+        try {
+          var mo = new MutationObserver(function () {
+            // new messages — re-check; stay hidden if still at base
+            syncJumpFabVisibility(btn);
+          });
+          mo.observe(log, { childList: true, subtree: true });
+        } catch (e3) {}
       }
-    });
-    document.body.appendChild(btn);
+      window.addEventListener("resize", onScroll, { passive: true });
+      setTimeout(onScroll, 0);
+      setTimeout(onScroll, 400);
+    }
+    syncJumpFabVisibility(btn);
     return btn;
   }
 

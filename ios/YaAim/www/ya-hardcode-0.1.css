@@ -158,7 +158,7 @@
 #ya-jump-bottom {
   position: fixed;
   right: max(12px, env(safe-area-inset-right, 0px));
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   width: 44px;
   height: 44px;
@@ -177,7 +177,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 #ya-jump-bottom:active { transform: scale(0.94); background: rgba(50, 35, 80, 0.95); }
-#ya-jump-bottom[hidden] { display: none !important; }
+#ya-jump-bottom[hidden] { display: none !important; pointer-events: none !important; opacity: 0 !important; }
 
 #ya-cloud-mark.spin .ya-cloud-tumble {
   animation: ya-cloud-tumble-spin 1.1s linear infinite;
