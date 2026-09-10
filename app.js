@@ -1217,7 +1217,20 @@ function pingStatusLine() {
     : "amber · offline · local";
   const sz = formatBytes(mindBytes());
   const nEv = (state.evolved || []).length;
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv;
+  let heart = "";
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine() && window.YA_NATIVE) {
+      const off = window.YA_NATIVE.tokensOff === true || window.YA_NATIVE.tokensOn === false;
+      const linked = window.YA_NATIVE.frameworkLinked === true;
+      const seated = window.YA_NATIVE.seated === true || (Number(window.YA_NATIVE.heartBytes) || 0) > 1024;
+      const eng = window.YA_NATIVE.engine || "none";
+      if (!linked) heart = " · heart tokensOff (no llama.xcframework · mithrilBorrow lab)";
+      else if (!seated) heart = " · heart tokensOff (no heart.gguf)";
+      else if (off) heart = " · heart tokensOff";
+      else heart = " · heart tokensOn · " + eng + (window.YA_NATIVE.metal ? " · Metal" : "");
+    }
+  } catch (e2) {}
+  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heart;
 }
 
 function ensureDemoPingStatusSkill() {
@@ -4241,6 +4254,13 @@ function applyNativeVaultStatus(msg) {
     else if (typeof msg.documentsBytes === "number") window.YA_NATIVE.vaultBytes = msg.documentsBytes;
     if (typeof msg.heartBytes === "number") window.YA_NATIVE.heartBytes = msg.heartBytes;
     if (typeof msg.gutBytes === "number") window.YA_NATIVE.gutBytes = msg.gutBytes;
+    if (typeof msg.frameworkLinked === "boolean") window.YA_NATIVE.frameworkLinked = msg.frameworkLinked;
+    if (typeof msg.tokensOn === "boolean") window.YA_NATIVE.tokensOn = msg.tokensOn;
+    if (typeof msg.tokensOff === "boolean") window.YA_NATIVE.tokensOff = msg.tokensOff;
+    if (typeof msg.seated === "boolean") window.YA_NATIVE.seated = msg.seated;
+    if (typeof msg.metal === "boolean") window.YA_NATIVE.metal = msg.metal;
+    if (typeof msg.engine === "string") window.YA_NATIVE.engine = msg.engine;
+    if (typeof msg.mithrilBorrow === "string") window.YA_NATIVE.mithrilBorrow = msg.mithrilBorrow;
   } catch (e) {}
 }
 
