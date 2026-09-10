@@ -10,6 +10,19 @@ Ping/pong = place-true base path inside embed (not a GOFLOF number).
 
 ---
 
+## Decider law — 100% offline (2026-09-10)
+
+Rizalbot / Я AIᵐ must be **100% offline capable** and **never** bound by cloud token or usage limits.
+
+- Core chat / evolve / recall / ping / CoS embed = on-device only (gut + shelves + local heart when seated)
+- No metered API required for spoken Function 0/1/2
+- Green search / SFSafari = optional when online; degrade clean on airplane
+- Llama seat preferred over any cloud LLM for unlimited local tokens
+- Skin / rules + gut must still talk with **zero network** and **zero quota**
+- Do **not** add cloud-required chat paths
+
+---
+
 ## Already seated (USE these)
 | Piece | Tip / where | Role |
 |-------|-------------|------|
