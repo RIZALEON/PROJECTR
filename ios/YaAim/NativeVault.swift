@@ -28,6 +28,15 @@ enum NativeVault {
         return dest
     }
 
+    static func seatHeart(from src: URL) throws -> URL {
+        prepare()
+        if FileManager.default.fileExists(atPath: heartURL.path) {
+            try FileManager.default.removeItem(at: heartURL)
+        }
+        try FileManager.default.copyItem(at: src, to: heartURL)
+        return heartURL
+    }
+
     /// Copy a manual into Я/mind/books/ (offline books shelf).
     static func copyIntoBooks(from src: URL) throws -> URL {
         prepare()
