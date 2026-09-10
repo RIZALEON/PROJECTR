@@ -1,6 +1,6 @@
-/*! ya-compass-race.js — N/E/S/W + closest + furthest Tower
- * Named origins only. No IP sweep. CDN clocks labeled clock only.
- * South: S-BR-registro.br in the live race.
+/*! ya-compass-race.js — N/E/S/W + closest + furthest Tower + Top 3
+ * Named origins only for place slots. CDN clocks labeled (clock) — path-only, never top-3/closest place.
+ * South: S-BR-registro.br always in race + board (fail/timed-out still listed).
  * Location-relative: every Ping/compass ping/furthest RE-RACES from this seat.
  * Denver/CoS never substitutes for closest. Airplane → local-seat.
  * Seat after app.js; before ya-ping-bounce.js
@@ -18,6 +18,7 @@
 
   var lastBoard = null;
   var UTAH_TZ = "America/Denver";
+  var PROBE_MS = 8000;
 
   function deviceTz() {
     try {
@@ -43,7 +44,6 @@
 
   function seatStamp() {
     var tz = deviceTz();
-    // Home phone: Utah clock. Abroad: local device clock so place matches RTT seat.
     var use = (seatPlace().indexOf("Utah") >= 0) ? UTAH_TZ : tz;
     try {
       return new Date().toLocaleString("en-US", { timeZone: use });
@@ -63,6 +63,7 @@
   }
 
   function probe(entry, timeoutMs) {
+    var limit = timeoutMs || PROBE_MS;
     var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
     var ctrl = null;
     var timer = null;
@@ -73,22 +74,85 @@
         opts.signal = ctrl.signal;
         timer = setTimeout(function () {
           try { ctrl.abort(); } catch (e) {}
-        }, timeoutMs || 8000);
+        }, limit);
       }
     } catch (e) {}
-    return fetch(entry.url, opts)
+    // Hard timeout wrapper so a hung fetch never drops a race seat from the board
+    var hard = new Promise(function (resolve) {
+      setTimeout(function () {
+        var ms = Math.round(((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - t0);
+        resolve({ ok: false, id: entry.id, dir: entry.dir, kind: entry.kind, url: entry.url, ms: ms, timedOut: true });
+      }, limit + 250);
+    });
+    var fetchP = fetch(entry.url, opts)
       .then(function () {
         var ms = Math.round(((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - t0);
-        return { ok: true, id: entry.id, dir: entry.dir, kind: entry.kind, url: entry.url, ms: ms };
+        return { ok: true, id: entry.id, dir: entry.dir, kind: entry.kind, url: entry.url, ms: ms, timedOut: false };
       })
       .catch(function () {
         var ms = Math.round(((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - t0);
-        return { ok: false, id: entry.id, dir: entry.dir, kind: entry.kind, url: entry.url, ms: ms };
+        var timedOut = ms >= (limit - 50);
+        return { ok: false, id: entry.id, dir: entry.dir, kind: entry.kind, url: entry.url, ms: ms, timedOut: timedOut };
       })
       .then(function (row) {
         if (timer) clearTimeout(timer);
         return row;
       });
+    return Promise.race([fetchP, hard]).then(function (row) {
+      if (timer) clearTimeout(timer);
+      return row;
+    });
+  }
+
+  /** Merge probe results onto full RACE template — never drop W-JP / W-KR / S-BR. */
+  function ensureAllRows(rows) {
+    var byId = {};
+    (rows || []).forEach(function (r) {
+      if (r && r.id) byId[r.id] = r;
+    });
+    return RACE.map(function (e) {
+      if (byId[e.id]) {
+        var r = byId[e.id];
+        return {
+          ok: !!r.ok,
+          id: e.id,
+          dir: e.dir,
+          kind: e.kind,
+          url: e.url,
+          ms: typeof r.ms === "number" ? r.ms : PROBE_MS,
+          timedOut: !!r.timedOut || (!r.ok && (r.ms >= PROBE_MS - 50))
+        };
+      }
+      return { ok: false, id: e.id, dir: e.dir, kind: e.kind, url: e.url, ms: PROBE_MS, timedOut: true };
+    });
+  }
+
+  /** Top 3 fastest named origins only — clocks never occupy place slots. */
+  function top3Origins(rows) {
+    var origins = (rows || []).filter(function (r) {
+      return r && r.kind === "origin";
+    });
+    // Prefer successful probes; then by ms ascending. Failed/timed-out still eligible after oks.
+    origins.sort(function (a, b) {
+      if (!!a.ok !== !!b.ok) return a.ok ? -1 : 1;
+      return (a.ms || 0) - (b.ms || 0);
+    });
+    return origins.slice(0, 3);
+  }
+
+  function rowTag(r) {
+    if (r.ok) return r.ms + "ms";
+    if (r.timedOut) return "timed-out·" + r.ms + "ms";
+    return "fail·" + r.ms + "ms";
+  }
+
+  function top3Text(board) {
+    var top = (board && board.top3) || [];
+    if (!top.length) return "Top 3 · —";
+    var parts = top.map(function (r, i) {
+      return (i + 1) + ". " + r.id + " · " + rowTag(r);
+    });
+    return "Top 3 · " + parts.join(" · ");
   }
 
   /** Always fresh RTT from this seat — never frozen Utah winners. */
@@ -101,21 +165,29 @@
         stamp: st,
         place: place,
         airplane: true,
-        rows: [],
+        rows: ensureAllRows([]).map(function (r) {
+          return { ok: false, id: r.id, dir: r.dir, kind: r.kind, url: r.url, ms: 0, timedOut: false, airplane: true };
+        }),
         closest: null,
-        furthest: null
+        furthest: null,
+        top3: []
       };
       return Promise.resolve(lastBoard);
     }
-    return Promise.all(RACE.map(function (e) { return probe(e, 8000); })).then(function (rows) {
-      var origins = rows.filter(function (r) { return r.ok && r.kind === "origin"; });
+    return Promise.all(RACE.map(function (e) { return probe(e, PROBE_MS); })).then(function (rawRows) {
+      var rows = ensureAllRows(rawRows);
+      // Closest / furthest / top3 = named origins only (never clock as place)
+      var originsOk = rows.filter(function (r) { return r.ok && r.kind === "origin"; });
       var closest = null;
       var furthest = null;
-      for (var i = 0; i < origins.length; i++) {
-        var r = origins[i];
+      for (var i = 0; i < originsOk.length; i++) {
+        var r = originsOk[i];
         if (!closest || r.ms < closest.ms) closest = r;
         if (!furthest || r.ms > furthest.ms) furthest = r;
       }
+      // If no origin succeeded, still rank places by measured ms among origins (timed-out/fail)
+      var top3 = top3Origins(rows);
+      if (!closest && top3.length && top3[0].ok) closest = top3[0];
       lastBoard = {
         at: Date.now(),
         stamp: st,
@@ -123,7 +195,8 @@
         airplane: false,
         rows: rows,
         closest: closest,
-        furthest: furthest
+        furthest: furthest,
+        top3: top3
       };
       try {
         if (typeof state !== "undefined" && state) {
@@ -131,6 +204,7 @@
           if (furthest) state.lastFurthest = furthest.id;
           state.lastRacePlace = place;
           state.lastRaceAt = lastBoard.at;
+          state.lastTop3 = top3.map(function (t) { return t.id; });
           if (typeof save === "function") save();
         }
       } catch (e) {}
@@ -151,20 +225,26 @@
     var place = board.place || seatPlace();
     var lines = [
       "Compass race · " + place + " · " + board.stamp,
-      "Law · winners = RTT from this seat (re-raced). Denver/CoS ≠ closest."
+      "Law · winners = RTT from this seat (re-raced). Denver/CoS ≠ closest. Clock ≠ place."
     ];
     if (board.airplane) {
       lines.push("Airplane · local-seat (no radio)");
       lines.push("Closest · local-seat");
       lines.push("Furthest Tower · local-seat");
+      lines.push("Top 3 · local-seat");
       return lines.join("\n");
     }
-    var byDir = { N: [], E: [], S: [], W: [] };
+    // ALWAYS render every RACE id in N/E/S/W order — merge by id so missing probes still show
+    var byId = {};
     (board.rows || []).forEach(function (r) {
-      var tag = r.ok ? (r.ms + "ms") : ("fail·" + r.ms + "ms");
-      var clock = r.kind === "clock" ? " (clock)" : "";
-      var line = r.dir + " · " + r.id + clock + " · " + tag;
-      if (byDir[r.dir]) byDir[r.dir].push(line);
+      if (r && r.id) byId[r.id] = r;
+    });
+    var byDir = { N: [], E: [], S: [], W: [] };
+    RACE.forEach(function (e) {
+      var r = byId[e.id] || { ok: false, id: e.id, dir: e.dir, kind: e.kind, url: e.url, ms: PROBE_MS, timedOut: true };
+      var clock = e.kind === "clock" ? " (clock)" : "";
+      var line = e.dir + " · " + e.id + clock + " · " + rowTag(r);
+      if (byDir[e.dir]) byDir[e.dir].push(line);
       else lines.push(line);
     });
     ["N", "E", "S", "W"].forEach(function (d) {
@@ -172,6 +252,7 @@
     });
     lines.push("Closest · " + (board.closest ? (board.closest.id + " · " + board.closest.ms + "ms") : "—"));
     lines.push("Furthest Tower · " + (board.furthest ? (board.furthest.id + " · " + board.furthest.ms + "ms") : "—"));
+    lines.push(top3Text(board));
     return lines.join("\n");
   }
 
@@ -179,9 +260,9 @@
     var st = (board && board.stamp) || seatStamp();
     var place = (board && board.place) || seatPlace();
     if (!board || board.airplane || !board.closest) {
-      return "Pong · first bounce · local-seat · " + place + " · " + st + " · RIZALBOT🤖";
+      return "Pong · closest bounce · local-seat · " + place + " · " + st + " · RIZALBOT🤖";
     }
-    return "Pong · first bounce · " + board.closest.id + " · " + place + " · " + st + " · RIZALBOT🤖";
+    return "Pong · closest bounce · " + board.closest.id + " · " + place + " · " + st + " · RIZALBOT🤖";
   }
 
   function pongFurthest(board) {
@@ -193,30 +274,47 @@
     return "Pong · Furthest Tower · " + board.furthest.id + " · " + place + " · " + st + " · RIZALBOT🤖";
   }
 
-  /** Chat entry: compass / compass ping / Ping (capital) — Ping always re-races */
+  function pongTop3(board) {
+    var st = (board && board.stamp) || seatStamp();
+    var place = (board && board.place) || seatPlace();
+    if (!board || board.airplane) {
+      return "Pong · Top 3 · local-seat · " + place + " · " + st + " · RIZALBOT🤖";
+    }
+    return "Pong · " + top3Text(board) + " · " + place + " · " + st + " · RIZALBOT🤖";
+  }
+
+  function raceThenBoard(extraLineFn) {
+    return runRace().then(function (b) {
+      var head = typeof extraLineFn === "function" ? extraLineFn(b) : pongClosest(b);
+      var board = boardText(b);
+      try {
+        if (typeof remember === "function") remember(head);
+      } catch (e) {}
+      return head + "\n\n" + board;
+    });
+  }
+
+  /** Chat entry: compass / ping / Ping / top 3 — always re-race + full board */
   function handleCompassChat(raw) {
     var q = String(raw || "").trim();
     var low = q.toLowerCase();
     if (low === "compass" || low === "compass board" || low === "race board") {
-      // Show last board if fresh (<30s); else re-race so travel/abroad updates
       if (lastBoard && (Date.now() - (lastBoard.at || 0) < 30000)) return boardText(lastBoard);
       return runRace().then(boardText);
     }
-    if (low === "compass ping" || low === "race ping" || q === "Ping" || low === "ping race") {
-      return runRace().then(function (b) {
-        var closestLine = pongClosest(b);
-        var board = boardText(b);
-        try {
-          if (typeof remember === "function") remember(closestLine);
-        } catch (e) {}
-        return closestLine + "\n\n" + board;
-      });
+    // Green bare ping → full race+board. Airplane bare ping left to bounce (local-seat only).
+    if (low === "ping") {
+      if (isAirplane()) return null;
+      return raceThenBoard(pongClosest);
+    }
+    if (low === "compass ping" || low === "race ping" || q === "Ping" || low === "ping race" || low === "ping bounce") {
+      return raceThenBoard(pongClosest);
+    }
+    if (low === "top 3" || low === "fastest 3" || low === "top three" || low === "top three pong" || low === "fastest three" || low === "top3") {
+      return raceThenBoard(pongTop3);
     }
     if (low === "furthest" || low === "furthest tower" || low === "ping furthest") {
-      // Always re-race — location-relative law
-      return runRace().then(function (b2) {
-        return pongFurthest(b2) + "\n\n" + boardText(b2);
-      });
+      return raceThenBoard(pongFurthest);
     }
     return null;
   }
@@ -228,10 +326,12 @@
     window.yaHandleCompassChat = handleCompassChat;
     window.yaPongClosest = pongClosest;
     window.yaPongFurthest = pongFurthest;
+    window.yaPongTop3 = pongTop3;
     window.yaRaceSeatPlace = seatPlace;
+    window.yaRaceTop3 = function () { return (lastBoard && lastBoard.top3) || []; };
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-compass-race] location-relative re-race · S-BR · Denver≠closest");
+    if (typeof console !== "undefined") console.log("[ya-compass-race] full board always · Top3 origins · clock≠place · S-BR · Denver≠closest");
   } catch (e) {}
 })();

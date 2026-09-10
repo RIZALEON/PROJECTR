@@ -463,6 +463,7 @@ function wikiJunk(title, extract) {
   if (/may refer to/i.test(t) || /may refer to/i.test(x)) return true;
   if (/\bdisambiguation\b/i.test(t) || /\bdisambiguation\b/i.test(x)) return true;
   if (/^\d+\s*[+\-×x*/]\s*\d+$/i.test(t) && t.replace(/\s+/g, "") !== foldQ(x).slice(0, 20)) return true;
+  if (typeof isSearchInfraJunk === "function" && isSearchInfraJunk(t, x, "")) return true;
   return false;
 }
 
@@ -472,6 +473,90 @@ function isWikiJunkMemory(text) {
   if (/may refer to/i.test(s)) return true;
   if (/\bdisambiguation\b/i.test(s) && /^(why|dating|what time is it)\b/i.test(s)) return true;
   return false;
+}
+
+
+function searchStopTerms() {
+  return new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we","that","this","for","please","with","from","about","into","over","under","search","online","look","keep","page","book","text","next","wave","after","list","then"]);
+}
+
+function searchContentTerms(query) {
+  const stop = searchStopTerms();
+  return foldQ(query).split(/\W+/).filter((w) => w.length >= 3 && !stop.has(w));
+}
+
+function isSearchInfraHost(urlOrHost) {
+  const s = String(urlOrHost || "").toLowerCase();
+  if (!s) return false;
+  try {
+    const u = new URL(s.includes("://") ? s : ("https://" + s));
+    const h = (u.hostname || "").replace(/^www\./, "");
+    if (h === "ntfy.sh" || h.endsWith(".ntfy.sh")) return true;
+    if (/ntfy/.test(h) && /reconnect|interact|rizalbot|rizaleon/.test(u.pathname || "")) return true;
+  } catch (e) {
+    if (/\bntfy\.sh\b/.test(s) || /\bntfy\b/.test(s) && /\b(reconnect|interact)\b/.test(s)) return true;
+  }
+  return /\bntfy\.sh\b/.test(s) || /\bya-reconnect\b/.test(s) || /\binteract bind\b/.test(s);
+}
+
+function isSearchInfraJunk(title, body, url) {
+  const hay = (String(title || "") + "\n" + String(body || "") + "\n" + String(url || "")).toLowerCase();
+  if (isSearchInfraHost(url)) return true;
+  if (/\bntfy\.sh\b/.test(hay)) return true;
+  if (/\bpush notifications?\b/.test(hay) && /\bntfy\b/.test(hay)) return true;
+  if (/\binteract (bind|channel|inbox)\b/.test(hay)) return true;
+  if (/\bya-reconnect\b/.test(hay) || /\bya-rizalbot-p-\b/.test(hay)) return true;
+  return false;
+}
+
+/** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
+function searchRelevant(query, title, body) {
+  if (isSearchInfraJunk(title, body, "")) return false;
+  const terms = searchContentTerms(query);
+  if (!terms.length) return true;
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (!hay.trim()) return false;
+  let hits = 0;
+  for (const t of terms) {
+    if (hay.indexOf(t) >= 0) hits++;
+  }
+  // Need at least one strong term (len>=5) or two shorter terms
+  const strong = terms.filter((t) => t.length >= 5);
+  if (strong.some((t) => hay.indexOf(t) >= 0)) return true;
+  if (hits >= 2) return true;
+  if (terms.length === 1 && hits >= 1) return true;
+  return false;
+}
+
+function stripSearchFluff(query) {
+  let q = String(query || "").trim();
+  q = q.replace(/^(please\s+)?(search(\s+it)?\s+online|search\s+the\s+web|look(\s+it|\s+that)?\s+up(\s+online)?)\s*[:\-]?\s*/i, "");
+  q = q.replace(/^next\s+wave\s+after\s+this\s+list\s*[:\-]?\s*/i, "");
+  q = q.replace(/^(also\s+)?(find|lookup|look\s+up)\s*[:\-]?\s*/i, "");
+  return q.trim();
+}
+
+function splitSearchCandidates(query) {
+  const cleaned = stripSearchFluff(query);
+  if (!cleaned) return [];
+  const parts = cleaned.split(/\s*(?:,|;|\n|\r| then )\s*/i).map((p) => p.trim()).filter((p) => p.length >= 4);
+  const out = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const k = foldQ(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+  }
+  if (!out.length && cleaned.length >= 4) out.push(cleaned);
+  // Very long query: also try first meaningful title alone
+  if (cleaned.length > 80) {
+    const first = cleaned.split(/[,;\n]/)[0].trim();
+    if (first.length >= 4 && !seen.has(foldQ(first))) {
+      out.unshift(first);
+    }
+  }
+  return out.slice(0, 6);
 }
 
 function scrubWikiJunk() {
@@ -1215,6 +1300,8 @@ async function webSearch(query, force) {
     }
     if (wikiJunk(title, extract)) return null;
     if (nuclearBlocked(title + " " + extract)) return null;
+    if (isSearchInfraJunk(title, extract, "")) return null;
+    if (!searchRelevant(term, title, extract)) return null;
     remember(title + ": " + extract.slice(0, 500));
     const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
     return { title, extract: extract.slice(0, 700), extras, source: "wikipedia" };
@@ -1228,6 +1315,8 @@ async function webSearch(query, force) {
       if (!bot || !bot.extract) return null;
       if (nuclearBlocked((bot.title || "") + " " + bot.extract)) return null;
       if (wikiJunk(bot.title, bot.extract)) return null;
+      if (isSearchInfraJunk(bot.title, bot.extract, "")) return null;
+      if (!searchRelevant(term, bot.title, bot.extract)) return null;
       return {
         title: bot.title || term,
         extract: String(bot.extract).slice(0, 700),
@@ -2408,8 +2497,9 @@ function linkNote(d) {
   return bits.filter(Boolean).join("\n");
 }
 
-async function describeLink(url) {
+async function describeLink(url, forQuery) {
   if (nuclearBlocked(url)) return null;
+  if (isSearchInfraHost(url)) return null;
   const yid = youtubeId(url);
   if (yid) return await describeYoutube(yid, url);
   const raw = await fetchLinkRaw(url);
@@ -2420,6 +2510,9 @@ async function describeLink(url) {
   const preview = clean.slice(0, 3500);
   const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500, kind: "link" };
   if (isLinkJunk(d.title, d.body)) return null;
+  if (isSearchInfraJunk(d.title, d.body, url)) return null;
+  // Relevance only when caller passes forQuery (search/harvest) — not bare URL paste
+  if (forQuery && !searchRelevant(forQuery, d.title, d.body)) return null;
   remember("Link note:\n" + linkNote(d));
   return d;
 }
@@ -2500,17 +2593,46 @@ function searchNudgeTarget(currentText) {
 }
 
 async function lookUpAndKeep(query) {
-  const q = String(query || "").trim();
-  if (!q) return "I looked it up and did not find a page I will keep.";
-  if (isMathAsk(q)) return evalSimpleMath(q) || q;
+  const raw = String(query || "").trim();
+  if (!raw) return "I looked it up and did not find a page I will keep.";
+  if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
+  const candidates = splitSearchCandidates(raw);
+  const list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
   try {
-    const web = await webSearch(q, true);
-    if (!web) return "I looked it up and did not find a page I will keep.";
+    const kept = [];
+    for (const item of list) {
+      if (nuclearBlocked(item)) continue;
+      // Prefer wiki/public search — never keep infra hosts as academic hits
+      const web = await webSearch(item, true);
+      if (web && web.extract && searchRelevant(item, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) {
+        kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
+        continue;
+      }
+      const href = extractHttpUrl(item);
+      if (href && !isSearchInfraHost(href)) {
+        const d = await describeLink(href, item);
+        if (d && searchRelevant(item, d.title, d.body) && !isSearchInfraJunk(d.title, d.body, href)) {
+          kept.push({ title: d.title, extract: (d.body || "").slice(0, 700), source: "link" });
+        }
+      }
+    }
+    // Long original query: try first meaningful title alone if nothing kept
+    if (!kept.length && raw.length > 60) {
+      const first = stripSearchFluff(raw).split(/[,;\n]/)[0].trim();
+      if (first.length >= 4) {
+        const web = await webSearch(first, true);
+        if (web && searchRelevant(first, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) {
+          kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
+        }
+      }
+    }
+    if (!kept.length) return "I looked it up and did not find a page I will keep.";
     state.lastAsk = "";
     save();
-    return web.extract + "\n\nSaved into the offline mind. Ask me again anytime. Source: " + web.title + ".";
+    const parts = kept.map((k, i) => (kept.length > 1 ? (i + 1) + ". " : "") + k.extract + "\n(Source: " + k.title + ")");
+    return parts.join("\n\n") + "\n\nSaved " + kept.length + " note" + (kept.length === 1 ? "" : "s") + " into the offline mind. Ask me again anytime.";
   } catch (err) {
-    queueLearn(q);
+    queueLearn(raw);
     return "I could not reach the web. I queued that and will try on the next green light.";
   }
 }
@@ -2533,12 +2655,13 @@ async function harvestOnline() {
     try {
       const href = extractHttpUrl(q);
       if (href) {
-        const d = await describeLink(href);
-        if (d) learned.push(d.title);
+        if (isSearchInfraHost(href)) continue;
+        const d = await describeLink(href, q);
+        if (d && searchRelevant(q, d.title, d.body) && !isSearchInfraJunk(d.title, d.body, href)) learned.push(d.title);
         continue;
       }
       const web = await webSearch(q);
-      if (web && web.title && !wikiJunk(web.title, web.extract)) learned.push(web.title);
+      if (web && web.title && !wikiJunk(web.title, web.extract) && searchRelevant(q, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) learned.push(web.title);
     } catch (e) {}
   }
   state.pendingLearn = [];

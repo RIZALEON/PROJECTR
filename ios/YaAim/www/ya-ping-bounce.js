@@ -1,6 +1,6 @@
 /*! ya-ping-bounce.js — seated RIZALBOT ping never answers bare "here"
  * Seat LAST after ya-compass-race.js + ya-compass-br.js
- * Airplane: local-seat. Green: ALWAYS re-race closest from this seat (never frozen Utah).
+ * Airplane: local-seat line only. Green bare ping / Ping / ping bounce: full race board.
  * Denver/CoS never substitutes for closest bounce.
  */
 (function () {
@@ -46,7 +46,7 @@
   }
 
   function pongLine(host) {
-    return "Pong · first bounce · " + host + " · " + seatPlace() + " · " + stamp() + " · RIZALBOT🤖";
+    return "Pong · closest bounce · " + host + " · " + seatPlace() + " · " + stamp() + " · RIZALBOT🤖";
   }
 
   function handlePing(raw) {
@@ -57,20 +57,20 @@
     if (low === "ping status" || low === "mind status" || low === "status") return null;
     if (!(low === "ping" || q === "Ping" || low === "ping bounce")) return null;
 
+    // Airplane lowercase ping → local-seat RIZALBOT line only (not green closest+board)
     if (isAirplane()) {
       var lineA = pongLine(BOUNCE.local);
       try { if (typeof remember === "function") remember(lineA); } catch (e) {}
       return lineA;
     }
 
-    // Capital Ping / ping bounce → full race then closest (+ board)
-    if (q === "Ping" || low === "ping bounce") {
-      if (typeof window.yaHandleCompassChat === "function") {
-        return window.yaHandleCompassChat("Ping");
-      }
+    // Green bare ping / capital Ping / ping bounce → full race + board via compass
+    // Always handle here so app.js pingChief never sees bare ping when bounce is loaded.
+    if (typeof window.yaHandleCompassChat === "function") {
+      return window.yaHandleCompassChat("Ping");
     }
 
-    // bare ping: ALWAYS re-race for closest from this seat (never lastBounce-only)
+    // No compass handler: re-race closest only — never invent Denver/CoS
     if (typeof window.yaRunCompassRace === "function") {
       return window.yaRunCompassRace().then(function (b) {
         var host = (b && b.closest && b.closest.id) || BOUNCE.local;
@@ -88,7 +88,6 @@
       });
     }
 
-    // No race script: local-seat only — never invent Denver/CoS as closest
     var line = pongLine(BOUNCE.local);
     try { if (typeof remember === "function") remember(line); } catch (e) {}
     return line;
@@ -101,6 +100,6 @@
   }
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-ping-bounce] re-race each ping · Denver≠closest · never bare here");
+    if (typeof console !== "undefined") console.log("[ya-ping-bounce] green ping→full board · airplane local-seat · Denver≠closest");
   } catch (e) {}
 })();
