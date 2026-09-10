@@ -60,13 +60,24 @@
     var out = [];
     try {
       var mems = (typeof state !== "undefined" && state && state.memories) ? state.memories : [];
+      function pushOne(text, at) {
+        if (out.length >= MAX_FACTS) return;
+        out.push({ text: text.slice(0, 240), at: at || 0 });
+      }
+      // Prefer Shelf:/ASTA: bookshelves for perfect-memory path
       for (var i = 0; i < mems.length && out.length < MAX_FACTS; i++) {
-        var t = mems[i] && mems[i].text ? String(mems[i].text).trim() : "";
-        if (!t) continue;
-        if (/^Core:/i.test(t) || /^user said:/i.test(t) || /^From talk:/i.test(t)) continue;
-        if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(t)) continue;
-        if (/^Utah time/i.test(t)) continue;
-        out.push({ text: t.slice(0, 240), at: mems[i].at || 0 });
+        var tx = mems[i] && mems[i].text ? String(mems[i].text).trim() : "";
+        if (!tx) continue;
+        if (/^(Shelf:|ASTA:|Bookshelf:)/i.test(tx)) pushOne(tx, mems[i].at);
+      }
+      for (var j = 0; j < mems.length && out.length < MAX_FACTS; j++) {
+        var t2 = mems[j] && mems[j].text ? String(mems[j].text).trim() : "";
+        if (!t2) continue;
+        if (/^Core:/i.test(t2) || /^user said:/i.test(t2) || /^From talk:/i.test(t2)) continue;
+        if (/^(Shelf:|ASTA:|Bookshelf:)/i.test(t2)) continue;
+        if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(t2)) continue;
+        if (/^Utah time/i.test(t2)) continue;
+        pushOne(t2, mems[j].at);
       }
     } catch (e) {}
     return out;

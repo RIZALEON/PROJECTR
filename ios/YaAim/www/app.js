@@ -546,6 +546,8 @@ function extractMemories(userText) {
   if (/remember this[:\s]/i.test(t)) {
     remember(t.replace(/.*remember this[:\s]*/i, ""));
   }
+  const shelf = t.match(/^(?:shelf|asta|bookshelf)\s*[:\-]\s*(.+)$/i);
+  if (shelf) remember("Shelf: " + shelf[1].trim());
 }
 
 function recall(query, limit) {
@@ -573,6 +575,8 @@ function recall(query, limit) {
     });
     if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
     if (!core) score += 2;
+    if (/^(user'?s name is|likes |lives in )/i.test(m.text)) score += 4;
+    if (typeof isShelfMemory === "function" && isShelfMemory(m.text)) score += 5;
     return { m, score, longHit, core: core };
   });
   return scored
@@ -620,6 +624,22 @@ function forgetFact(idOrText) {
   save();
   try { renderPanel(); } catch (e) {}
   return { ok: true, removed: removed.length, facts: removed };
+}
+
+
+function tryRecallCommand(userText) {
+  const t = String(userText || "").trim();
+  const m = t.match(/^(?:recall|what do you (?:remember|know) about|retrieve)\s+(.+)$/i);
+  if (!m && !/^recall\s*\??$/i.test(t)) return null;
+  const q = m ? m[1].replace(/[.?!:]+$/, "").trim() : "";
+  if (!q) return "Say recall … with what to retrieve from gut, continuity, or Shelf: facts.";
+  const bag = retrieveBeforeReply(q);
+  if (bag.direct) return "Retrieved:\n" + bag.direct;
+  if (bag.hits && bag.hits.length) {
+    return "Retrieved:\n" + bag.hits.slice(0, 5).map(function (h) { return "- " + h.text; }).join("\n");
+  }
+  if (bag.continuity) return "Continuity only:\n" + bag.continuity;
+  return "Nothing seated for that yet. Say remember this: … or Shelf: … then recall again.";
 }
 
 function tryForgetCommand(userText) {
@@ -1050,6 +1070,46 @@ function isMathAsk(text) {
   return !!extractMath(text);
 }
 
+function isShelfMemory(text) {
+  const s = String(text || "");
+  if (/^(Shelf:|ASTA:|Bookshelf:|shelf\.)/i.test(s)) return true;
+  return false;
+}
+
+/** Track B — retrieve-before-reply: gut + continuity + shelf-tagged facts. */
+function retrieveBeforeReply(userText) {
+  const q = String(userText || "").trim();
+  const hits = (typeof recall === "function") ? recall(q, 8) : [];
+  let cont = "";
+  try {
+    if (typeof window !== "undefined" && typeof window.yaContinuityRecallSnippet === "function") {
+      cont = window.yaContinuityRecallSnippet(q) || "";
+    }
+  } catch (e) {}
+  try {
+    if (typeof window !== "undefined" && typeof window.yaTouchContinuity === "function") {
+      window.yaTouchContinuity();
+    }
+  } catch (e2) {}
+  const shelfHits = (hits || []).filter(function (m) { return m && isShelfMemory(m.text); });
+  const cleanHits = (hits || []).filter(function (m) {
+    return m && m.text && !/^Core:/i.test(m.text) && !(typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text));
+  });
+  let direct = "";
+  const askish = /\?$|^(who|what|when|where|which|why|how|do you|did you|is |are |can you|recall|remember)\b/i.test(q);
+  if (askish && (shelfHits.length || cleanHits.length)) {
+    const top = shelfHits[0] || cleanHits[0];
+    if (top && top.text) {
+      direct = String(top.text);
+      if (cont) {
+        const c0 = String(cont).split("\n")[0];
+        if (c0 && direct.indexOf(c0) < 0) direct = direct + "\n(Continuity) " + c0;
+      }
+    }
+  }
+  return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: direct };
+}
+
 function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
@@ -1061,7 +1121,9 @@ function localEngine(userText) {
   if (isEngineNameAsk(userText)) return explainEngine();
   if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
-  const hits = recall(userText);
+  const bag = retrieveBeforeReply(userText);
+  const hits = (bag.hits && bag.hits.length) ? bag.hits : recall(userText);
+  if (bag.direct && /\?$|^(who|what|when|where|which|why|how)/i.test(q)) return bag.direct;
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
     return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
@@ -2995,6 +3057,8 @@ async function answer(userText) {
   }
   const forgot = tryForgetCommand(userText);
   if (forgot) return forgot;
+  const recalled = tryRecallCommand(userText);
+  if (recalled) return recalled;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
   // Continuity seat — offline CoS recall / stamp (FRIEND-CONTINUITY pattern)
@@ -3071,12 +3135,17 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     if (senseTalk) return senseTalk;
   }
   if (!signal()) {
+    const bag = retrieveBeforeReply(userText);
+    if (bag.direct) return bag.direct;
     const localOff = localEngine(userText);
     if (localOff === "DATE_LOOKUP") return sayUtahNow();
     const line = String(localOff || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
     if (line && !/^I do not know that\b/.test(line) && !/^I am listening\b/.test(line)) return line;
-    return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or add function NAME: …";
+    if (bag.hits && bag.hits.length) return bag.hits[0].text;
+    if (bag.continuity) return bag.continuity;
+    return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or Shelf: … or add function NAME: …";
   }
+
   const links = extractHttpUrls(userText);
   const videoAsk = isVideoAsk(userText);
   if (videoAsk && !links.length) {
@@ -3139,6 +3208,8 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     }
     return await lookUpAndKeep(target);
   }
+  const bagOn = retrieveBeforeReply(userText);
+  if (bagOn.direct && !mindWantsWeb()) return bagOn.direct;
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") return sayUtahNow();
   const searchNow = local === "SEARCH_NOW";
