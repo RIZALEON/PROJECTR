@@ -3,6 +3,7 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 import SafariServices
+import CoreLocation
 
 struct WebShell: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -16,7 +17,7 @@ struct WebShell: UIViewRepresentable {
         let uc = cfg.userContentController
         uc.add(context.coordinator, name: "ya")
         let boot = """
-        window.YA_NATIVE = { spine: 'ios-native', vault: 'documents', maxBytes: 4294967296 };
+        window.YA_NATIVE = { spine: 'ios-native', vault: 'documents', maxBytes: 4294967296, geo: true };
         """
         uc.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let web = WKWebView(frame: .zero, configuration: cfg)
@@ -40,9 +41,18 @@ struct WebShell: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKScriptMessageHandler, UIDocumentPickerDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, UIDocumentPickerDelegate, CLLocationManagerDelegate {
         weak var web: WKWebView?
         var pickKind: String = "food"
+        private let locationManager = CLLocationManager()
+        private var pendingGeoId: String?
+        private var geoReplied = false
+
+        override init() {
+            super.init()
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let body = message.body as? [String: Any], let op = body["op"] as? String else { return }
@@ -74,9 +84,85 @@ struct WebShell: UIViewRepresentable {
             case "browse", "openUrl":
                 let raw = (body["url"] as? String) ?? ""
                 presentSafari(urlString: raw, id: body["id"] as? String)
+            case "geolocate":
+                requestGeolocate(id: body["id"] as? String)
             default:
                 break
             }
+        }
+
+        func requestGeolocate(id: String?) {
+            pendingGeoId = id
+            geoReplied = false
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                let status = self.locationManager.authorizationStatus
+                switch status {
+                case .notDetermined:
+                    self.locationManager.requestWhenInUseAuthorization()
+                case .authorizedWhenInUse, .authorizedAlways:
+                    self.locationManager.requestLocation()
+                case .denied, .restricted:
+                    self.replyGeo(ok: false, reason: "denied", lat: nil, lon: nil, accuracy: nil)
+                @unknown default:
+                    self.replyGeo(ok: false, reason: "unknown-auth", lat: nil, lon: nil, accuracy: nil)
+                }
+            }
+        }
+
+        func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+            let status = manager.authorizationStatus
+            guard pendingGeoId != nil, !geoReplied else { return }
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                manager.requestLocation()
+            case .denied, .restricted:
+                replyGeo(ok: false, reason: "denied", lat: nil, lon: nil, accuracy: nil)
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
+        }
+
+        func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+            guard let loc = locations.last else {
+                replyGeo(ok: false, reason: "no-fix", lat: nil, lon: nil, accuracy: nil)
+                return
+            }
+            replyGeo(
+                ok: true,
+                reason: nil,
+                lat: loc.coordinate.latitude,
+                lon: loc.coordinate.longitude,
+                accuracy: loc.horizontalAccuracy
+            )
+        }
+
+        func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+            let ns = error as NSError
+            let reason: String
+            if ns.domain == kCLErrorDomain, ns.code == CLError.denied.rawValue {
+                reason = "denied"
+            } else if ns.domain == kCLErrorDomain, ns.code == CLError.locationUnknown.rawValue {
+                reason = "unavailable"
+            } else {
+                reason = "fail"
+            }
+            replyGeo(ok: false, reason: reason, lat: nil, lon: nil, accuracy: nil)
+        }
+
+        func replyGeo(ok: Bool, reason: String?, lat: Double?, lon: Double?, accuracy: Double?) {
+            guard !geoReplied else { return }
+            geoReplied = true
+            var payload: [String: Any] = ["op": "geolocate", "ok": ok]
+            if let reason = reason { payload["reason"] = reason }
+            if let lat = lat { payload["lat"] = lat }
+            if let lon = lon { payload["lon"] = lon }
+            if let accuracy = accuracy { payload["accuracy"] = accuracy }
+            if let id = pendingGeoId { payload["id"] = id }
+            pendingGeoId = nil
+            reply(payload)
         }
 
         func presentSafari(urlString: String, id: String?) {

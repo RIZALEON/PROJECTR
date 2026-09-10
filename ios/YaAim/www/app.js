@@ -2964,6 +2964,8 @@ function isPlaceSearchQuery(text) {
 function placeSearchSubject(text) {
   let s = stripSearchFluff(text);
   s = s.replace(/^(for|a|an|the)\s+/i, "");
+  // Drop coarse region when we will pin to lat/lon city
+  s = s.replace(/\s+\bin\s+(utah|usa|united states)\b/ig, "");
   return s.trim() || "places";
 }
 
@@ -2998,49 +3000,305 @@ function isScientistBioHit(title, body) {
   return false;
 }
 
-async function searchPlacesNearSeat(query) {
-  const subject = placeSearchSubject(query);
-  const where = seatPlaceQuery();
-  const q = (subject + " " + where).replace(/\s+/g, " ").trim();
-  const url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=" + encodeURIComponent(q);
+function loadLastKnownGeo() {
+  try {
+    if (state && state.lastGeo && typeof state.lastGeo.lat === "number" && typeof state.lastGeo.lon === "number") {
+      return state.lastGeo;
+    }
+  } catch (e) {}
+  try {
+    const raw = localStorage.getItem("ya-last-geo");
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && typeof o.lat === "number" && typeof o.lon === "number") return o;
+    }
+  } catch (e2) {}
+  return null;
+}
+
+function saveLastKnownGeo(geo) {
+  if (!geo || typeof geo.lat !== "number" || typeof geo.lon !== "number") return;
+  const packed = {
+    lat: geo.lat,
+    lon: geo.lon,
+    label: geo.label || "",
+    city: geo.city || "",
+    neighborhood: geo.neighborhood || "",
+    source: geo.source || "device",
+    at: Date.now()
+  };
+  try {
+    if (typeof state !== "undefined" && state) {
+      state.lastGeo = packed;
+      if (typeof save === "function") save();
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem("ya-last-geo", JSON.stringify(packed));
+  } catch (e2) {}
+}
+
+function isAirplaneish() {
+  try {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  } catch (e) {}
+  try {
+    if (typeof signal === "function" && !signal()) return true;
+  } catch (e2) {}
+  return false;
+}
+
+function haversineKm(aLat, aLon, bLat, bLon) {
+  const toR = Math.PI / 180;
+  const dLat = (bLat - aLat) * toR;
+  const dLon = (bLon - aLon) * toR;
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(aLat * toR) * Math.cos(bLat * toR) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 6371 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function browserGeoOnce(timeoutMs) {
+  return new Promise(function (resolve) {
+    try {
+      if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== "function") {
+        return resolve({ ok: false, reason: "no-api" });
+      }
+      const opts = { enableHighAccuracy: true, maximumAge: 60000, timeout: timeoutMs || 12000 };
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          resolve({
+            ok: true,
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            source: "wk-geolocation"
+          });
+        },
+        function (err) {
+          const code = err && err.code;
+          let reason = "fail";
+          if (code === 1) reason = "denied";
+          else if (code === 2) reason = "unavailable";
+          else if (code === 3) reason = "timeout";
+          resolve({ ok: false, reason: reason });
+        },
+        opts
+      );
+    } catch (e) {
+      resolve({ ok: false, reason: "fail" });
+    }
+  });
+}
+
+async function resolveDeviceGeo() {
+  // Precise device lat/lon when green; never invent on airplane.
+  if (isAirplaneish()) {
+    const last = loadLastKnownGeo();
+    if (last) {
+      return Object.assign({}, last, { ok: true, source: "last-known", airplane: true, live: false });
+    }
+    return { ok: false, reason: "airplane", airplane: true, live: false };
+  }
+
+  if (typeof isNativeSpine === "function" && isNativeSpine()) {
+    try {
+      const nat = await nativeAsk("geolocate");
+      if (nat && nat.ok && typeof nat.lat === "number" && typeof nat.lon === "number") {
+        return {
+          ok: true,
+          lat: nat.lat,
+          lon: nat.lon,
+          accuracy: nat.accuracy,
+          source: "core-location",
+          live: true
+        };
+      }
+      if (nat && (nat.reason === "denied" || nat.reason === "restricted")) {
+        const last = loadLastKnownGeo();
+        if (last) return Object.assign({}, last, { ok: true, source: "last-known", denied: true, live: false });
+        return { ok: false, reason: "denied", denied: true, live: false };
+      }
+    } catch (e) {}
+  }
+
+  const browser = await browserGeoOnce(12000);
+  if (browser && browser.ok) {
+    return Object.assign({}, browser, { live: true });
+  }
+  if (browser && browser.reason === "denied") {
+    const last = loadLastKnownGeo();
+    if (last) return Object.assign({}, last, { ok: true, source: "last-known", denied: true, live: false });
+    return { ok: false, reason: "denied", denied: true, live: false };
+  }
+
+  const last2 = loadLastKnownGeo();
+  if (last2) return Object.assign({}, last2, { ok: true, source: "last-known", live: false });
+  return { ok: false, reason: (browser && browser.reason) || "unavailable", live: false };
+}
+
+async function reverseGeocode(lat, lon) {
+  const url =
+    "https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=16&lat=" +
+    encodeURIComponent(lat) +
+    "&lon=" +
+    encodeURIComponent(lon);
   const res = await fetch(url, {
     headers: {
-      "Accept": "application/json",
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; reverse-geocode; contact: rizalbot@rizal.institute)"
+    }
+  });
+  if (!res.ok) throw new Error("reverse " + res.status);
+  const data = await res.json();
+  const a = (data && data.address) || {};
+  const neighborhood =
+    a.neighbourhood || a.neighborhood || a.suburb || a.quarter || a.city_district || a.village || "";
+  const city = a.city || a.town || a.municipality || a.county || a.state || "";
+  const state = a.state || "";
+  const parts = [];
+  if (neighborhood && foldQ(neighborhood) !== foldQ(city)) parts.push(neighborhood);
+  if (city) parts.push(city);
+  else if (state) parts.push(state);
+  const label = parts.filter(Boolean).join(", ") || String((data && data.display_name) || "").split(",").slice(0, 2).join(",").trim() || "your seat";
+  return { label: label, city: city, neighborhood: neighborhood, state: state, raw: data };
+}
+
+async function searchPlacesNearSeat(query) {
+  const subject = placeSearchSubject(query);
+  const geo = await resolveDeviceGeo();
+
+  if (!geo.ok) {
+    if (geo.airplane) {
+      return (
+        "Airplane / offline — no live GPS. I will not invent places.\n" +
+        "Turn networking on (green mind), allow Location when prompted, or say where you are " +
+        "(e.g. restaurants near Sugar House)."
+      );
+    }
+    if (geo.denied) {
+      return (
+        "Location permission denied. I need precise lat/lon for closest places — not a coarse Utah TZ stamp.\n" +
+        "Enable Location for YaAim (When In Use), or tell me your city/neighborhood " +
+        "(e.g. coffee near Provo)."
+      );
+    }
+    return (
+      "Could not read device location (" + (geo.reason || "unavailable") + ").\n" +
+      "Allow Location when prompted, or say a city (e.g. massage near Salt Lake)."
+    );
+  }
+
+  let placeLabel = geo.label || "";
+  let city = geo.city || "";
+  let neighborhood = geo.neighborhood || "";
+
+  if (geo.live || !placeLabel) {
+    try {
+      if (!isAirplaneish()) {
+        const rev = await reverseGeocode(geo.lat, geo.lon);
+        placeLabel = rev.label;
+        city = rev.city;
+        neighborhood = rev.neighborhood;
+        geo.label = placeLabel;
+        geo.city = city;
+        geo.neighborhood = neighborhood;
+      }
+    } catch (e) {
+      if (!placeLabel) {
+        placeLabel = (typeof geo.lat === "number" ? geo.lat.toFixed(4) : "?") + ", " + (typeof geo.lon === "number" ? geo.lon.toFixed(4) : "?");
+      }
+    }
+  }
+
+  saveLastKnownGeo(geo);
+
+  const whereBits = [];
+  if (neighborhood) whereBits.push(neighborhood);
+  if (city && foldQ(city) !== foldQ(neighborhood)) whereBits.push(city);
+  if (!whereBits.length && placeLabel) whereBits.push(placeLabel);
+  if (!whereBits.length) whereBits.push(seatPlaceQuery());
+  const where = whereBits.join(", ");
+
+  const q = (subject + " " + where).replace(/\s+/g, " ").trim();
+  const delta = 0.18; // ~20km box
+  const viewbox = [
+    (geo.lon - delta).toFixed(5),
+    (geo.lat + delta).toFixed(5),
+    (geo.lon + delta).toFixed(5),
+    (geo.lat - delta).toFixed(5)
+  ].join(",");
+  const url =
+    "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8" +
+    "&q=" + encodeURIComponent(q) +
+    "&viewbox=" + encodeURIComponent(viewbox) +
+    "&bounded=1";
+
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
       "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
     }
   });
   if (!res.ok) throw new Error("nominatim " + res.status);
-  const data = await res.json();
+  let data = await res.json();
   if (!Array.isArray(data) || !data.length) {
-    return "No places found near " + seatPlaceLabel() + " for “" + subject + "”. Try a sharper query, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(q);
+    // Unbounded retry near city label only (still not Utah-only stamp)
+    const url2 =
+      "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=" +
+      encodeURIComponent(q);
+    const res2 = await fetch(url2, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
+      }
+    });
+    if (res2.ok) data = await res2.json();
   }
-  const seat = seatPlaceLabel();
+  if (!Array.isArray(data) || !data.length) {
+    return (
+      "No places found near " + placeLabel + " for “" + subject + "”.\n" +
+      "Try a sharper query, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(q)
+    );
+  }
+
+  data = data.slice().sort(function (a, b) {
+    const da = haversineKm(geo.lat, geo.lon, parseFloat(a.lat), parseFloat(a.lon));
+    const db = haversineKm(geo.lat, geo.lon, parseFloat(b.lat), parseFloat(b.lon));
+    return da - db;
+  });
+
+  const srcNote = geo.live
+    ? (geo.source === "core-location" ? "Core Location" : "device geolocation")
+    : (geo.airplane ? "last known (airplane — not live GPS)" : "last known seat");
   const lines = [
-    "Places near " + seat + " (OpenStreetMap)",
+    "Places near " + placeLabel + " (OpenStreetMap)",
+    "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
     "Query: " + subject
   ];
-  const maps = [];
   data.slice(0, 5).forEach(function (row, i) {
     const name = String(row.display_name || row.name || "Place").split(",")[0].trim();
     const full = String(row.display_name || "").trim();
-    const lat = row.lat;
-    const lon = row.lon;
+    const lat = parseFloat(row.lat);
+    const lon = parseFloat(row.lon);
     const type = [row.type, row.class].filter(Boolean).join("/");
-    lines.push((i + 1) + ". " + name + (type ? " · " + type : ""));
+    const km = haversineKm(geo.lat, geo.lon, lat, lon);
+    const dist = km < 1 ? Math.round(km * 1000) + " m" : km.toFixed(1) + " km";
+    lines.push((i + 1) + ". " + name + " · " + dist + (type ? " · " + type : ""));
     if (full && full !== name) lines.push("   " + full.slice(0, 120));
     if (lat && lon) {
-      const link = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=17/" + lat + "/" + lon;
-      lines.push("   " + link);
-      maps.push(link);
+      lines.push("   https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=17/" + lat + "/" + lon);
     }
   });
   lines.push("");
-  lines.push("Closest-first from public OSM for this seat — not Denver/CoS. Say browse <url> to open in Safari.");
+  lines.push("Closest-first from precise seat — not Denver/CoS, not coarse Utah stamp. Say browse <url> for Safari.");
   try {
     if (typeof remember === "function") {
-      remember("Places near " + seat + ": " + subject + " → " + data.slice(0, 3).map(function (r) {
-        return String(r.display_name || "").split(",")[0];
-      }).join("; "));
+      remember(
+        "Places near " + placeLabel + ": " + subject + " → " +
+        data.slice(0, 3).map(function (r) { return String(r.display_name || "").split(",")[0]; }).join("; ")
+      );
     }
   } catch (e) {}
   return lines.join("\n");
@@ -3056,9 +3314,10 @@ async function lookUpAndKeep(query) {
       return await searchPlacesNearSeat(raw);
     } catch (err) {
       const sub = placeSearchSubject(raw);
-      const where = seatPlaceQuery();
+      const last = loadLastKnownGeo();
+      const where = (last && last.label) || seatPlaceQuery();
       const q = encodeURIComponent(sub + " " + where);
-      return "Place search hit a net snag. Try browse https://www.openstreetmap.org/search?query=" + q + " (seat: " + seatPlaceLabel() + ").";
+      return "Place search hit a net snag. Try browse https://www.openstreetmap.org/search?query=" + q + " — or say your city/neighborhood.";
     }
   }
   const candidates = splitSearchCandidates(raw);
@@ -3872,7 +4131,7 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (isPlaceSearchQuery(userText)) {
     if (!mindWantsWeb()) {
       queueLearn(userText);
-      return "Place search needs green mind. Tap the light green — I will find places near " + seatPlaceLabel() + ".";
+      return "Place search needs green mind + device Location for precise seat (city/neighborhood, not Utah stamp). Tap the light green.";
     }
     return await lookUpAndKeep(userText);
   }
