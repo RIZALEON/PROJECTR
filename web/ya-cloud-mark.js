@@ -1,70 +1,195 @@
-/*! ya-cloud-mark.js — upside-down offline CSS/SVG cloud workmark under Speak-to-Rizalbot
- * States while busy: spin · think · rain · thunder (loading/thinking/searching/buffering)
- * No network assets. Dark Я aesthetic. Does not block send.
+/*! ya-cloud-mark.js — upside-down 3D cloud workmark (iOS WKWebView-safe)
+ * Busy = obvious continuous tumble + canvas rain/sparks/thunder.
+ * Idle quiet. Offline only. Bottom Speak chrome. Does not block send.
  */
 (function () {
   "use strict";
 
   var ROOT_ID = "ya-cloud-mark";
-  var state = "idle"; // idle | spin | think | rain | thunder
+  var state = "idle";
   var timer = 0;
+  var raf = 0;
+  var t0 = 0;
+  var canvas = null;
+  var ctx = null;
+  var drops = [];
+  var sparks = [];
+  var W = 120;
+  var H = 72;
 
   function ensureDom() {
     var el = document.getElementById(ROOT_ID);
-    if (el) return el;
+    if (el) {
+      canvas = el.querySelector("canvas");
+      if (canvas) ctx = canvas.getContext("2d");
+      return el;
+    }
     var host = document.querySelector("form.composer") || document.body;
     el = document.createElement("div");
     el.id = ROOT_ID;
     el.className = "ya-cloud-mark idle";
     el.setAttribute("aria-hidden", "true");
     el.innerHTML =
-      '<svg class="ya-cloud-svg" viewBox="0 0 80 52" width="72" height="48" focusable="false" aria-hidden="true">' +
-      '<defs>' +
-      '<linearGradient id="yaCloudGrad" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="rgba(220,235,255,0.55)"/>' +
-      '<stop offset="55%" stop-color="rgba(140,180,255,0.28)"/>' +
-      '<stop offset="100%" stop-color="rgba(60,90,140,0.35)"/>' +
-      '</linearGradient>' +
-      '<filter id="yaCloudGlow" x="-40%" y="-40%" width="180%" height="180%">' +
-      '<feGaussianBlur stdDeviation="1.4" result="b"/>' +
-      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
-      '</filter>' +
-      '</defs>' +
-      '<g class="ya-cloud-scene">' +
-      '<g class="ya-cloud-flip">' +
-      '<g class="ya-cloud-layer ya-cloud-back">' +
-      '<ellipse cx="28" cy="28" rx="16" ry="10"/>' +
-      '<ellipse cx="42" cy="30" rx="14" ry="9"/>' +
-      '</g>' +
-      '<g class="ya-cloud-layer ya-cloud-mid">' +
-      '<path class="ya-cloud-body" d="M18 30c-7 0-12-5-12-11s6-11 13-10c2-6 8-10 14-10 8 0 14 6 15 13 6 1 10 6 10 12 0 7-6 12-13 12H18z" fill="url(#yaCloudGrad)" filter="url(#yaCloudGlow)"/>' +
-      '</g>' +
-      '<g class="ya-cloud-layer ya-cloud-front">' +
-      '<ellipse cx="34" cy="34" rx="11" ry="7"/>' +
-      '<ellipse cx="48" cy="33" rx="9" ry="6"/>' +
-      '</g>' +
-      '<g class="ya-cloud-rain">' +
-      '<line class="d1" x1="24" y1="6" x2="21" y2="16"/>' +
-      '<line class="d2" x1="32" y1="3" x2="29" y2="15"/>' +
-      '<line class="d3" x1="40" y1="5" x2="37" y2="17"/>' +
-      '<line class="d1" x1="48" y1="4" x2="45" y2="14"/>' +
-      '<line class="d2" x1="56" y1="7" x2="53" y2="16"/>' +
-      '</g>' +
-      '<g class="ya-cloud-bolt">' +
-      '<polyline points="42,6 35,16 40,16 32,28"/>' +
-      '<polyline class="bolt2" points="50,8 46,14 49,14 44,22"/>' +
-      '</g>' +
-      '<g class="ya-cloud-spark">' +
-      '<circle cx="26" cy="22" r="1.2"/><circle cx="54" cy="24" r="1"/><circle cx="40" cy="18" r="0.9"/>' +
-      '</g>' +
-      '</g></g></svg>';
-    // Sit just above the composer (bottom chrome) — upside-down cloud = flip via CSS
-    if (host && host.parentNode) {
-      host.parentNode.insertBefore(el, host);
-    } else {
-      document.body.appendChild(el);
-    }
+      '<div class="ya-cloud-stage">' +
+      '<div class="ya-cloud-tumble">' +
+      '<canvas class="ya-cloud-canvas" width="120" height="72"></canvas>' +
+      '<div class="ya-cloud-ya">Я</div>' +
+      "</div></div>";
+    if (host && host.parentNode) host.parentNode.insertBefore(el, host);
+    else document.body.appendChild(el);
+    canvas = el.querySelector("canvas");
+    ctx = canvas.getContext("2d");
     return el;
+  }
+
+  function seedWeather() {
+    drops = [];
+    sparks = [];
+    var i;
+    for (i = 0; i < 14; i++) {
+      drops.push({
+        x: 28 + Math.random() * 64,
+        y: Math.random() * 28,
+        len: 6 + Math.random() * 10,
+        spd: 0.9 + Math.random() * 1.6,
+        ph: Math.random() * 10
+      });
+    }
+    for (i = 0; i < 8; i++) {
+      sparks.push({
+        x: 36 + Math.random() * 48,
+        y: 22 + Math.random() * 20,
+        r: 0.8 + Math.random() * 1.6,
+        ph: Math.random() * 6
+      });
+    }
+  }
+
+  function drawCloudBody(g, ox, oy, sc, alpha) {
+    g.save();
+    g.translate(ox, oy);
+    g.scale(sc, sc);
+    g.globalAlpha = alpha;
+    // upside-down puff: draw then flip via caller scale
+    g.beginPath();
+    g.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
+    g.ellipse(-16, 2, 14, 10, 0, 0, Math.PI * 2);
+    g.ellipse(16, 3, 15, 10, 0, 0, Math.PI * 2);
+    g.ellipse(-6, -6, 12, 9, 0, 0, Math.PI * 2);
+    g.ellipse(10, -5, 11, 8, 0, 0, Math.PI * 2);
+    var grd = g.createLinearGradient(0, -14, 0, 14);
+    grd.addColorStop(0, "rgba(230,240,255,0.75)");
+    grd.addColorStop(0.5, "rgba(140,185,255,0.4)");
+    grd.addColorStop(1, "rgba(50,80,130,0.45)");
+    g.fillStyle = grd;
+    g.fill();
+    g.strokeStyle = "rgba(190,220,255,0.7)";
+    g.lineWidth = 1.2;
+    g.stroke();
+    g.restore();
+  }
+
+  function frame(now) {
+    if (state === "idle" || !ctx) {
+      raf = 0;
+      return;
+    }
+    if (!t0) t0 = now;
+    var t = (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+
+    // Scene: flip Y so puff is upside-down (weather toward Speak)
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(1, -1);
+
+    var breath = 1 + 0.08 * Math.sin(t * 2.2);
+    var driftB = Math.sin(t * 1.3) * 4;
+    var driftF = Math.sin(t * 1.7 + 1) * -5;
+    var tumble = state === "spin" ? t * 2.8 : state === "thunder" ? Math.sin(t * 18) * 0.12 : Math.sin(t * 1.1) * 0.15;
+
+    if (state === "spin") {
+      ctx.rotate(tumble);
+    } else if (state === "thunder") {
+      ctx.translate(Math.sin(t * 22) * 2.5, Math.cos(t * 19) * 1.5);
+      ctx.rotate(tumble);
+    } else {
+      ctx.rotate(tumble);
+    }
+
+    // back / mid / front parallax layers
+    drawCloudBody(ctx, driftB * 0.6, 2, 1.15 * breath, 0.35);
+    drawCloudBody(ctx, 0, 0, 1.0 * breath, 0.85);
+    drawCloudBody(ctx, driftF * 0.5, -2, 0.82 * breath, 0.55);
+
+    // rain (drawn in flipped space so it falls "up" on screen toward chrome)
+    if (state === "rain" || state === "thunder" || state === "spin") {
+      ctx.strokeStyle = "rgba(170,210,255,0.95)";
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = "round";
+      for (var i = 0; i < drops.length; i++) {
+        var d = drops[i];
+        var yy = (d.y + (t * 40 * d.spd + d.ph * 10)) % 36;
+        var x = d.x - W / 2;
+        var y = yy - 8;
+        ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(t * 3 + d.ph));
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 2, y + d.len);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // thunder bolt + sparks
+    if (state === "thunder" || (state === "spin" && Math.sin(t * 8) > 0.7)) {
+      var flash = (Math.sin(t * 25) > 0) ? 1 : 0.15;
+      ctx.globalAlpha = flash;
+      ctx.strokeStyle = "#cfefff";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(4, -6);
+      ctx.lineTo(-4, 4);
+      ctx.lineTo(2, 4);
+      ctx.lineTo(-6, 16);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(14, -2);
+      ctx.lineTo(8, 6);
+      ctx.lineTo(12, 6);
+      ctx.lineTo(6, 14);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    if (state === "think" || state === "spin" || state === "thunder") {
+      for (var s = 0; s < sparks.length; s++) {
+        var sp = sparks[s];
+        var a = 0.2 + 0.8 * Math.abs(Math.sin(t * 5 + sp.ph));
+        ctx.globalAlpha = a;
+        ctx.fillStyle = "#dff";
+        ctx.beginPath();
+        ctx.arc(sp.x - W / 2 + Math.sin(t * 2 + sp.ph) * 3, sp.y - H / 2, sp.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function startLoop() {
+    if (raf) return;
+    t0 = 0;
+    seedWeather();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function stopLoop() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    if (ctx) ctx.clearRect(0, 0, W, H);
   }
 
   function setState(next) {
@@ -73,6 +198,8 @@
     el.className = "ya-cloud-mark " + state;
     el.hidden = state === "idle";
     el.setAttribute("data-state", state);
+    if (state === "idle") stopLoop();
+    else startLoop();
   }
 
   function show(mode) {
@@ -88,18 +215,16 @@
 
   function hide() {
     clearTimeout(timer);
-    timer = setTimeout(function () { setState("idle"); }, 120);
+    timer = setTimeout(function () { setState("idle"); }, 180);
   }
 
   function cycleBusy(kind) {
-    // Map app busy contexts → animation
     if (kind === "search" || kind === "lookup") show("rain");
     else if (kind === "compass" || kind === "race") show("thunder");
     else if (kind === "llama" || kind === "ensure") show("think");
     else show("spin");
   }
 
-  // Wrap showThink / hideThink without breaking callers
   function hookThink() {
     try {
       if (typeof window.showThink === "function" && !window.showThink.__yaCloud) {
@@ -123,18 +248,14 @@
     } catch (e) {}
   }
 
-  // Patch answer busy / ensureLlama / search / compass if present later
   function hookAnswer() {
     try {
       if (typeof window.answer === "function" && !window.answer.__yaCloud) {
         var orig = window.answer;
         var wrapped = async function () {
           try { cycleBusy("spin"); } catch (e) {}
-          try {
-            return await orig.apply(this, arguments);
-          } finally {
-            try { hide(); } catch (e2) {}
-          }
+          try { return await orig.apply(this, arguments); }
+          finally { try { hide(); } catch (e2) {} }
         };
         wrapped.__yaCloud = true;
         window.answer = wrapped;
@@ -195,19 +316,15 @@
     setState("idle");
     hookThink();
     hookAnswer();
-    // Re-hook after late script seats (compass / llama)
     setTimeout(hookThink, 400);
     setTimeout(hookAnswer, 500);
     setTimeout(hookAnswer, 1500);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 
   try {
-    if (typeof console !== "undefined") console.log("[ya-cloud-mark] 3D upside-down cloud · spin/think/rain/thunder");
+    if (typeof console !== "undefined") console.log("[ya-cloud-mark] canvas 3D tumble · iOS-safe · spin/think/rain/thunder");
   } catch (e) {}
 })();
