@@ -2991,6 +2991,13 @@ async function answer(userText) {
   if (forgot) return forgot;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  // Hardcode spine / offline CoS slice (spoken F2 RIZALBOT EMBEDDED)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleHardcodeChat === "function") {
+      const hc = window.yaHandleHardcodeChat(userText);
+      if (hc) return hc;
+    }
+  } catch (e) {}
   // Compass / bounce seat (never bare here once scripts load)
   try {
     if (typeof window !== "undefined" && typeof window.yaHandleCompassChat === "function") {
