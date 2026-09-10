@@ -45,7 +45,15 @@
     "senses/shelf-anthropology.jsonl",
     "senses/shelf-science.jsonl",
     "senses/shelf-art.jsonl",
-    "senses/shelf-freedom.jsonl"
+    "senses/shelf-freedom.jsonl",
+    "senses/shelf-books.jsonl",
+    "mind/books/",
+    "mind/books/COS-MANUAL.md",
+    "mind/books/COS-CASE.md",
+    "mind/books/RIZALBOT-MANUAL.md",
+    "mind/books/RIZALBOT-CASE.md",
+    "hardcode/books/COS-MANUAL.md",
+    "hardcode/books/RIZALBOT-MANUAL.md"
   ];
 
   var PING_LAW_LEAD = "Airplane · local-seat / here · RIZALBOT. Green Ping · closest+furthest race.";

@@ -188,7 +188,7 @@
         var n = window.YA_NATIVE;
         var seated = n.seated === true || (Number(n.heartBytes) || 0) > 1024;
         if (n.tokensOn && n.tokensOff !== true) parts.push("heart tokensOn · seated-on-device");
-        else if (n.frameworkLinked && seated) parts.push("frameworkLinked+heart · seated-on-device · tokensOff until smoke");
+        else if (n.frameworkLinked && seated) parts.push("frameworkLinked+heart · seated-on-device · tokensOff");
         else if (n.frameworkLinked) parts.push("llama linked · tokensOff until heart.gguf seated");
         else parts.push("llama framework not linked · NativeHeart status via Heart");
       } else {

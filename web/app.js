@@ -2449,11 +2449,13 @@ function mindSizeBreakdown(chatTail, learned) {
   } catch (e) {}
   let documentsBytes = nativeVaultBytesCached();
   if (!documentsBytes) documentsBytes = fedDocsBytes();
+  const seatedEmbed = seatedEmbedBytes();
   const chatTailBytes = utf8ish(JSON.stringify(chatTail || []));
   const learnedBytes = utf8ish(JSON.stringify(learned || []));
   return {
     localStorageBytes: localStorageBytes,
     documentsBytes: documentsBytes,
+    seatedEmbedBytes: seatedEmbed,
     essenceBytes: essenceBytes,
     heartGgufBytes: heartGgufBytes,
     chatTailBytes: chatTailBytes,
@@ -5375,19 +5377,49 @@ function nativeHeartBytesCached() {
   return 0;
 }
 
-/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask. */
+/** Fallback catalog of seated www pack bytes (shelf/hardcode/modules) when native wwwBytes absent. Updated by ya-mind-books. */
+var SEATED_EMBED_FALLBACK_BYTES = 502524;
+
+function nativeWwwBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.wwwBytes === "number") {
+      return Number(window.YA_NATIVE.wwwBytes) || 0;
+    }
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.seatedEmbedBytes === "number") {
+      return Number(window.YA_NATIVE.seatedEmbedBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/** Packaged senses/*.jsonl + hardcode + www modules that live on device but outside Documents. */
+function seatedEmbedBytes() {
+  const nativeWww = nativeWwwBytesCached();
+  if (nativeWww > 0) return nativeWww;
+  try {
+    if (typeof window.YA_SEATED_EMBED_BYTES === "number" && window.YA_SEATED_EMBED_BYTES > 0) {
+      return Number(window.YA_SEATED_EMBED_BYTES) || 0;
+    }
+  } catch (e) {}
+  return SEATED_EMBED_FALLBACK_BYTES;
+}
+
+/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask.
+ *  Counts: localStorage (gut/continuity/body) + Documents vault (heart+gut+mind/books) + seated www pack. */
 function mindBytes() {
   const ls = localStorageMindBytes();
   const nativeDocs = nativeVaultBytesCached();
   const heartNative = nativeHeartBytesCached();
   const heartState = (state && state.heart && Number(state.heart.bytes)) || 0;
-  // Prefer live Documents total from native spine when present (includes gut + root txt + heart).
+  const embed = seatedEmbedBytes();
+  // Prefer live Documents total from native spine when present (includes gut + mind/books + heart).
   if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
     // documentsBytes from native already includes heart.gguf on disk — don't add heart again.
-    return ls + nativeDocs;
+    // www pack sits in the app bundle, not Documents — add seated embed honestly.
+    return ls + nativeDocs + embed;
   }
   const heart = heartNative || heartState;
-  return ls + fedDocsBytes() + heart;
+  return ls + fedDocsBytes() + heart + embed;
 }
 
 function applyNativeVaultStatus(msg) {
@@ -5398,6 +5430,9 @@ function applyNativeVaultStatus(msg) {
     else if (typeof msg.documentsBytes === "number") window.YA_NATIVE.vaultBytes = msg.documentsBytes;
     if (typeof msg.heartBytes === "number") window.YA_NATIVE.heartBytes = msg.heartBytes;
     if (typeof msg.gutBytes === "number") window.YA_NATIVE.gutBytes = msg.gutBytes;
+    if (typeof msg.booksBytes === "number") window.YA_NATIVE.booksBytes = msg.booksBytes;
+    if (typeof msg.wwwBytes === "number") window.YA_NATIVE.wwwBytes = msg.wwwBytes;
+    if (typeof msg.seatedEmbedBytes === "number") window.YA_NATIVE.seatedEmbedBytes = msg.seatedEmbedBytes;
     if (typeof msg.frameworkLinked === "boolean") window.YA_NATIVE.frameworkLinked = msg.frameworkLinked;
     if (typeof msg.tokensOn === "boolean") window.YA_NATIVE.tokensOn = msg.tokensOn;
     if (typeof msg.tokensOff === "boolean") window.YA_NATIVE.tokensOff = msg.tokensOff;

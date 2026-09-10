@@ -9,7 +9,7 @@ Spoken spine · seated vs missing · smoke lines for tip Decider GO pack (?v=104
 
 Law: NonNuclear · Decider · 100%-offline · no-cloud-token-quota · agents-come-to-phone · gain>drop
 
-## SEATED (www · ?v=105)
+## SEATED (www · ?v=107)
 - ya-hardcode-0.1.js/.css — spine + CoS stub  
 - ya-mind-continuity.js — continuity / chief brief  
 - ya-compass-race.js · ya-compass-br.js · ya-ping-bounce.js  
@@ -19,17 +19,24 @@ Law: NonNuclear · Decider · 100%-offline · no-cloud-token-quota · agents-com
 - **ya-write-code.js** — offline write-code + Xcode/Darwin manifest  
 - **ya-shelf-pack.js** + `senses/shelf-decider-cos.jsonl` — Decider laws durable Shelf: (Track B)  
 - **ya-body-parts.js** — switch / combine body parts  
+- **ya-mind-books.js** + `senses/shelf-books.jsonl` + `hardcode/books/*` — CoS+Rizalbot manuals/cases · mind index/reorg · Я/mind/books/  
+- **ya-find-chat.js** — header 🔍 find-in-chat  
 - hardcode/PROJECTRXCODE-OFFLINE.md — Darwin/Xcode patterns  
+- mindBytes counts Documents + LS + **seated www pack**  
 
 ## MISSING
 - **llama.xcframework** Metal Embed & Sign (Mac · team **88HACKXHZL** · bundle `io.github.rizaleon.yaaim.cam`)  
-- **tokensOn** until heart.gguf + framework seated on device (not Simulator-only)  
+- **tokensOn** = seated-on-device when frameworkLinked+heart (NativeHeart; USB confirms)  
 - ASTA Track C full devour · Track D reason-scratch (shelf pack is enough for now)  
 
 ## Smoke lines
 ```
 spine
 shelf pack
+books
+manual cos
+manual rizalbot
+mind index
 recall offline
 chief
 cos mode
