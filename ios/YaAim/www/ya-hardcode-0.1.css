@@ -118,3 +118,54 @@
 @media (prefers-reduced-motion: reduce) {
   .ya-pp-figure.left, .ya-pp-figure.right, .ya-pp-ball { animation: none; }
 }
+
+/* —— upside-down cloud workmark (offline SVG) —— */
+#ya-cloud-mark {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  height: 40px;
+  z-index: 9998;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+#ya-cloud-mark[hidden],
+#ya-cloud-mark.idle { display: none !important; }
+#ya-cloud-mark .ya-cloud-svg { overflow: visible; }
+#ya-cloud-mark .ya-cloud-flip { transform-origin: 32px 20px; transform: scaleY(-1); }
+#ya-cloud-mark .ya-cloud-body {
+  fill: rgba(200, 220, 255, 0.12);
+  stroke: rgba(180, 210, 255, 0.55);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px rgba(120, 180, 255, 0.45));
+}
+#ya-cloud-mark .ya-cloud-rain { display: none; stroke: rgba(160, 200, 255, 0.85); stroke-width: 1.4; stroke-linecap: round; }
+#ya-cloud-mark .ya-cloud-bolt { display: none; fill: none; stroke: #9ad0ff; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 4px #5af); }
+
+#ya-cloud-mark.spin .ya-cloud-svg { animation: ya-cloud-spin 1.1s linear infinite; }
+#ya-cloud-mark.think .ya-cloud-body { animation: ya-cloud-pulse 1.4s ease-in-out infinite; fill: rgba(160, 200, 255, 0.22); }
+#ya-cloud-mark.rain .ya-cloud-rain { display: block; animation: ya-cloud-rain 0.7s linear infinite; }
+#ya-cloud-mark.rain .ya-cloud-body { fill: rgba(140, 180, 255, 0.18); }
+#ya-cloud-mark.thunder .ya-cloud-bolt { display: block; animation: ya-cloud-flash 0.55s steps(2) infinite; }
+#ya-cloud-mark.thunder .ya-cloud-body { fill: rgba(180, 200, 255, 0.28); stroke: #cfe; }
+
+@keyframes ya-cloud-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes ya-cloud-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes ya-cloud-rain {
+  from { transform: translateY(0); opacity: 0.2; }
+  to { transform: translateY(6px); opacity: 1; }
+}
+@keyframes ya-cloud-flash {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
