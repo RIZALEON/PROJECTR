@@ -38,7 +38,7 @@
 
 | Layer | State |
 |---|---|
-| Tip | `a574ce1` · `race-nesw-furthest` · PR #12 · www `?v=107` |
+| Tip | `8118cc4` handoff · app `a574ce1` · PR #12 · www `?v=107` · [release v0.55](https://github.com/RIZALEON/PROJECTR/releases/tag/v0.55-handoff-2026-09-10) |
 | Heart | seated · frameworkLinked · llama.cpp · Metal · mind ~183 MB + packs |
 | Offline pack | CoS shelf · amber rummage · body combine · write-code/Xcode · books · find 🔍 |
 | Ping | airplane → local-seat; green → closest+furthest |
@@ -84,7 +84,7 @@ Prefer on-device Metal; keep cloud usage light. Do not commit ios/llama.xcframew
 
 | Artifact | GitHub | Drive | iCloud |
 |---|---|---|---|
-| Manifesto + this handoff | PR #12 `handoff/` | upload this run | Mac/Files seed when reachable |
+| Manifesto + this handoff | PR #12 `handoff/` + release v0.55 | Drive upload this run | Mac/Files seed when reachable |
 | iOS YaAim (tip `a574ce1`) | source on PR #12 | IPA/zip when Mac builds | On My iPhone Я + iCloud twin dump |
-| Android APK | prior release 0.54-battery; tip www on PR #12 | upload battery APK + note rebuild | dump when Mac/phone sync |
+| Android APK | release v0.55 attaches 0.54-battery + www tip tgz | same release assets → Drive mirror | dump when Mac/phone sync |
 

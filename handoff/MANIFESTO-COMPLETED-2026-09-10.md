@@ -1,6 +1,6 @@
 # PROJECT Я / Rizalbot — COMPLETED MANIFESTO
 **Stamp:** 2026-09-10 · America/Denver  
-**Tip tip:** `a574ce1` on `race-nesw-furthest` · PR #12 · cache `?v=107` (+ Swift seatHeart restore)  
+**Tip tip:** `8118cc4` (handoff) · app `a574ce1` · `race-nesw-furthest` · PR #12 · cache `?v=107` · release `v0.55-handoff-2026-09-10`  
 **Law:** Offline first · NonNuclear · Function 0 gain-first · agents come to the phone · no cloud brain required for core
 
 ---
@@ -114,6 +114,7 @@ body status · combine gut+hands
 |---|---|---|
 | iOS | YaAim USB / PROJECTRXCODE Embed&Sign + heart.gguf | Device seated Metal tokensOn; tip `a574ce1` for seatHeart build green |
 | Android | `YaAIm-0.54-rizalbot-m-battery.apk` (+ www tip pack note) | Battery Track M era; tip-stream www at PR #12 — rebuild APK when Mac free |
-| Source | PR #12 `race-nesw-furthest` @ `a574ce1` | GitHub waypoint |
+| Source | PR #12 @ `8118cc4` / app `a574ce1` | GitHub waypoint |
+| Release | https://github.com/RIZALEON/PROJECTR/releases/tag/v0.55-handoff-2026-09-10 | Manifesto · handoff · www tgz · Android 0.54 APK |
 
 **Rule:** every handoff includes this Manifesto + ships/points iOS **and** Android app files at the three waypoints above.
