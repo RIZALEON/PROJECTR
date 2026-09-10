@@ -1,5 +1,16 @@
 # Seat llama.xcframework (Metal) into YaAim
 
+
+## Status 2026-09-10 (Mac)
+
+- `llama.xcframework` **BUILT** (ios-arm64 Metal) via llama.cpp `build-xcframework.sh`
+- **Embed & Sign** wired in `ios/YaAim.xcodeproj` → path `ios/llama.xcframework`
+- `NativeHeart.swift` uses current C API: `import llama`, `llama_model_load_from_file`, `llama_init_from_model`, vocab tokenize/eos, `llama_model_free`
+- Mac **BUILD SUCCEEDED** with `llama.framework` inside YaAim.app/Frameworks
+- **Do not commit** the multi‑MB xcframework binary — keep local under `ios/llama.xcframework` (gitignored); sync only NativeHeart + pbxproj
+- Device smoke still needs: USB install + `heart.gguf` seated → `frameworkLinked` / `tokensOn`
+
+
 **Goal:** real offline token generate from `Documents/heart.gguf` via NativeHeart — not wasm, not cloud.
 
 MITHRIL (App Store *Local LLM: MITHRIL*) is a **borrow lab only** — never rename their tile to Я. Same GGUF can later land in our Documents.

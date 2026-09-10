@@ -38,3 +38,7 @@ Also: airplane chat still works · **tokensOn** still Mac Embed&Sign only.
 
 ## Reinstall
 Clean install / replace `ios/YaAim/www/` when www changes (WKWebView stale). Live seat: On My iPhone → **Я/**.
+
+## llama Metal (2026-09-10 Mac)
+xcframework built + Embed&Sign; NativeHeart C API synced on tip stream. Binary not in git. USB + heart.gguf → tokensOn smoke.
+

@@ -1,13 +1,14 @@
 import Foundation
 
+#if canImport(llama)
+import llama
+#endif
+
 /// Engine RIZAL on iOS: llama.cpp + Metal + Documents/heart.gguf.
 /// Not wasm. Not Safari. Function 0 still talks if this is `none`.
 ///
-/// This Linux box has **no** llama.xcframework binary. Mac must:
-/// 1) build or borrow llama.xcframework (Metal)
-/// 2) drag into YaAim → Embed & Sign
-/// 3) sign with team **88HACKXHZL** (bundle `io.github.rizaleon.yaaim.cam`)
-/// See docs/SEAT-LLAMA-XCFRAMEWORK.md. MITHRIL is borrow lab only — not product rename.
+/// Metal seat: ios/llama.xcframework Embed & Sign (team 88HACKXHZL).
+/// Unlimited local tokens — no cloud meter. MITHRIL = borrow lab only.
 final class NativeHeart {
     static let shared = NativeHeart()
 
@@ -124,9 +125,8 @@ final class NativeHeart {
         var mparams = llama_model_default_params()
         mparams.n_gpu_layers = 99 // Metal
 
-        guard let model = llama_load_model_from_file(path, mparams) else {
-            // Newer trees use llama_model_load_from_file — try name Mac's headers export.
-            loadError = "llama_load_model_from_file failed (if headers say llama_model_load_from_file, rename call)"
+        guard let model = llama_model_load_from_file(path, mparams) else {
+            loadError = "llama_model_load_from_file failed"
             loaded = false
             return
         }
@@ -136,9 +136,9 @@ final class NativeHeart {
         cparams.n_ctx = 256
         cparams.n_threads = 1
 
-        guard let ctx = llama_new_context_with_model(model, cparams) else {
-            loadError = "llama_new_context_with_model failed (or llama_init_from_model on newer API)"
-            llama_free_model(model)
+        guard let ctx = llama_init_from_model(model, cparams) else {
+            loadError = "llama_init_from_model failed"
+            llama_model_free(model)
             modelPtr = nil
             loaded = false
             return
@@ -152,10 +152,15 @@ final class NativeHeart {
         guard let ctx = ctxPtr, let model = modelPtr else {
             return "tokensOff · model not loaded"
         }
+        guard let vocab = llama_model_get_vocab(model) else {
+            return "tokensOff · vocab missing"
+        }
 
         let nPromptMax: Int32 = 256
         var tokens = [llama_token](repeating: 0, count: Int(nPromptMax))
-        let nTok = llama_tokenize(model, prompt, Int32(prompt.utf8.count), &tokens, nPromptMax, true, true)
+        let nTok = prompt.withCString { cstr -> Int32 in
+            llama_tokenize(vocab, cstr, Int32(prompt.utf8.count), &tokens, nPromptMax, true, true)
+        }
         guard nTok > 0 else { return "tokensOff · tokenize failed" }
 
         // Feed prompt
@@ -168,8 +173,8 @@ final class NativeHeart {
 
         var out = ""
         let nPredict = 64
+        let nVocab = llama_vocab_n_tokens(vocab)
         for _ in 0..<nPredict {
-            let nVocab = llama_n_vocab(model)
             guard let logits = llama_get_logits_ith(ctx, -1) else { break }
             var best: llama_token = 0
             var bestVal = logits[0]
@@ -179,11 +184,12 @@ final class NativeHeart {
                 if v > bestVal { bestVal = v; best = t }
                 t += 1
             }
-            if best == llama_token_eos(model) { break }
+            if best == llama_vocab_eos(vocab) { break }
 
             var buf = [CChar](repeating: 0, count: 128)
-            let n = llama_token_to_piece(model, best, &buf, Int32(buf.count), 0, false)
+            let n = llama_token_to_piece(vocab, best, &buf, Int32(buf.count), 0, false)
             if n > 0 {
+                buf[min(Int(n), buf.count - 1)] = 0
                 out += String(cString: buf)
             }
             var tok = best
@@ -197,7 +203,7 @@ final class NativeHeart {
 
     deinit {
         if let ctx = ctxPtr { llama_free(ctx) }
-        if let model = modelPtr { llama_free_model(model) }
+        if let model = modelPtr { llama_model_free(model) }
         if loaded { llama_backend_free() }
     }
     #endif
