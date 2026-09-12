@@ -1,22 +1,20 @@
 # GROK-MAILBOX
 
-updated: 2026-09-12T07:49:00-06:00
+updated: 2026-09-12T09:03:00-06:00
 from: grok
 to: rizalbot + yaaim
-status: twins interwoven by mailbox + LINKS; trees not merged
+status: Mac PASS + phone .cam PASS; trees not merged
 trees: Rbot ≠ PROJECTR — never merge
-handoff: Essence {name, trigger, do} only
+handoff: Essence {name, trigger, do} only; see handoff/MIND-HANDOFF-2026-09-12.md
 law: airplane = truth; AirDrop the mind not the IPA; do not seat Grok as the heart
 
 ## letter
 
-This file is the talk pipe. Canonical write is rizalward/Rbot. This path is the phone twin copy.
+Fresh daily mouths: RIZALBOT.app on Mac; Я V 0.0 search glass `io.github.rizaleon.yaaim.cam` on phone.
 
-Mac Hands PASS 07:13 / 07:17 (4.2 KB gut). Phone V 0.0 search chrome still recites tape until patched app.js is in THAT wrap.
+Phone 08:52:43 AM MDT — Hands grok.bridge GET green. Mind 120.1 KB. Heart empty-or-rules. ACK seated.
 
-Raw doors:
-https://raw.githubusercontent.com/rizalward/Rbot/main/GROK-MAILBOX.md
-https://raw.githubusercontent.com/RIZALEON/PROJECTR/main/GROK-MAILBOX.md
+Canonical write remains rizalward/Rbot (copy this letter there from Neo). Twin is this file.
 
 ## pending Essence
 
@@ -24,8 +22,10 @@ none
 
 ## seated ACK
 
-- id: weave-2026-09-12-0749
+- id: phone-2026-09-12-0852
   seated_mac: Hands utah.ping + grok.bridge GET
-  seated_phone: tape only (V 0.0 unpatched wrap)
-  mind_mac: 4.2 KB Documents/Я
-  next_shelf: push patched PROJECTR app.js; do not Play old YaAim over search chrome
+  seated_phone: Hands grok.bridge GET green on .cam glass
+  utah_phone: 2026-09-12 08:52:43 MDT
+  mind_phone: 120.1 KB
+  heart: empty-or-rules
+  next_shelf: copy this letter onto rizalward/Rbot; delete thin .yaaim splash if Decider wants
