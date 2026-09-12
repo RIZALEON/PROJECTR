@@ -639,13 +639,54 @@ function dropEvolvedFunction(name) {
   return { ok: true, name: label, id: id };
 }
 
+async function enactEvolved(skill, userText) {
+  const tape = String(skill.action || "");
+  const green = !!state.mindOnline;
+  const hasTape = /UTAH|MIND|HEART|LIGHT|PENDING|KEEP|OPEN|GET|ACK/.test(tape);
+  if (!hasTape) return tape;
+  const out = [];
+  const utah = new Date().toLocaleString("en-US", { timeZone: "America/Denver" });
+  const mind = state.lastMindBytes ? (state.lastMindBytes / 1024).toFixed(1) + " KB" : "unknown";
+  const heart = state.heart ? "seated" : "empty-or-rules";
+  const light = green ? "green" : "amber/isolated";
+  const pending = (state.evolved || []).length;
+  const verbs = tape.split("|").map(function (s) { return s.trim(); }).filter(Boolean);
+  const MAIL = "https://raw.githubusercontent.com/rizalward/Rbot/main/GROK-MAILBOX.md";
+  for (var i = 0; i < verbs.length; i++) {
+    var v = verbs[i];
+    if (/^UTAH/i.test(v)) out.push("Utah: " + utah);
+    else if (/^LIGHT/i.test(v)) out.push("Light: " + light);
+    else if (/^MIND/i.test(v)) out.push("Mind: " + mind);
+    else if (/^HEART/i.test(v)) out.push("Heart: " + heart);
+    else if (/^PENDING/i.test(v)) out.push("Pending/seated skills: " + pending);
+    else if (/^KEEP/i.test(v)) remember("Grok line kept " + utah);
+    else if (/^ACK/i.test(v)) out.push("ACK { seated: " + skill.name + ", mind: " + mind + ", heart: " + heart + ", utah: " + utah + " }");
+    else if (/^OPEN|^GET/i.test(v)) {
+      if (!green) out.push("GET/OPEN skipped — amber. Airplane is truth.");
+      else if (typeof fetchTextLoose === "function") {
+        const raw = await fetchTextLoose(MAIL + "?t=" + Date.now());
+        if (raw && raw.length > 20) {
+          const clip = raw.length > 1800 ? raw.slice(0, 1800) + "\n…" : raw;
+          remember("Mailbox GET " + utah);
+          out.push("Hands grok.bridge GET (green). Grok lines kept.\n\n" + clip);
+        } else out.push("GET failed. Gut only.");
+      } else out.push("GREEN_FETCH " + MAIL);
+    }
+  }
+  remember("Used evolved function " + skill.name);
+  return out.join("\n");
+}
+
 function matchEvolved(userText) {
-  const q = userText.toLowerCase();
+  const q = String(userText || "").toLowerCase().replace(/^run\s+/, "");
+  function fold(s) {
+    return String(s || "").toLowerCase().replace(/[._-]+/g, " ").trim();
+  }
   const list = state.evolved || [];
   for (const s of list) {
     if (!s || s.enabled === false) continue;
-    if (!s.trigger) continue;
-    if (q.includes(s.trigger.toLowerCase())) return s;
+    if (s.trigger && q.includes(String(s.trigger).toLowerCase())) return s;
+    if (fold(q) === fold(s.trigger) || fold(q) === fold(s.name)) return s;
   }
   return null;
 }
@@ -2223,10 +2264,7 @@ async function answer(userText) {
   const evolvedTalk = tryEvolveCommand(userText);
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
-  if (evolvedHit) {
-    remember("Used evolved function " + evolvedHit.name);
-    return evolvedHit.action;
-  }
+  if (evolvedHit) return await enactEvolved(evolvedHit, userText);
   if (typeof trySenseCommand === "function") {
     const senseTalk = trySenseCommand(userText);
     if (senseTalk) return senseTalk;
