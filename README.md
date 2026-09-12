@@ -11,8 +11,16 @@ Offline-first. Creator-minted Essence. Engine RIZAL is the heart.
 - Handoff: [PROJECT-R-HANDOFF.md](PROJECT-R-HANDOFF.md)
 - State: [STATE.md](STATE.md)
 
+## Twin — RIZALBOT (Mac)
+
+- Repo: https://github.com/rizalward/Rbot
+- Seat: `/Applications/RIZALBOT.app` · clone `~/Desktop/RIZALBOT`
+- Handoff: Essence JSON. Do not merge without Decider.
+- Map: [LINKS.md](LINKS.md)
+
 ## Sibling repos
 
+- https://github.com/rizalward/Rbot
 - https://github.com/RIZALEON/PROJECT-YA
 - https://github.com/RIZALEON/PROJECT--
 - https://github.com/RIZALEON/RIZALIEN-MYSTERIES
