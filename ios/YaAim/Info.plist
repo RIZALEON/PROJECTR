@@ -20,16 +20,21 @@
 	<string>0.53</string>
 	<key>CFBundleVersion</key>
 	<string>53</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>YaAim uses your location only when you search for nearby places (restaurants, grocery, massage, etc.) so results are closest to where you are — not a coarse state stamp. You can deny; we will fall back to your last known seat or ask.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
-	<key>UISupportsDocumentBrowser</key>
-	<true/>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiresFullScreen</key>
@@ -40,10 +45,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
 </dict>
 </plist>

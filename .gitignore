@@ -4,3 +4,8 @@
 wllama/wasm/
 wllama/compat/
 __pycache__/
+
+# Metal llama binary — build on Mac; never commit multi-MB xcframework
+ios/llama.xcframework/**
+!ios/llama.xcframework/README.md
+**/ya-deps/llama.cpp/

@@ -189,6 +189,9 @@ function hydrateActiveMind() {
   state = load();
   try { scrubWikiJunk(); } catch (e) {}
   try { scrubLinkJunk(); } catch (e) {}
+  try { scrubSearchInfraJunk(); } catch (e) {}
+  try { scrubSearchFalseFriendJunk(); } catch (e) {}
+  try { scrubHygieneJunk(); } catch (e) {}
   try { seedCore(); } catch (e) {}
   vault = loadVault();
   github = loadGithub();
@@ -270,6 +273,9 @@ let account = loadAccount();
 let state = load();
 try { scrubWikiJunk(); } catch (e) {}
 try { scrubLinkJunk(); } catch (e) {}
+try { scrubSearchInfraJunk(); } catch (e) {}
+try { scrubSearchFalseFriendJunk(); } catch (e) {}
+try { scrubHygieneJunk(); } catch (e) {}
 let creator = null;
 let vault = loadVault();
 let github = loadGithub();
@@ -463,6 +469,7 @@ function wikiJunk(title, extract) {
   if (/may refer to/i.test(t) || /may refer to/i.test(x)) return true;
   if (/\bdisambiguation\b/i.test(t) || /\bdisambiguation\b/i.test(x)) return true;
   if (/^\d+\s*[+\-×x*/]\s*\d+$/i.test(t) && t.replace(/\s+/g, "") !== foldQ(x).slice(0, 20)) return true;
+  if (typeof isSearchInfraJunk === "function" && isSearchInfraJunk(t, x, "")) return true;
   return false;
 }
 
@@ -472,6 +479,252 @@ function isWikiJunkMemory(text) {
   if (/may refer to/i.test(s)) return true;
   if (/\bdisambiguation\b/i.test(s) && /^(why|dating|what time is it)\b/i.test(s)) return true;
   return false;
+}
+
+
+function searchStopTerms() {
+  return new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we","that","this","for","please","with","from","about","into","over","under","search","online","look","keep","page","book","text","next","wave","after","list","then"]);
+}
+
+function searchContentTerms(query) {
+  const stop = searchStopTerms();
+  return foldQ(query).split(/\W+/).filter((w) => w.length >= 3 && !stop.has(w));
+}
+
+function isSearchInfraHost(urlOrHost) {
+  const s = String(urlOrHost || "").toLowerCase();
+  if (!s) return false;
+  try {
+    const u = new URL(s.includes("://") ? s : ("https://" + s));
+    const h = (u.hostname || "").replace(/^www\./, "");
+    if (h === "ntfy.sh" || h.endsWith(".ntfy.sh")) return true;
+    if (/ntfy/.test(h) && /reconnect|interact|rizalbot|rizaleon/.test(u.pathname || "")) return true;
+  } catch (e) {
+    if (/\bntfy\.sh\b/.test(s) || /\bntfy\b/.test(s) && /\b(reconnect|interact)\b/.test(s)) return true;
+  }
+  return /\bntfy\.sh\b/.test(s) || /\bya-reconnect\b/.test(s) || /\binteract bind\b/.test(s);
+}
+
+function isSearchInfraJunk(title, body, url) {
+  const hay = (String(title || "") + "\n" + String(body || "") + "\n" + String(url || "")).toLowerCase();
+  if (isSearchInfraHost(url) || isSearchInfraHost(hay)) return true;
+  if (/\bntfy\.sh\b/.test(hay)) return true;
+  // ntfy landing / push-notification infra — even with no URL in the haystack
+  if (/\bpush notifications?\b/.test(hay)) return true;
+  if (/\bsend push notifications?\b/.test(hay)) return true;
+  if (/\binteract (bind|channel|inbox)\b/.test(hay)) return true;
+  if (/\bya-reconnect\b/.test(hay) || /\bya-rizalbot-p-\b/.test(hay)) return true;
+  return false;
+}
+
+/** Memory-row hygiene: Link note+ntfy / push / interact / reconnect infra. */
+function isSearchInfraJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (/^Link note:/i.test(s) && /ntfy\.sh/i.test(s)) return true;
+  if (/^Link note:/i.test(s) && /\bpush notifications?\b/i.test(s)) return true;
+  if (isSearchInfraJunk(s, "", "")) return true;
+  return false;
+}
+
+/** Broad recall/boot hygiene (wiki + CAPTCHA walls + search infra). */
+function isHygieneJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (isWikiJunkMemory(s) || isLinkJunkMemory(s) || isSearchInfraJunkMemory(s)) return true;
+  if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(s)) return true;
+  return false;
+}
+
+function scrubSearchInfraJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isSearchInfraJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
+function scrubHygieneJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isHygieneJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
+/** Prefer Christopher Bishop / PRML; reject industrial DCS false friends when query is ML Bishop. */
+function isBishopPrmlQuery(query) {
+  const q = foldQ(query);
+  const hasBishop = /\bbishop\b/.test(q);
+  const hasPat = /\bpattern\b/.test(q) && /\brecognition\b/.test(q);
+  const hasML = /\b(machine learning|\bml\b|prml|vapnik|hastie|tibshirani|friedman)\b/.test(q);
+  return hasBishop && (hasPat || hasML || /\bpattern recognition\b/.test(q));
+}
+
+function isVagueSingleTokenAsk(query) {
+  const toks = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query).split(/\W+/).filter(Boolean);
+  return toks.length === 1 && /^(recognition|pattern|bishop|mutual)$/i.test(toks[0]);
+}
+
+function isBishopOnlyQuery(query) {
+  const q = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query);
+  return /\bbishop\b/.test(q);
+}
+
+function isTop3GamesJunk(title, body, url) {
+  const hay = foldQ((title || "") + "\n" + (body || "") + "\n" + (url || ""));
+  if (/top3game\.com/.test(hay)) return true;
+  if (/top\s*3\s*!\s*games/.test(hay)) return true;
+  if (/\btop\s*3\b/.test(hay) && /\b(games?|alien stage|youtube|rut=)\b/.test(hay)) return true;
+  if (/^top\s*3\b/.test(foldQ(title || "")) && /\b(games|youtube)\b/.test(hay)) return true;
+  return false;
+}
+
+/** Spigot/Minecraft PingCompass false friend — never for non-minecraft queries. */
+function isPingCompassJunk(title, body, url, query) {
+  const q = foldQ(query || "");
+  if (/\b(minecraft|spigot|bukkit|paper\s*mc|pingcompass|plugin)\b/.test(q) && /\b(minecraft|spigot|bukkit|pingcompass)\b/.test(q)) return false;
+  const hay = foldQ((title || "") + "\n" + (body || "") + "\n" + (url || ""));
+  if (/spigotmc|\bpingcompass\b|solid compass and ping/.test(hay)) return true;
+  if (/\bspigot\b/.test(hay) && /\b(plugin|minecraft|bukkit|paper)\b/.test(hay)) return true;
+  if (/minecraft plugin|\bbukkit\b|paper\s*mc/.test(hay)) return true;
+  if (/\bminecraft\b/.test(hay) && /\b(compass|plugin)\b/.test(hay) && /\b(spigot|bukkit|paper|plugin)\b/.test(hay)) return true;
+  return false;
+}
+
+/** top3game + pingcompass + spigot false friends (query-aware when query passed). */
+function isSearchFalseFriendJunk(title, body, url, query) {
+  if (isTop3GamesJunk(title, body, url || "")) return true;
+  if (isPingCompassJunk(title, body, url || "", query || "")) return true;
+  return false;
+}
+
+function isSearchFalseFriendJunkMemory(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (isSearchFalseFriendJunk(s, "", "", "")) return true;
+  // Poisoned Duda bios kept under Bishop/Recognition asks
+  if (typeof isDudaNotBishop === "function" && isDudaNotBishop(s, "")) return true;
+  if (/pingcompass|spigotmc|top3game|solid compass and ping/i.test(s)) return true;
+  return false;
+}
+
+function scrubSearchFalseFriendJunk() {
+  const before = (state.memories || []).length;
+  state.memories = (state.memories || []).filter((m) => !isSearchFalseFriendJunkMemory(m && m.text));
+  if (state.memories.length !== before) save();
+}
+
+/** Bishop keep law — call before ANY remember of web search extract. */
+function bishopKeepAllowed(query, title, body, url) {
+  const q = foldQ(typeof stripSearchFluff === "function" ? stripSearchFluff(query) : query);
+  const hay = foldQ((title || "") + " " + (body || "") + " " + (url || ""));
+  if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+  const bishopPat = /\bbishop\b/.test(q) && (/\b(pattern|recognition|prml|ml)\b/.test(q) || /\bpattern recognition\b/.test(q));
+  if (bishopPat || isBishopPrmlQuery(query)) {
+    const hasChris = /\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay);
+    const hasPrml = /\bprml\b/.test(hay) || /\bpattern recognition and machine learning\b/.test(hay);
+    if (!hasChris && !hasPrml) return false;
+    if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+    return true;
+  }
+  if (isBishopOnlyQuery(query)) {
+    if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+    if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+    if (/pingcompass|spigot|minecraft|top3game|top\s*3\s*!\s*games/i.test(hay) && !/\bchristopher\b/.test(hay)) return false;
+    // Prefer Christopher/PRML; reject unrelated bishop false friends
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
+    if (/\bbishop\b/.test(hay) && !/spigot|minecraft|pingcompass|plugin/i.test(hay)) return true;
+    return false;
+  }
+  return true;
+}
+
+function isIndustrialDcsFalseFriend(title, body) {
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (/\b(christopher bishop|pattern recognition and machine learning|\bprml\b|springer)\b/.test(hay)) return false;
+  if (/\b(distributed control|dcs\b|process control|scada|plc\b|industrial automation|honeywell|yokogawa|emerson)\b/.test(hay)) return true;
+  if (/\bpattern recognition\b/.test(hay) && /\b(control system|plant floor|refinery)\b/.test(hay)) return true;
+  return false;
+}
+
+function isDudaNotBishop(title, body) {
+  const hay = foldQ((title || "") + " " + (body || ""));
+  return /\b(richard o\.?\s*duda|richard duda|\bduda\b)/.test(hay) && !/\bchristopher\b/.test(hay) && !/\bprml\b/.test(hay);
+}
+
+function searchPreferBishopPrml(query, title, body, url) {
+  const q = foldQ(query);
+  if (isSearchFalseFriendJunk(title, body, url || "", query) && !/\b(game|games|gaming|minecraft|spigot)\b/.test(q)) return false;
+  if (!isBishopPrmlQuery(query) && !isBishopOnlyQuery(query)) return true;
+  if (!bishopKeepAllowed(query, title, body, url || "")) return false;
+  if (isIndustrialDcsFalseFriend(title, body)) return false;
+  if (isDudaNotBishop(title, body) && !/\bduda\b/.test(q)) return false;
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (isBishopPrmlQuery(query)) {
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
+    if (/\bbishop\b/.test(hay) && /\b(pattern recognition and machine learning|machine learning)\b/.test(hay)) return true;
+    return false;
+  }
+  if (isBishopOnlyQuery(query)) {
+    if (isSearchFalseFriendJunk(title, body, url || "", query)) return false;
+    if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) return true;
+    if (/\bprml\b/.test(hay)) return true;
+    if (!/\bbishop\b/.test(hay)) return false;
+  }
+  return true;
+}
+
+/** Title/body must share query content terms — else discard (stops ntfy/jina off-topic keeps). */
+function searchRelevant(query, title, body) {
+  if (isSearchInfraJunk(title, body, "")) return false;
+  if (isSearchFalseFriendJunk(title, body, "", query) && !/\b(game|games|gaming|minecraft|spigot)\b/.test(foldQ(query))) return false;
+  const terms = searchContentTerms(query);
+  if (!terms.length) return true;
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (!hay.trim()) return false;
+  let hits = 0;
+  for (const t of terms) {
+    if (hay.indexOf(t) >= 0) hits++;
+  }
+  // Need at least one strong term (len>=5) or two shorter terms
+  const strong = terms.filter((t) => t.length >= 5);
+  let ok = false;
+  if (strong.some((t) => hay.indexOf(t) >= 0)) ok = true;
+  else if (hits >= 2) ok = true;
+  else if (terms.length === 1 && hits >= 1) ok = true;
+  if (!ok) return false;
+  if (!searchPreferBishopPrml(query, title, body, "")) return false;
+  return true;
+}
+
+function stripSearchFluff(query) {
+  let q = String(query || "").trim();
+  q = q.replace(/^(please\s+)?(search(\s+it)?\s+online|search\s+the\s+web|look(\s+it|\s+that)?\s+up(\s+online)?)\s*[:\-]?\s*/i, "");
+  q = q.replace(/^next\s+wave\s+after\s+this\s+list\s*[:\-]?\s*/i, "");
+  q = q.replace(/^(also\s+)?(find|lookup|look\s+up)\s*[:\-]?\s*/i, "");
+  return q.trim();
+}
+
+function splitSearchCandidates(query) {
+  const cleaned = stripSearchFluff(query);
+  if (!cleaned) return [];
+  const parts = cleaned.split(/\s*(?:,|;|\n|\r| then )\s*/i).map((p) => p.trim()).filter((p) => p.length >= 4);
+  const out = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const k = foldQ(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+  }
+  if (!out.length && cleaned.length >= 4) out.push(cleaned);
+  // Very long query: also try first meaningful title alone
+  if (cleaned.length > 80) {
+    const first = cleaned.split(/[,;\n]/)[0].trim();
+    if (first.length >= 4 && !seen.has(foldQ(first))) {
+      out.unshift(first);
+    }
+  }
+  return out.slice(0, 6);
 }
 
 function scrubWikiJunk() {
@@ -526,6 +779,13 @@ function remember(text) {
   if (clean.length < 2) return;
   if (isWikiJunkMemory(clean)) return;
   if (isLinkJunkMemory(clean)) return;
+  // Never persist ntfy / push-notification / interact infra (Link notes or otherwise)
+  if (isSearchInfraJunkMemory(clean)) return;
+  if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(clean)) return;
+  if (typeof isRaceBoardText === "function" && isRaceBoardText(clean)) return;
+  if (/^Pong\s*·/i.test(clean) || /^Compass race\b/i.test(clean)) return;
+  if (/^Link note:/i.test(clean) && /ntfy\.sh/i.test(clean)) return;
+  if (/\bpush notifications?\b/i.test(clean) && (/\bntfy\b/i.test(clean) || /^Link note:/i.test(clean))) return;
   const fact = { id: crypto.randomUUID(), text: clean, at: Date.now() };
   state.memories.unshift(fact);
   state.memories = state.memories.slice(0, 200);
@@ -546,6 +806,8 @@ function extractMemories(userText) {
   if (/remember this[:\s]/i.test(t)) {
     remember(t.replace(/.*remember this[:\s]*/i, ""));
   }
+  const shelf = t.match(/^(?:shelf|asta|bookshelf)\s*[:\-]\s*(.+)$/i);
+  if (shelf) remember("Shelf: " + shelf[1].trim());
 }
 
 function recall(query, limit) {
@@ -560,19 +822,38 @@ function recall(query, limit) {
     const hay = m.text.toLowerCase();
     if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
     if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
-    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text) || isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return { m, score: 0, longHit: false, core: false };
+    if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", qFull)) return { m, score: 0, longHit: false, core: false };
+    if (/\bbishop\b/.test(qFull) && !/\bduda\b/.test(qFull)) {
+      if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "")) return { m, score: 0, longHit: false, core: false };
+      if (/pingcompass|spigotmc|solid compass and ping/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
+    }
+    if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(qFull)) return { m, score: 0, longHit: false, core: false };
+    if (/^Used evolved function\b/i.test(m.text)) return { m, score: 0, longHit: false, core: false };
     const core = /^core:/i.test(m.text);
     if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
     let longHit = false;
+    let overlap = 0;
     words.forEach((w) => {
       if (hay.includes(w)) {
         score += 1;
+        overlap += 1;
         if (w.length >= 4) longHit = true;
       }
     });
-    if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
-    if (!core) score += 2;
+    if (qFull.length >= 4 && hay.includes(qFull)) {
+      score += 3;
+      overlap += 1;
+    }
+    // No free +2 — zero-overlap must not surface stale Pong/Top3/random gut
+    if (overlap === 0) return { m, score: 0, longHit: false, core: core };
+    if (!core) score += 1;
+    if (/^(user'?s name is|likes |lives in )/i.test(m.text)) score += 4;
+    if (typeof isShelfMemory === "function" && isShelfMemory(m.text)) score += 5;
     return { m, score, longHit, core: core };
   });
   return scored
@@ -620,6 +901,22 @@ function forgetFact(idOrText) {
   save();
   try { renderPanel(); } catch (e) {}
   return { ok: true, removed: removed.length, facts: removed };
+}
+
+
+function tryRecallCommand(userText) {
+  const t = String(userText || "").trim();
+  const m = t.match(/^(?:recall|what do you (?:remember|know) about|retrieve)\s+(.+)$/i);
+  if (!m && !/^recall\s*\??$/i.test(t)) return null;
+  const q = m ? m[1].replace(/[.?!:]+$/, "").trim() : "";
+  if (!q) return "Say recall … with what to retrieve from gut, continuity, or Shelf: facts.";
+  const bag = retrieveBeforeReply(q);
+  if (bag.direct) return "Retrieved:\n" + bag.direct;
+  if (bag.hits && bag.hits.length) {
+    return "Retrieved:\n" + bag.hits.slice(0, 5).map(function (h) { return "- " + h.text; }).join("\n");
+  }
+  if (bag.continuity) return "Continuity only:\n" + bag.continuity;
+  return "Nothing seated for that yet. Say remember this: … or Shelf: … then recall again.";
 }
 
 function tryForgetCommand(userText) {
@@ -743,18 +1040,58 @@ function dropEvolvedFunction(name) {
   return { ok: true, name: label, id: id };
 }
 
+function isRaceChatCommand(q) {
+  const low = String(q || "").toLowerCase().trim().replace(/[.?!]+$/g, "");
+  return (
+    low === "top 3" || low === "fastest 3" || low === "top three" || low === "top three pong" ||
+    low === "fastest three" || low === "top3" || low === "ping" || low === "ping bounce" ||
+    low === "compass" || low === "compass board" || low === "race board" || low === "compass ping" ||
+    low === "race ping" || low === "ping race" || low === "furthest" || low === "furthest tower" ||
+    low === "ping furthest"
+  );
+}
+
+function isRaceBoardText(text) {
+  const s = String(text || "");
+  if (!s) return false;
+  if (/^Pong\s*[·.•:-]/i.test(s)) return true;
+  if (/^Compass\s+race\b/i.test(s)) return true;
+  if (/\bTop\s*3\s*[·.•:-]/i.test(s)) return true;
+  if (/\bFurthest\s+Tower\b/i.test(s) && /\bClosest\b/i.test(s)) return true;
+  if (/\bclosest bounce\b/i.test(s) && /\b(local-seat|Pong)\b/i.test(s)) return true;
+  if (/^Law\s*·\s*winners\s*=\s*RTT/i.test(s)) return true;
+  return false;
+}
+
+/** Academic / common English — never substring-fire as evolve triggers. */
+function isAcademicOrUnsafeTrigger(trig) {
+  const t = String(trig || "").toLowerCase().trim();
+  if (!t) return true;
+  if (/\b(pattern|recognition|bishop|classification|neural|statistical|machine\s*learning|book|theory|algorithm|matrix|vector|probability|bayes|gaussian|regression|cluster)\b/.test(t)) return true;
+  return false;
+}
+
 function matchEvolved(userText) {
-  const q = userText.toLowerCase();
+  const q = String(userText || "").toLowerCase().trim().replace(/[.?!]+$/g, "");
   const list = state.evolved || [];
   for (const s of list) {
     if (!s || s.enabled === false) continue;
     if (!s.trigger) continue;
-    if (q.includes(s.trigger.toLowerCase())) return s;
+    const trig = String(s.trigger).toLowerCase().trim().replace(/[.?!]+$/g, "");
+    if (!trig) continue;
+    const action = String(s.action || "");
+    // Stale race-board actions must NEVER fire on academic/freeform chat
+    if (isRaceBoardText(action) && !isRaceChatCommand(q)) continue;
+    if (/\bYA_LAST_RACE\b/i.test(action) && !isRaceChatCommand(q)) continue;
+    // HARD LAW: exact phrase equality only — never includes()/substring/boundary.
+    // "Bishop pattern recognition" must NOT match trigger "recognition" or "pattern".
+    if (q !== trig) continue;
+    // Race-like triggers: still exact (already), but refuse academic trigger words even on exact if action looks like race board
+    if (isAcademicOrUnsafeTrigger(trig) && isRaceBoardText(action)) continue;
+    return s;
   }
   return null;
 }
-
-
 
 function isEatAsk(text) {
   const q = String(text || "").toLowerCase();
@@ -885,9 +1222,24 @@ function classifyAsk(userText) {
   return "talk";
 }
 
-function coreHitText(hits, kind) {
+function coreHitText(hits, kind, userText) {
   const list = Array.isArray(hits) ? hits : [];
-  const facts = list.filter((m) => m && m.text && !/^Core:/i.test(m.text) && !/^user said:/i.test(m.text) && !/^From talk:/i.test(m.text));
+  const q = foldQ(userText || "");
+  const facts = list.filter((m) => {
+    if (!m || !m.text) return false;
+    if (/^Core:/i.test(m.text) || /^user said:/i.test(m.text) || /^From talk:/i.test(m.text)) return false;
+    if (isHygieneJunkMemory(m.text) || isSearchInfraJunkMemory(m.text)) return false;
+    if (typeof isRaceBoardText === "function" && isRaceBoardText(m.text)) return false;
+    if (/^Pong\s*·/i.test(m.text)) return false;
+    if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+    if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return false;
+    if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", q)) return false;
+    // Never sticky-replay Duda bio for Bishop/Recognition academic asks
+    if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/.test(q)) return false;
+    if (/\bbishop\b/.test(q) && !/\bduda\b/.test(q) && typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "")) return false;
+    if (/^(recognition|pattern|bishop)$/i.test(q.trim()) && (/\bduda\b/i.test(m.text) || /\bbishop\b/i.test(m.text))) return false;
+    return true;
+  });
   if (kind === "ask" || kind === "how") return facts.length ? facts[0].text : "";
   if (facts.length) return facts[0].text;
   const core = list.find((m) => m && /^Core:/i.test(m.text));
@@ -899,8 +1251,18 @@ function coreReply(userText, hits) {
   if (nuclearBlocked(t)) {
     return "No. I am an anti-nuclear engine. I will not help with nuclear weapons, online or off. That rule is in this mind.";
   }
+  const qBare = foldQ(t).replace(/[.?!]+$/g, "").trim();
+  // Bare Recognition/pattern: never return Duda/Bishop bios from gut as direct answer
+  if (/^(recognition|pattern)$/i.test(qBare)) {
+    if (typeof mindWantsWeb === "function" && mindWantsWeb()) return "SEARCH_NOW";
+    return "I am listening. Ask what you need, or tap the light green to search.";
+  }
+  // Online Bishop/PRML: do NOT sticky-replay held bios — fall through to search
+  if (typeof mindWantsWeb === "function" && mindWantsWeb() && (isBishopPrmlQuery(t) || isBishopOnlyQuery(t))) {
+    return "SEARCH_NOW";
+  }
   const kind = classifyAsk(t);
-  const held = coreHitText(hits, kind);
+  const held = coreHitText(hits, kind, t);
   if (kind === "care") {
     if (held) return "I am here with you on this device. I hold: " + held + " One step: name one thing that would help in the next hour.";
     return "I am here on this device with you. I will not pretend to know your whole story. One step: name one thing that would help in the next hour.";
@@ -940,6 +1302,69 @@ function seedCore() {
 }
 
 
+/** NativeHeart / iOS heart fragment — tokensOn · llama.cpp · Metal (never Android APK eat line). */
+function heartStatusFrag() {
+  let heart = "";
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine() && window.YA_NATIVE) {
+      const off = window.YA_NATIVE.tokensOff === true || window.YA_NATIVE.tokensOn === false;
+      const linked = window.YA_NATIVE.frameworkLinked === true;
+      const seated = window.YA_NATIVE.seated === true || (Number(window.YA_NATIVE.heartBytes) || 0) > 1024;
+      const eng = window.YA_NATIVE.engine || "none";
+      if (!linked) heart = " · heart tokensOff (no llama.xcframework · mithrilBorrow lab)";
+      else if (!seated) heart = " · heart tokensOff (no heart.gguf)";
+      else if (off) heart = " · heart tokensOff";
+      else heart = " · heart tokensOn · " + eng + (window.YA_NATIVE.metal ? " · Metal" : "");
+    } else if (typeof llamaIsReady === "function" && llamaIsReady()) {
+      heart = " · heart tokensOn · llama.cpp";
+    }
+  } catch (e2) {}
+  return heart;
+}
+
+/** Bare Heart — short status only (no eat / HANDOFF / APK leftover). */
+function shortHeartStatusLine() {
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine() && window.YA_NATIVE) {
+      const n = window.YA_NATIVE;
+      const linked = n.frameworkLinked === true;
+      const seated = n.seated === true || (Number(n.heartBytes) || 0) > 1024;
+      const on = n.tokensOn === true && n.tokensOff !== true;
+      const eng = n.engine || "none";
+      const parts = ["Heart"];
+      parts.push(linked ? "frameworkLinked" : "frameworkLinked:false");
+      parts.push(seated ? "seated" : "seated:false");
+      if (on) {
+        parts.push("tokensOn");
+        parts.push(eng);
+        if (n.metal) parts.push("Metal");
+      } else {
+        parts.push("tokensOff");
+        if (!linked) parts.push("no llama.xcframework");
+        else if (!seated) parts.push("no heart.gguf");
+      }
+      return parts.join(" · ");
+    }
+  } catch (e) {}
+  if (typeof llamaIsReady === "function" && llamaIsReady()) {
+    return "Heart · tokensOn · llama.cpp";
+  }
+  return "Heart · tokensOff · rules+gut";
+}
+
+function statusHeartLine() {
+  return pingStatusLine().replace(/^Status\b/, "Status/heart");
+}
+
+async function refreshNativeHeartForStatus() {
+  try {
+    if (typeof isNativeSpine === "function" && isNativeSpine()) {
+      const st = await nativeAsk("status", {});
+      if (st) applyNativeVaultStatus(st);
+    }
+  } catch (e) {}
+}
+
 function pingStatusLine() {
   try { renderMind(); } catch (e) {}
   const mind = state.mindOnline
@@ -947,7 +1372,7 @@ function pingStatusLine() {
     : "amber · offline · local";
   const sz = formatBytes(mindBytes());
   const nEv = (state.evolved || []).length;
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv;
+  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heartStatusFrag();
 }
 
 function ensureDemoPingStatusSkill() {
@@ -1050,6 +1475,69 @@ function isMathAsk(text) {
   return !!extractMath(text);
 }
 
+function isShelfMemory(text) {
+  const s = String(text || "");
+  if (/^(Shelf:|ASTA:|Bookshelf:|shelf\.)/i.test(s)) return true;
+  return false;
+}
+
+/** Track B — retrieve-before-reply: gut + continuity + shelf-tagged facts. */
+function retrieveBeforeReply(userText) {
+  const q = String(userText || "").trim();
+  const hits = (typeof recall === "function") ? recall(q, 8) : [];
+  let cont = "";
+  try {
+    if (typeof window !== "undefined" && typeof window.yaContinuityRecallSnippet === "function") {
+      cont = window.yaContinuityRecallSnippet(q) || "";
+    }
+  } catch (e) {}
+  try {
+    if (typeof window !== "undefined" && typeof window.yaTouchContinuity === "function") {
+      window.yaTouchContinuity();
+    }
+  } catch (e2) {}
+  function scrubRace(arr) {
+    return (arr || []).filter(function (m) {
+      if (!m || !m.text) return false;
+      if (isRaceBoardText(m.text) || /^Used evolved function\b/i.test(m.text) || /^Core:/i.test(m.text)) return false;
+      if (typeof isHygieneJunkMemory === "function" && isHygieneJunkMemory(m.text)) return false;
+      if (typeof isTop3GamesJunk === "function" && isTop3GamesJunk(m.text, "", "")) return false;
+      if (typeof isSearchFalseFriendJunkMemory === "function" && isSearchFalseFriendJunkMemory(m.text)) return false;
+      if (typeof isPingCompassJunk === "function" && isPingCompassJunk(m.text, "", "", q)) return false;
+      if (typeof isDudaNotBishop === "function" && isDudaNotBishop(m.text, "") && !/\bduda\b/i.test(foldQ(q))) return false;
+      return true;
+    });
+  }
+  const shelfHits = scrubRace((hits || []).filter(function (m) { return m && isShelfMemory(m.text); }));
+  const cleanHits = scrubRace(hits || []);
+  if (cont && isRaceBoardText(cont)) cont = "";
+  if (cont && /\b(Top\s*3|Pong\s*[·.•]|Compass race|Furthest Tower|YA_LAST_RACE)\b/i.test(cont)) cont = "";
+  let direct = "";
+  const qToks = foldQ(q).split(/\W+/).filter(Boolean);
+  if (qToks.length === 1 && /^(recognition|pattern|bishop)$/i.test(qToks[0])) {
+    return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: "" };
+  }
+  if ((isBishopPrmlQuery(q) || (isBishopOnlyQuery(q) && !/\bduda\b/i.test(foldQ(q)))) && typeof mindWantsWeb === "function" && mindWantsWeb()) {
+    return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: "" };
+  }
+  // Direct gut answers only for clear ask-forms — never for academic bare phrases like "Recognition"
+  const askish = /\?$|^(who|what|when|where|which|why|how|do you|did you|is |are |can you|recall|remember)\b/i.test(q);
+  const raceCmd = typeof isRaceChatCommand === "function" && isRaceChatCommand(q);
+  if (askish && !raceCmd && (shelfHits.length || cleanHits.length)) {
+    const top = shelfHits[0] || cleanHits[0];
+    if (top && top.text && !isRaceBoardText(top.text)) {
+      direct = String(top.text);
+      if (cont) {
+        const c0 = String(cont).split("\n")[0];
+        if (c0 && !isRaceBoardText(c0) && direct.indexOf(c0) < 0) direct = direct + "\n(Continuity) " + c0;
+      }
+    }
+  }
+  // Never return YA_LAST_RACE / race boards as direct for non-ping chats
+  if (direct && isRaceBoardText(direct) && !raceCmd) direct = "";
+  return { hits: cleanHits, shelfHits: shelfHits, continuity: cont, direct: direct };
+}
+
 function localEngine(userText) {
   extractMemories(userText);
   const q = userText.toLowerCase().trim();
@@ -1061,7 +1549,19 @@ function localEngine(userText) {
   if (isEngineNameAsk(userText)) return explainEngine();
   if (isBodyAsk(userText)) return explainBody();
   if (isSelfMindAsk(userText)) return explainSelfMind();
-  const hits = recall(userText);
+  // Academic: bare Recognition / Bishop+pattern must search — never sticky Duda gut
+  const qFold = foldQ(userText).replace(/[.?!]+$/g, "").trim();
+  if (/^(recognition|pattern)$/i.test(qFold)) {
+    if (state.mindOnline || (typeof mindWantsWeb === "function" && mindWantsWeb())) return "SEARCH_NOW";
+    return "I am listening. Ask what you need, or tap the light green to search.";
+  }
+  if (/^bishop$/i.test(qFold) || isBishopPrmlQuery(userText) || isBishopOnlyQuery(userText)) {
+    if (state.mindOnline || (typeof mindWantsWeb === "function" && mindWantsWeb())) return "SEARCH_NOW";
+  }
+  const bag = retrieveBeforeReply(userText);
+  // Never fall back to unfiltered recall() — that re-leaked Pong/Top3 after scrub
+  const hits = (bag.hits && bag.hits.length) ? bag.hits : [];
+  if (bag.direct && /\?$|^(who|what|when|where|which|why|how)\b/i.test(q)) return bag.direct;
 
   if (/non[- ]?nuclear|anti[- ]?nuclear/.test(q)) {
     return "Yes. I am an anti-nuclear engine. I run on this device. I will not help with nuclear weapons.";
@@ -1104,7 +1604,7 @@ function localEngine(userText) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
   }
   if (/what do you remember|what do you know about me/.test(q)) {
-    const real = state.memories.filter((m) => !/^user said:/i.test(m.text));
+    const real = state.memories.filter((m) => m && m.text && !/^user said:/i.test(m.text) && !isHygieneJunkMemory(m.text) && !isSearchInfraJunkMemory(m.text));
     if (!real.length) return "I have no stored facts yet. Tell me your name, or say remember this: …";
     return "What I hold:\n" + real.slice(0, 12).map((m) => "- " + m.text).join("\n");
   }
@@ -1133,33 +1633,114 @@ function contentWordsOnly(query) {
 }
 
 async function webSearch(query, force) {
+  if (!force && !signal()) return null;
   if (!force && !worthLearning(query)) return null;
   async function searchOnce(q) {
     const term = String(q || "").trim();
     if (!term) return null;
-    const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=3&srsearch=" + encodeURIComponent(term);
+    const api = "https://en.wikipedia.org/w/api.php?action=query&list=search&utf8=1&format=json&origin=*&srlimit=5&srsearch=" + encodeURIComponent(term);
     const res = await fetch(api);
     if (!res.ok) throw new Error("search failed");
     const data = await res.json();
     const hits = (data.query && data.query.search) || [];
     if (!hits.length) return null;
-    const title = hits[0].title;
-    const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
-    let extract = String(hits[0].snippet || "").replace(/<[^>]+>/g, "");
-    if (sumRes.ok) {
-      const sum = await sumRes.json();
-      if (sum.extract) extract = sum.extract;
+    function scoreWikiHit(title, extract) {
+      const hay = foldQ((title || "") + " " + (extract || ""));
+      let score = 0;
+      if (/^christopher bishop$/i.test(String(title || "").trim())) score += 100;
+      if (/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) score += 50;
+      if (/\bprml\b/.test(hay) || /\bpattern recognition and machine learning\b/.test(hay)) score += 40;
+      if (/\bbishop\b/.test(hay) && /\bmachine learning\b/.test(hay)) score += 20;
+      if (isDudaNotBishop(title, extract)) score -= 80;
+      if (isTop3GamesJunk(title, extract, "")) score -= 100;
+      if (isSearchFalseFriendJunk(title, extract, "", term)) score -= 100;
+      if (isIndustrialDcsFalseFriend(title, extract)) score -= 80;
+      if (/^pattern recognition$/i.test(String(title || "").trim()) && isBishopPrmlQuery(term)) score -= 30;
+      return score;
     }
-    if (wikiJunk(title, extract)) return null;
-    remember(title + ": " + extract.slice(0, 500));
-    const extras = hits.slice(1).map((h) => h.title).filter(Boolean);
-    return { title, extract: extract.slice(0, 700), extras };
+    let best = null;
+    let bestScore = -1e9;
+    const extras = [];
+    for (let i = 0; i < hits.length; i++) {
+      const title = hits[i].title;
+      if (!title) continue;
+      extras.push(title);
+      let extract = String(hits[i].snippet || "").replace(/<[^>]+>/g, "");
+      try {
+        const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+        if (sumRes.ok) {
+          const sum = await sumRes.json();
+          if (sum.extract) extract = sum.extract;
+        }
+      } catch (e) {}
+      if (wikiJunk(title, extract)) continue;
+      if (nuclearBlocked(title + " " + extract)) continue;
+      if (isSearchInfraJunk(title, extract, "")) continue;
+      if (isTop3GamesJunk(title, extract, "")) continue;
+      if (isSearchFalseFriendJunk(title, extract, "", term)) continue;
+      if (!searchRelevant(term, title, extract)) continue;
+      if (!bishopKeepAllowed(term, title, extract, "")) continue;
+      const sc = scoreWikiHit(title, extract);
+      if (!best || sc > bestScore) {
+        best = { title, extract: extract.slice(0, 700), source: "wikipedia" };
+        bestScore = sc;
+      }
+    }
+    if (!best) return null;
+    // For Bishop/PRML queries, refuse a non-Christopher winner even if it scraped through
+    if (isBishopPrmlQuery(term) || isBishopOnlyQuery(term)) {
+      const hay = foldQ(best.title + " " + best.extract);
+      if (!(/\bchristopher\b/.test(hay) && /\bbishop\b/.test(hay)) && !/\bprml\b/.test(hay)) {
+        return null;
+      }
+      if (isDudaNotBishop(best.title, best.extract)) return null;
+    }
+    if (!bishopKeepAllowed(term, best.title, best.extract, "")) return null;
+    if (isSearchFalseFriendJunk(best.title, best.extract, "", term)) return null;
+    if (!isVagueSingleTokenAsk(term)) {
+      remember(best.title + ": " + best.extract.slice(0, 500));
+    }
+    best.extras = extras.filter(function (t) { return t !== best.title; }).slice(0, 4);
+    best.kept = !isVagueSingleTokenAsk(term);
+    return best;
+  }
+  async function searchPublic(q) {
+    if (typeof window.yaPublicSearch !== "function") return null;
+    const term = String(q || "").trim();
+    if (!term) return null;
+    try {
+      const bot = await window.yaPublicSearch(term);
+      if (!bot || !bot.extract) return null;
+      if (nuclearBlocked((bot.title || "") + " " + bot.extract)) return null;
+      if (wikiJunk(bot.title, bot.extract)) return null;
+      if (isSearchInfraJunk(bot.title, bot.extract, "")) return null;
+      if (isSearchFalseFriendJunk(bot.title, bot.extract, "", term)) return null;
+      if (!searchRelevant(term, bot.title, bot.extract)) return null;
+      if (!bishopKeepAllowed(term, bot.title, bot.extract, "")) return null;
+      return {
+        title: bot.title || term,
+        extract: String(bot.extract).slice(0, 700),
+        extras: Array.isArray(bot.extras) ? bot.extras : [],
+        source: bot.source || "duckduckgo"
+      };
+    } catch (e) {
+      return null;
+    }
   }
   const first = wikiQuery(query) || String(query || "").trim();
   let found = await searchOnce(first);
   if (found) return found;
   const retry = contentWordsOnly(query);
-  if (retry && retry.toLowerCase() !== first.toLowerCase()) return await searchOnce(retry);
+  if (retry && retry.toLowerCase() !== first.toLowerCase()) {
+    found = await searchOnce(retry);
+    if (found) return found;
+  }
+  found = await searchPublic(first);
+  if (found) return found;
+  if (retry && retry.toLowerCase() !== first.toLowerCase()) {
+    found = await searchPublic(retry);
+    if (found) return found;
+  }
   return null;
 }
 
@@ -1868,11 +2449,13 @@ function mindSizeBreakdown(chatTail, learned) {
   } catch (e) {}
   let documentsBytes = nativeVaultBytesCached();
   if (!documentsBytes) documentsBytes = fedDocsBytes();
+  const seatedEmbed = seatedEmbedBytes();
   const chatTailBytes = utf8ish(JSON.stringify(chatTail || []));
   const learnedBytes = utf8ish(JSON.stringify(learned || []));
   return {
     localStorageBytes: localStorageBytes,
     documentsBytes: documentsBytes,
+    seatedEmbedBytes: seatedEmbed,
     essenceBytes: essenceBytes,
     heartGgufBytes: heartGgufBytes,
     chatTailBytes: chatTailBytes,
@@ -2207,6 +2790,7 @@ function isVideoAsk(text) {
 }
 
 const WALL_MSG = "That page showed a wall. I did not save it. Try another link, or tell me the point to remember.";
+const INFRA_WALL_MSG = "I will not keep interact/ntfy pages as web notes.";
 
 async function describeYoutube(id, url) {
   const watch = "https://www.youtube.com/watch?v=" + id;
@@ -2316,8 +2900,9 @@ function linkNote(d) {
   return bits.filter(Boolean).join("\n");
 }
 
-async function describeLink(url) {
+async function describeLink(url, forQuery) {
   if (nuclearBlocked(url)) return null;
+  if (isSearchInfraHost(url)) return null;
   const yid = youtubeId(url);
   if (yid) return await describeYoutube(yid, url);
   const raw = await fetchLinkRaw(url);
@@ -2328,6 +2913,11 @@ async function describeLink(url) {
   const preview = clean.slice(0, 3500);
   const d = { title, body: preview, url, outline, chars: clean.length, more: clean.length > 3500, kind: "link" };
   if (isLinkJunk(d.title, d.body)) return null;
+  // ntfy push landing ("Send push notifications" / ntfy.sh) — never remember
+  if (isSearchInfraJunk(d.title, d.body, url)) return null;
+  if (/\bpush notifications?\b/i.test(d.title + " " + d.body) || /\bntfy\.sh\b/i.test(d.title + " " + d.body)) return null;
+  // Relevance only when caller passes forQuery (search/harvest) — not bare URL paste
+  if (forQuery && !searchRelevant(forQuery, d.title, d.body)) return null;
   remember("Link note:\n" + linkNote(d));
   return d;
 }
@@ -2392,6 +2982,12 @@ function isSearchNudge(text) {
 }
 
 function searchNudgeTarget(currentText) {
+  // "search online bishop" → subject "bishop" from THIS message (not stale lastAsk)
+  const stripped = typeof stripSearchFluff === "function" ? stripSearchFluff(currentText) : "";
+  const rawCur = String(currentText || "").trim();
+  if (stripped && foldQ(stripped) !== foldQ(rawCur) && stripped.length >= 2) {
+    return stripped;
+  }
   const ask = String(state.lastAsk || "").trim();
   if (ask) return ask;
   const pend = (state.pendingLearn || [])[0];
@@ -2407,18 +3003,1002 @@ function searchNudgeTarget(currentText) {
   return "";
 }
 
-async function lookUpAndKeep(query) {
-  const q = String(query || "").trim();
-  if (!q) return "I looked it up and did not find a page I will keep.";
-  if (isMathAsk(q)) return evalSimpleMath(q) || q;
+
+function placeNounRe() {
+  return /\b(restaurants?|restraunts?|resteraunts?|eatery|eateries|cafes?|coffee|bars?|pubs?|grocer(y|ies)|supermarket|market|markets|shopping|mall|massage|spa|gym|fitness|hotel|motel|pharmacy|hospital|gas\s*station|parking|museum|parks?|playground|attractions?|takeout|delivery|food\s*near|bakery|butcher|florist|library|bank|atm|laundry|dry\s*clean|hardware|convenience|farmers?\s*market)\b/;
+}
+
+function isPlaceSearchQuery(text) {
+  const q = foldQ(text);
+  if (placeNounRe().test(q)) {
+    if (/\b(search|find|look\s*up|near|nearby|closest|around|in)\b/.test(q)) return true;
+    // bare "restaurants" / "grocery" / "park"
+    return true;
+  }
+  // Sticky follow-up: "Search Mexican" / "Mexican" / "park instead" after a recent place ask
+  if (isPlaceFollowUp(text)) return true;
+  return false;
+}
+
+function isBareCuisineOrPlaceAlt(text) {
+  const q = foldQ(text);
+  if (!q || q.length > 48) return false;
+  if (placeCuisineHint(text)) return true;
+  if (/^(mexican|chinese|thai|italian|japanese|indian|korean|vietnamese|pizza|sushi|bbq|mediterranean|greek|vegan|vegetarian|filipino|filipina)$/.test(q)) return true;
+  if (/^(search|find|look\s*up)\s+[a-z][a-z\s-]{1,40}$/.test(q) && !placeNounRe().test(q)) return true;
+  if (/^(what about|how about|try|instead|or)\s+/.test(q)) return true;
+  // Decider: context matters — after restaurant Places, short unknown tokens are cuisine alts
+  const ctx = inferPlaceCtxFromRecent();
+  const restCtx = !!(ctx && (ctx.kind === "restaurant" || /\brestaurant/.test(foldQ(ctx.subject || ""))));
+  if (restCtx) {
+    if (placeNounRe().test(q)) return false;
+    const stopRe = /^(ping|pong|help|thanks|thank\s*you|yes|no|ok|okay|what|who|why|how|when|where|hi|hey|hello|remember|status|vault|mint|browse|open|bishop|recognition|prml|time|date|race|clear|reset|stop|start|save|load|share|copy|menu|settings|about|version|debug|please)$/;
+    let tip = q.replace(/^(search|find|look\s*up)\s+/, "").trim();
+    if (!tip || stopRe.test(tip)) return false;
+    if (/^[a-z][a-z-]{2,24}$/.test(tip)) return true;
+    if (/^[a-z][a-z-]{2,24}\s+[a-z][a-z-]{2,24}$/.test(tip)) return true;
+  }
+  return false;
+}
+
+function inferPlaceCtxFromRecent() {
   try {
-    const web = await webSearch(q, true);
-    if (!web) return "I looked it up and did not find a page I will keep.";
+    if (state && state.lastPlaceCtx && state.lastPlaceCtx.kind) return state.lastPlaceCtx;
+  } catch (e) {}
+  try {
+    const raw = localStorage.getItem("ya-last-place-ctx");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.kind) return parsed;
+    }
+  } catch (e2) {}
+
+  function packFromText(text, at) {
+    const t = String(text || "");
+    const qLine = t.match(/Query:\s*([^·\n]+?)(?:\s*·\s*cuisine\s+([^·\n]+?))?\s*·\s*([a-z_][a-z0-9_]*)/i);
+    if (qLine) {
+      const subject = String(qLine[1] || "").trim();
+      const cuisine = String(qLine[2] || "").trim() || placeCuisineHint(subject) || "";
+      let kind = String(qLine[3] || "").trim().toLowerCase();
+      if (!kind || kind === "ranked") kind = "";
+      if (!kind) {
+        const qq = foldQ(subject);
+        if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+        else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+        else if (/\b(coffee|cafe|café)\b/.test(qq)) kind = "cafe";
+        else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq)) kind = "restaurant";
+        else kind = "place";
+      }
+      return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at || Date.now() };
+    }
+    const placesLine = t.match(/(?:^|\n)Places\s+(.+?)\s+@/i);
+    if (placesLine) {
+      const subject = String(placesLine[1] || "").trim();
+      const cuisine = placeCuisineHint(subject) || "";
+      const qq = foldQ(subject);
+      let kind = "place";
+      if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+      else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+      else if (/\b(coffee|cafe|café)\b/.test(qq)) kind = "cafe";
+      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(qq) || /\b(taco|chipotle|grill|express|pizza|sushi)\b/.test(foldQ(t))) kind = "restaurant";
+      else if (/\bmassage|spa\b/.test(qq)) kind = "massage";
+      else if (/\bpharmac/.test(qq)) kind = "pharmacy";
+      else if (/\bgym|fitness\b/.test(qq)) kind = "gym";
+      else if (/\b(hotel|motel)\b/.test(qq)) kind = "hotel";
+      else if (/\b(bar|pub)\b/.test(qq)) kind = "bar";
+      else if (/\b(shopping|mall)\b/.test(qq)) kind = "shopping";
+      else if (/\bmuseum\b/.test(qq)) kind = "museum";
+      return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at || Date.now() };
+    }
+    // Place reply with mi distances (no Query / Places header fragment)
+    if (/\b\d+(?:\.\d+)?\s*mi\b/i.test(t) && /\b(Best near|closest good|within\s+\d|Seat:|openstreetmap\.org)\b/i.test(t)) {
+      const subjM = t.match(/closest good\s+[“"]([^”"]+)[”"]/i) || t.match(/No\s+[“"]([^”"]+)[”"]\s+found near/i);
+      const subject = subjM ? String(subjM[1] || "").trim() : "";
+      const cuisine = placeCuisineHint(subject || t) || "";
+      let kind = "place";
+      const qq = foldQ(subject || t);
+      if (/\b(park|parks|playground)\b/.test(qq)) kind = "park";
+      else if (/\b(grocer|supermarket|market|markets)\b/.test(qq)) kind = "grocery";
+      else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food)\b/.test(qq)) kind = "restaurant";
+      if (kind !== "place" || subject) {
+        return { kind: kind === "place" && cuisine ? "restaurant" : kind, subject: subject || (cuisine ? cuisine + " restaurant" : kind), cuisine: cuisine, at: at || Date.now() };
+      }
+    }
+    return null;
+  }
+
+  try {
+    const msgs = (state && state.messages) || [];
+    for (let i = msgs.length - 1; i >= 0 && i >= msgs.length - 60; i--) {
+      const m = msgs[i];
+      if (!m) continue;
+      const t = String(m.text || "");
+      const at = m.at || Date.now();
+      if (m.role === "assistant") {
+        const packed = packFromText(t, at);
+        if (packed && packed.kind) return packed;
+      } else if (m.role === "user") {
+        const q = foldQ(t);
+        if (!placeNounRe().test(q) && !placeCuisineHint(t)) continue;
+        // User place nouns / cuisine+place — recover sticky kind
+        const cuisine = placeCuisineHint(t) || "";
+        let kind = "place";
+        if (/\b(park|parks|playground)\b/.test(q)) kind = "park";
+        else if (/\b(grocer|supermarket|market|markets|convenience|farmers?\s*market)\b/.test(q)) kind = "grocery";
+        else if (/\b(coffee|cafe|café)\b/.test(q)) kind = "cafe";
+        else if (/\bmassage|spa\b/.test(q)) kind = "massage";
+        else if (/\bpharmac/.test(q)) kind = "pharmacy";
+        else if (/\bgym|fitness\b/.test(q)) kind = "gym";
+        else if (/\b(hotel|motel)\b/.test(q)) kind = "hotel";
+        else if (/\b(bar|pub)\b/.test(q) && !/\brestaurant/.test(q)) kind = "bar";
+        else if (/\b(shopping|mall)\b/.test(q)) kind = "shopping";
+        else if (/\bmuseum\b/.test(q)) kind = "museum";
+        else if (cuisine || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(q)) kind = "restaurant";
+        else continue;
+        let subject = typeof placeSearchSubject === "function" ? placeSearchSubject(t) : t;
+        if (kind === "restaurant" && cuisine && !/\brestaurant/.test(foldQ(subject))) {
+          subject = (cuisine + " restaurant").trim();
+        }
+        return { kind: kind, subject: subject || kind, cuisine: cuisine, at: at };
+      }
+    }
+  } catch (e3) {}
+
+  try {
+    const mems = (state && state.memories) || [];
+    for (let i = 0; i < mems.length && i < 40; i++) {
+      const mem = mems[i];
+      const t = String((mem && (mem.text || mem)) || "");
+      if (!/^Places\s+/i.test(t)) continue;
+      const packed = packFromText(t, (mem && mem.at) || Date.now());
+      if (packed && packed.kind) return packed;
+    }
+  } catch (e4) {}
+
+  return null;
+}
+
+function isPlaceFollowUp(text) {
+  const ctx = inferPlaceCtxFromRecent();
+  if (!ctx || !ctx.kind) return false;
+  const age = Date.now() - (ctx.at || 0);
+  // Sticky up to 45 min; recent chat recovery always fresh enough for Decider context law
+  if (age > 45 * 60 * 1000) return false;
+  const q = foldQ(text);
+  if (!q || q.length > 80) return false;
+  // Fresh place-noun query (grocery, park, restaurant…) is NOT a sticky follow-up
+  if (placeNounRe().test(q)) return false;
+  return isBareCuisineOrPlaceAlt(text);
+}
+
+function loadPlaceCtx() {
+  return inferPlaceCtxFromRecent();
+}
+
+function savePlaceCtx(ctx) {
+  if (!ctx || !ctx.kind) return;
+  const packed = {
+    kind: ctx.kind,
+    subject: ctx.subject || ctx.kind,
+    cuisine: ctx.cuisine || "",
+    at: Date.now()
+  };
+  try {
+    if (typeof state !== "undefined" && state) {
+      state.lastPlaceCtx = packed;
+      if (typeof save === "function") save();
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem("ya-last-place-ctx", JSON.stringify(packed));
+  } catch (e2) {}
+}
+
+function inferPlaceKind(text) {
+  const q = foldQ(text);
+  if (/\b(park|parks|playground)\b/.test(q)) return "park";
+  if (/\b(grocer|supermarket|market|markets|convenience|farmers?\s*market)\b/.test(q)) return "grocery";
+  if (/\b(coffee|cafe|café)\b/.test(q)) return "cafe";
+  if (/\bmassage|spa\b/.test(q)) return "massage";
+  if (/\bpharmac/.test(q)) return "pharmacy";
+  if (/\bgym|fitness\b/.test(q)) return "gym";
+  if (/\b(hotel|motel)\b/.test(q)) return "hotel";
+  if (/\b(bar|pub)\b/.test(q) && !/\brestaurant/.test(q)) return "bar";
+  if (/\b(shopping|mall)\b/.test(q)) return "shopping";
+  if (/\bmuseum\b/.test(q)) return "museum";
+  if (placeCuisineHint(text) || /\b(restaurant|restraunt|resteraunt|eatery|food|takeout|delivery)\b/.test(q)) return "restaurant";
+  const ctx = loadPlaceCtx();
+  if (ctx && ctx.kind) return ctx.kind;
+  return "place";
+}
+
+function resolvePlaceQuery(text) {
+  const raw = String(text || "").trim();
+  const ctx = inferPlaceCtxFromRecent();
+  let subject = placeSearchSubject(raw);
+  let cuisine = placeCuisineHint(raw);
+  let kind = inferPlaceKind(raw);
+
+  // Follow-up only: "Search Mexican" / "Mexican" — not when query already names grocery/park/etc.
+  if (isPlaceFollowUp(raw)) {
+    if (!cuisine) cuisine = placeCuisineHint(raw) || "";
+    kind = ctx && ctx.kind ? ctx.kind : kind;
+    if (kind === "restaurant" || (ctx && ctx.kind === "restaurant")) {
+      kind = "restaurant";
+      // Soft cuisine from bare follow-up (e.g. Filipino after Mexican places)
+      if (!cuisine) {
+        let tip = foldQ(placeSearchSubject(raw)).replace(/^(search|find|look\s*up)\s+/, "").trim();
+        if (/^[a-z][a-z-]{2,24}$/.test(tip) || /^[a-z][a-z-]{2,24}\s+[a-z][a-z-]{2,24}$/.test(tip)) {
+          cuisine = tip.replace(/\s+/g, "_");
+          if (cuisine === "soul_food") cuisine = "soul";
+          if (cuisine === "tex_mex" || cuisine === "texmex") cuisine = "tex-mex";
+          if (cuisine === "middle_eastern") cuisine = "middle_eastern";
+        }
+      }
+      if (cuisine) subject = cuisine.replace(/_/g, " ") + " restaurant";
+      else if (/^search\s+/i.test(raw)) subject = placeSearchSubject(raw) + " restaurant";
+      else subject = (subject && subject !== "places" ? subject : "restaurant");
+      if (!/\brestaurant/.test(foldQ(subject))) subject = (subject + " restaurant").trim();
+    } else if (kind === "grocery" || (ctx && ctx.kind === "grocery")) {
+      kind = "grocery";
+      const tip = placeSearchSubject(raw);
+      subject = /\b(market|grocery|supermarket)\b/.test(foldQ(tip)) ? tip : (tip && tip !== "places" ? tip + " market" : "grocery");
+    } else if (kind === "park" || (ctx && ctx.kind === "park")) {
+      kind = "park";
+      const tip = placeSearchSubject(raw);
+      subject = /\bpark\b/.test(foldQ(tip)) ? tip : (tip && tip !== "places" ? tip + " park" : "park");
+    } else if (ctx && ctx.kind) {
+      kind = ctx.kind;
+      const tip = placeSearchSubject(raw);
+      if (tip && tip !== "places" && foldQ(tip) !== foldQ(ctx.kind)) {
+        subject = tip + " " + ctx.kind;
+      } else {
+        subject = ctx.subject || ctx.kind;
+      }
+    }
+  }
+
+  // typo resteraunt → restaurant in subject
+  subject = subject.replace(/\bresteraunts?\b/ig, "restaurant").replace(/\brestraunts?\b/ig, "restaurant");
+  return { subject: subject, cuisine: cuisine, kind: kind, raw: raw };
+}
+
+function placeSearchSubject(text) {
+  let s = stripSearchFluff(text);
+  // Also strip leading bare "search" / "find" (stripSearchFluff misses "search Chinese…")
+  s = s.replace(/^(please\s+)?(search|find|look\s*up)\s+/i, "");
+  s = s.replace(/^(for|a|an|the)\s+/i, "");
+  s = s.replace(/\s+\bin\s+(utah|usa|united states)\b/ig, "");
+  s = s.replace(/\bresteraunts?\b/ig, "restaurant").replace(/\brestraunts?\b/ig, "restaurant");
+  return s.trim() || "places";
+}
+
+function seatPlaceLabel() {
+  try {
+    if (typeof window !== "undefined" && typeof window.yaRaceSeatPlace === "function") {
+      const p = window.yaRaceSeatPlace();
+      if (p) return String(p);
+    }
+  } catch (e) {}
+  try {
+    if (state && state.lastRacePlace) return String(state.lastRacePlace);
+  } catch (e2) {}
+  try {
+    if (state && state.pingPlace) return String(state.pingPlace);
+  } catch (e3) {}
+  return "phone (Utah)";
+}
+
+function seatPlaceQuery() {
+  const label = foldQ(seatPlaceLabel());
+  if (/utah|denver|america\/denver|boise|phoenix/.test(label) || /phone \(utah\)/.test(label)) return "Utah, USA";
+  const m = label.match(/this seat ·\s*(.+)$/i);
+  if (m) return m[1].replace(/_/g, " ");
+  return "Utah, USA";
+}
+
+function isScientistBioHit(title, body) {
+  const hay = foldQ((title || "") + " " + (body || ""));
+  if (/\b(christopher bishop|richard o\.?\s*duda|pattern recognition and machine learning|\bprml\b)\b/.test(hay)) return true;
+  if (/\b(computer scientist|british computer scientist|microsoft technical fellow|professor emeritus)\b/.test(hay) && /\b(bishop|duda|vapnik|hastie)\b/.test(hay)) return true;
+  return false;
+}
+
+function loadLastKnownGeo() {
+  try {
+    if (state && state.lastGeo && typeof state.lastGeo.lat === "number" && typeof state.lastGeo.lon === "number") {
+      return state.lastGeo;
+    }
+  } catch (e) {}
+  try {
+    const raw = localStorage.getItem("ya-last-geo");
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && typeof o.lat === "number" && typeof o.lon === "number") return o;
+    }
+  } catch (e2) {}
+  return null;
+}
+
+function saveLastKnownGeo(geo) {
+  if (!geo || typeof geo.lat !== "number" || typeof geo.lon !== "number") return;
+  const packed = {
+    lat: geo.lat,
+    lon: geo.lon,
+    label: geo.label || "",
+    city: geo.city || "",
+    neighborhood: geo.neighborhood || "",
+    source: geo.source || "device",
+    at: Date.now()
+  };
+  try {
+    if (typeof state !== "undefined" && state) {
+      state.lastGeo = packed;
+      if (typeof save === "function") save();
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem("ya-last-geo", JSON.stringify(packed));
+  } catch (e2) {}
+}
+
+function isAirplaneish() {
+  try {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  } catch (e) {}
+  try {
+    if (typeof signal === "function" && !signal()) return true;
+  } catch (e2) {}
+  return false;
+}
+
+function haversineKm(aLat, aLon, bLat, bLon) {
+  const toR = Math.PI / 180;
+  const dLat = (bLat - aLat) * toR;
+  const dLon = (bLon - aLon) * toR;
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(aLat * toR) * Math.cos(bLat * toR) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 6371 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function browserGeoOnce(timeoutMs) {
+  return new Promise(function (resolve) {
+    try {
+      if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== "function") {
+        return resolve({ ok: false, reason: "no-api" });
+      }
+      const opts = { enableHighAccuracy: true, maximumAge: 60000, timeout: timeoutMs || 12000 };
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          resolve({
+            ok: true,
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            source: "wk-geolocation"
+          });
+        },
+        function (err) {
+          const code = err && err.code;
+          let reason = "fail";
+          if (code === 1) reason = "denied";
+          else if (code === 2) reason = "unavailable";
+          else if (code === 3) reason = "timeout";
+          resolve({ ok: false, reason: reason });
+        },
+        opts
+      );
+    } catch (e) {
+      resolve({ ok: false, reason: "fail" });
+    }
+  });
+}
+
+async function resolveDeviceGeo() {
+  // Precise device lat/lon when green; never invent on airplane.
+  if (isAirplaneish()) {
+    const last = loadLastKnownGeo();
+    if (last) {
+      return Object.assign({}, last, { ok: true, source: "last-known", airplane: true, live: false });
+    }
+    return { ok: false, reason: "airplane", airplane: true, live: false };
+  }
+
+  if (typeof isNativeSpine === "function" && isNativeSpine()) {
+    try {
+      const nat = await nativeAsk("geolocate");
+      if (nat && nat.ok && typeof nat.lat === "number" && typeof nat.lon === "number") {
+        return {
+          ok: true,
+          lat: nat.lat,
+          lon: nat.lon,
+          accuracy: nat.accuracy,
+          source: "core-location",
+          live: true
+        };
+      }
+      if (nat && (nat.reason === "denied" || nat.reason === "restricted")) {
+        const last = loadLastKnownGeo();
+        if (last) return Object.assign({}, last, { ok: true, source: "last-known", denied: true, live: false });
+        return { ok: false, reason: "denied", denied: true, live: false };
+      }
+    } catch (e) {}
+  }
+
+  const browser = await browserGeoOnce(12000);
+  if (browser && browser.ok) {
+    return Object.assign({}, browser, { live: true });
+  }
+  if (browser && browser.reason === "denied") {
+    const last = loadLastKnownGeo();
+    if (last) return Object.assign({}, last, { ok: true, source: "last-known", denied: true, live: false });
+    return { ok: false, reason: "denied", denied: true, live: false };
+  }
+
+  const last2 = loadLastKnownGeo();
+  if (last2) return Object.assign({}, last2, { ok: true, source: "last-known", live: false });
+  return { ok: false, reason: (browser && browser.reason) || "unavailable", live: false };
+}
+
+async function reverseGeocode(lat, lon) {
+  const url =
+    "https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=16&lat=" +
+    encodeURIComponent(lat) +
+    "&lon=" +
+    encodeURIComponent(lon);
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; reverse-geocode; contact: rizalbot@rizal.institute)"
+    }
+  });
+  if (!res.ok) throw new Error("reverse " + res.status);
+  const data = await res.json();
+  const a = (data && data.address) || {};
+  const neighborhood =
+    a.neighbourhood || a.neighborhood || a.suburb || a.quarter || a.city_district || a.village || "";
+  const city = a.city || a.town || a.municipality || a.county || a.state || "";
+  const state = a.state || "";
+  const parts = [];
+  if (neighborhood && foldQ(neighborhood) !== foldQ(city)) parts.push(neighborhood);
+  if (city) parts.push(city);
+  else if (state) parts.push(state);
+  const label = parts.filter(Boolean).join(", ") || String((data && data.display_name) || "").split(",").slice(0, 2).join(",").trim() || "your seat";
+  return { label: label, city: city, neighborhood: neighborhood, state: state, raw: data };
+}
+
+function placeRadiusMiles(text) {
+  const q = foldQ(text);
+  const m = q.match(/\b(?:within|inside|in|under|up\s*to)?\s*(\d+(?:\.\d+)?)\s*(mi|mile|miles|km|kilometers?)\b/);
+  if (m) {
+    let n = parseFloat(m[1]);
+    if (/^km/.test(m[2])) n = n / 1.60934;
+    if (n > 0 && n <= 50) return n;
+  }
+  if (/\bexpand\b/.test(q) || /\b(wider|farther|further)\b/.test(q)) return 5;
+  return 2; // Decider default: 2 miles
+}
+
+function placeCuisineHint(text) {
+  const q = foldQ(text);
+  const hay = " " + q.replace(/[^a-z0-9]+/g, " ") + " ";
+  // Sticky cuisine lexicon — Decider: bare follow-ups inherit restaurant context
+  const cuisines = [
+    "chinese", "mexican", "italian", "thai", "japanese", "indian", "korean",
+    "vietnamese", "mediterranean", "greek", "french", "american", "bbq",
+    "barbecue", "sushi", "pizza", "burger", "seafood", "vegan", "vegetarian",
+    "ethiopian", "turkish", "lebanese", "peruvian", "cajun", "ramen", "pho",
+    "filipino", "filipina", "hawaiian", "caribbean", "spanish", "german",
+    "brazilian", "middle eastern", "soul food", "soul", "afro", "samoan",
+    "pacific", "asian", "latin", "texmex", "tex mex", "tex-mex"
+  ];
+  for (let i = 0; i < cuisines.length; i++) {
+    const needle = String(cuisines[i]).replace(/[^a-z0-9]+/g, " ").trim();
+    if (!needle) continue;
+    if (hay.indexOf(" " + needle + " ") >= 0) {
+      if (needle === "soul food" || needle === "soul") return "soul";
+      if (needle === "tex mex" || needle === "texmex") return "tex-mex";
+      if (needle === "middle eastern") return "middle_eastern";
+      return needle.replace(/\s+/g, "_");
+    }
+  }
+  return "";
+}
+
+
+function placeOverpassFilters(subject, cuisine) {
+  const s = foldQ(subject);
+  const filters = [];
+  if (/\b(park|parks|playground)\b/.test(s)) {
+    filters.push('node["leisure"="park"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="park"](around:RAD,LAT,LON);');
+    filters.push('relation["leisure"="park"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(market|markets|farmers?)\b/.test(s) && !/\bsupermarket\b/.test(s)) {
+    filters.push('node["amenity"="marketplace"](around:RAD,LAT,LON);');
+    filters.push('node["shop"~"supermarket|convenience|greengrocer|farm"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="marketplace"](around:RAD,LAT,LON);');
+    return filters;
+  }
+    if (/\bgrocer|supermarket|food\s*mart|\bmarket\b/.test(s)) {
+    filters.push('node["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
+    filters.push('way["shop"~"supermarket|convenience|greengrocer"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(coffee|cafe|café)\b/.test(s)) {
+    filters.push('node["amenity"="cafe"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="cafe"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bmassage\b/.test(s)) {
+    filters.push('node["shop"="massage"](around:RAD,LAT,LON);');
+    filters.push('node["amenity"="massage_parlour"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="spa"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(bar|pub)\b/.test(s) && !/\brestaurant\b/.test(s)) {
+    filters.push('node["amenity"~"bar|pub"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"~"bar|pub"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bgym|fitness\b/.test(s)) {
+    filters.push('node["leisure"="fitness_centre"](around:RAD,LAT,LON);');
+    filters.push('way["leisure"="fitness_centre"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\b(hotel|motel)\b/.test(s)) {
+    filters.push('node["tourism"="hotel"](around:RAD,LAT,LON);');
+    filters.push('way["tourism"="hotel"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bpharmac/.test(s)) {
+    filters.push('node["amenity"="pharmacy"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  if (/\bshopping|mall\b/.test(s)) {
+    filters.push('node["shop"](around:RAD,LAT,LON);');
+    filters.push('way["shop"="mall"](around:RAD,LAT,LON);');
+    return filters;
+  }
+  // default: restaurant (+ cuisine when known)
+  if (cuisine) {
+    filters.push('node["amenity"="restaurant"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="restaurant"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+    filters.push('node["amenity"="fast_food"]["cuisine"~"' + cuisine + '",i](around:RAD,LAT,LON);');
+  } else {
+    filters.push('node["amenity"="restaurant"](around:RAD,LAT,LON);');
+    filters.push('way["amenity"="restaurant"](around:RAD,LAT,LON);');
+    if (/\bfood\b/.test(s) || /\beater/.test(s)) {
+      filters.push('node["amenity"="fast_food"](around:RAD,LAT,LON);');
+    }
+  }
+  return filters;
+}
+
+function milesToMeters(mi) {
+  return Math.round(mi * 1609.34);
+}
+
+function placeRelevanceScore(name, tags, subject, cuisine) {
+  const hay = foldQ((name || "") + " " + JSON.stringify(tags || {}));
+  const sub = foldQ(subject);
+  let score = 0;
+  if (cuisine && hay.indexOf(cuisine) >= 0) score += 5;
+  const words = sub.split(/\s+/).filter(function (w) {
+    return w.length >= 3 && !/^(near|find|search|for|the|and|restaurant|restaurants|restraunts|food|place|places)$/.test(w);
+  });
+  words.forEach(function (w) {
+    if (hay.indexOf(w) >= 0) score += 2;
+  });
+  if (tags && tags.cuisine && cuisine && foldQ(tags.cuisine).indexOf(cuisine) >= 0) score += 3;
+  if (tags && (tags.stars || tags.rating)) score += 1; // rare on OSM
+  return score;
+}
+
+
+function appleMapsDirectionsUrl(lat, lon, name) {
+  const la = Number(lat);
+  const lo = Number(lon);
+  if (!isFinite(la) || !isFinite(lo)) return "";
+  // Directions to coords — opens Apple Maps navigation on device
+  let u = "http://maps.apple.com/?daddr=" + encodeURIComponent(la + "," + lo) + "&dirflg=d";
+  const q = String(name || "").trim();
+  if (q) u += "&q=" + encodeURIComponent(q.slice(0, 80));
+  return u;
+}
+
+function formatOpenMapsLine(lat, lon, name) {
+  const u = appleMapsDirectionsUrl(lat, lon, name);
+  if (!u) return "";
+  return "   Open Maps · directions → " + u;
+}
+
+function formatMiles(km) {
+  const mi = km / 1.60934;
+  if (mi < 0.1) return Math.round(mi * 5280) + " ft";
+  return mi.toFixed(mi < 2 ? 2 : 1) + " mi";
+}
+
+async function overpassPlaces(lat, lon, radiusM, subject, cuisine) {
+  const filters = placeOverpassFilters(subject, cuisine).map(function (f) {
+    return f.replace(/RAD/g, String(radiusM)).replace(/LAT/g, String(lat)).replace(/LON/g, String(lon));
+  });
+  const ql =
+    "[out:json][timeout:20];\n(\n  " +
+    filters.join("\n  ") +
+    "\n);\nout center tags 20;";
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places; contact: rizalbot@rizal.institute)"
+    },
+    body: "data=" + encodeURIComponent(ql)
+  });
+  if (!res.ok) throw new Error("overpass " + res.status);
+  const data = await res.json();
+  const elements = (data && data.elements) || [];
+  return elements.map(function (el) {
+    const tags = el.tags || {};
+    const lat2 = el.lat != null ? el.lat : (el.center && el.center.lat);
+    const lon2 = el.lon != null ? el.lon : (el.center && el.center.lon);
+    return {
+      name: tags.name || tags.brand || "Unnamed place",
+      lat: lat2,
+      lon: lon2,
+      tags: tags,
+      cuisine: tags.cuisine || "",
+      type: tags.amenity || tags.shop || tags.leisure || tags.tourism || el.type
+    };
+  }).filter(function (p) {
+    return typeof p.lat === "number" && typeof p.lon === "number";
+  });
+}
+
+async function nominatimNearBox(lat, lon, radiusMi, q) {
+  const delta = radiusMi / 69.0; // ~miles to degrees lat
+  const viewbox = [
+    (lon - delta).toFixed(5),
+    (lat + delta).toFixed(5),
+    (lon + delta).toFixed(5),
+    (lat - delta).toFixed(5)
+  ].join(",");
+  const url =
+    "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=12" +
+    "&q=" + encodeURIComponent(q) +
+    "&viewbox=" + encodeURIComponent(viewbox) +
+    "&bounded=1";
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places search; contact: rizalbot@rizal.institute)"
+    }
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data.map(function (row) {
+    return {
+      name: String(row.display_name || "").split(",")[0].trim() || "Place",
+      lat: parseFloat(row.lat),
+      lon: parseFloat(row.lon),
+      tags: { display: row.display_name },
+      cuisine: "",
+      type: [row.type, row.class].filter(Boolean).join("/"),
+      full: String(row.display_name || "")
+    };
+  }).filter(function (p) {
+    return p.lat && p.lon;
+  });
+}
+
+async function fetchPlaceHits(lat, lon, radiusMi, subject, cuisine) {
+  const radiusM = milesToMeters(radiusMi);
+  let hits = [];
+  try {
+    hits = await overpassPlaces(lat, lon, radiusM, subject, cuisine);
+  } catch (e) {
+    hits = [];
+  }
+  if (!hits.length) {
+    try {
+      // Clean nominatim query — subject already stripped
+      const qNom = subject;
+      hits = await nominatimNearBox(lat, lon, Math.max(radiusMi, 5), qNom);
+    } catch (e2) {
+      hits = [];
+    }
+  }
+  return hits.map(function (p) {
+    const km = haversineKm(lat, lon, p.lat, p.lon);
+    const rel = placeRelevanceScore(p.name, p.tags, subject, cuisine);
+    return Object.assign({}, p, { km: km, mi: km / 1.60934, rel: rel });
+  });
+}
+
+function rankPlaceHits(hits) {
+  const list = hits.slice();
+  list.sort(function (a, b) {
+    const band = Math.abs(a.mi - b.mi) < 0.35;
+    if (band && a.rel !== b.rel) return b.rel - a.rel;
+    if (a.mi !== b.mi) return a.mi - b.mi;
+    return b.rel - a.rel;
+  });
+  return list;
+}
+
+async function searchPlacesNearSeat(query) {
+  const resolved = resolvePlaceQuery(query);
+  const subject = resolved.subject;
+  const cuisine = resolved.cuisine;
+  const kind = resolved.kind;
+  const preferMi = placeRadiusMiles(query);
+  const geo = await resolveDeviceGeo();
+
+  if (!geo.ok) {
+    if (geo.airplane) {
+      return (
+        "Airplane / offline — no live GPS. I will not invent places.\n" +
+        "Turn networking on (green mind), allow Location when prompted, or say where you are " +
+        "(e.g. Chinese restaurant near Sugar House)."
+      );
+    }
+    if (geo.denied) {
+      return (
+        "Location permission denied. I need precise lat/lon for closest places — not a coarse Utah TZ stamp.\n" +
+        "Enable Location for YaAim (When In Use), or tell me your city/neighborhood " +
+        "(e.g. Mexican restaurant near Provo)."
+      );
+    }
+    return (
+      "Could not read device location (" + (geo.reason || "unavailable") + ").\n" +
+      "Allow Location when prompted, or say a city (e.g. park near Bluffdale)."
+    );
+  }
+
+  let placeLabel = geo.label || "";
+  let city = geo.city || "";
+  let neighborhood = geo.neighborhood || "";
+
+  if (geo.live || !placeLabel) {
+    try {
+      if (!isAirplaneish()) {
+        const rev = await reverseGeocode(geo.lat, geo.lon);
+        placeLabel = rev.label;
+        city = rev.city;
+        neighborhood = rev.neighborhood;
+        geo.label = placeLabel;
+        geo.city = city;
+        geo.neighborhood = neighborhood;
+      }
+    } catch (e) {
+      if (!placeLabel) {
+        placeLabel = geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4);
+      }
+    }
+  }
+
+  saveLastKnownGeo(geo);
+  savePlaceCtx({ kind: kind, subject: subject, cuisine: cuisine });
+
+  const widenSteps = [preferMi, 5, 10, 25];
+  // Dedupe steps
+  const steps = [];
+  widenSteps.forEach(function (m) {
+    if (m >= preferMi && steps.indexOf(m) < 0) steps.push(m);
+  });
+
+  let hitsIn = [];
+  let usedMi = preferMi;
+  let widened = false;
+  let allHits = [];
+
+  for (let i = 0; i < steps.length; i++) {
+    const mi = steps[i];
+    const batch = await fetchPlaceHits(geo.lat, geo.lon, mi, subject, cuisine);
+    allHits = rankPlaceHits(batch);
+    hitsIn = allHits.filter(function (p) { return p.mi <= mi + 0.05; });
+    if (hitsIn.length) {
+      usedMi = mi;
+      widened = mi > preferMi + 0.01;
+      break;
+    }
+  }
+
+  // Absolute closest fallback: search 25mi and take best even if filter empty
+  if (!hitsIn.length && allHits.length) {
+    hitsIn = allHits.slice(0, 5);
+    usedMi = Math.ceil(hitsIn[0].mi * 10) / 10;
+    widened = true;
+  } else if (!hitsIn.length) {
+    // last resort: nominatim with city name, no hard box
+    try {
+      const where = [neighborhood, city].filter(Boolean).join(", ") || placeLabel;
+      const url =
+        "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=" +
+        encodeURIComponent(subject + " " + where);
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "YaAim-Rizalbot/0.0 (offline-first; places; contact: rizalbot@rizal.institute)"
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        allHits = rankPlaceHits((Array.isArray(data) ? data : []).map(function (row) {
+          return {
+            name: String(row.display_name || "").split(",")[0].trim() || "Place",
+            lat: parseFloat(row.lat),
+            lon: parseFloat(row.lon),
+            tags: { display: row.display_name },
+            cuisine: "",
+            type: [row.type, row.class].filter(Boolean).join("/"),
+            full: String(row.display_name || ""),
+            km: haversineKm(geo.lat, geo.lon, parseFloat(row.lat), parseFloat(row.lon)),
+            mi: haversineKm(geo.lat, geo.lon, parseFloat(row.lat), parseFloat(row.lon)) / 1.60934,
+            rel: placeRelevanceScore(String(row.display_name || ""), {}, subject, cuisine)
+          };
+        }).filter(function (p) { return p.lat && p.lon; }));
+        if (allHits.length) {
+          hitsIn = allHits.slice(0, 5);
+          usedMi = Math.ceil(hitsIn[0].mi * 10) / 10;
+          widened = true;
+        }
+      }
+    } catch (e3) {}
+  }
+
+  const srcNote = geo.live
+    ? (geo.source === "core-location" ? "Core Location" : "device geolocation")
+    : (geo.airplane ? "last known (airplane — not live GPS)" : "last known seat");
+
+  if (!hitsIn.length) {
+    return [
+      "No “" + subject + "” found near " + placeLabel + " (searched out to 25 mi).",
+      "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
+      "Try a sharper name, or say browse https://www.openstreetmap.org/search?query=" + encodeURIComponent(subject + " " + placeLabel)
+    ].join("\n");
+  }
+
+  const header = widened
+    ? "None inside " + preferMi + " mi — closest good “" + subject + "” near " + placeLabel
+    : "Best near " + placeLabel + " · within " + preferMi + " mi";
+
+  const lines = [
+    header,
+    "Seat: " + geo.lat.toFixed(5) + ", " + geo.lon.toFixed(5) + " · " + srcNote,
+    "Query: " + subject + (cuisine ? " · cuisine " + cuisine : "") + " · " + kind + " · ranked distance + match" +
+      (widened ? " · auto-widened" : "")
+  ];
+  hitsIn.slice(0, 5).forEach(function (p, i) {
+    const cuisineTag = p.cuisine ? " · " + p.cuisine : "";
+    const type = p.type ? " · " + p.type : "";
+    const outside = p.mi > preferMi + 0.05 ? " · outside " + preferMi + " mi" : "";
+    lines.push((i + 1) + ". " + p.name + " · " + formatMiles(p.km) + cuisineTag + type + outside);
+    if (p.full && p.full !== p.name) lines.push("   " + String(p.full).slice(0, 120));
+    else if (p.tags && p.tags["addr:street"]) {
+      const addr = [p.tags["addr:housenumber"], p.tags["addr:street"]].filter(Boolean).join(" ");
+      if (addr) lines.push("   " + addr);
+    }
+    const mapsLine = formatOpenMapsLine(p.lat, p.lon, p.name);
+    if (mapsLine) lines.push(mapsLine);
+    else if (p.lat && p.lon) {
+      lines.push("   https://www.openstreetmap.org/?mlat=" + p.lat + "&mlon=" + p.lon + "#map=17/" + p.lat + "/" + p.lon);
+    }
+  });
+  lines.push("");
+  lines.push(
+    widened
+      ? "No inventing — closest real match beyond " + preferMi + " mi. Tap Open Maps · directions for navigation. Sticky cuisine follow-ups on."
+      : "Closest-first inside " + preferMi + " mi. Tap Open Maps · directions for Apple Maps navigation. Follow-ups keep place kind."
+  );
+  try {
+    if (typeof remember === "function") {
+      remember(
+        "Places " + subject + " @" + placeLabel + ": " +
+        hitsIn.slice(0, 3).map(function (p) { return p.name + " " + formatMiles(p.km); }).join("; ")
+      );
+    }
+  } catch (e) {}
+  return lines.join("\n");
+}
+
+try {
+  if (typeof window !== "undefined") {
+    window.yaResolveDeviceGeo = resolveDeviceGeo;
+    window.yaReverseGeocode = reverseGeocode;
+    window.yaSaveLastKnownGeo = saveLastKnownGeo;
+    window.yaLoadLastKnownGeo = loadLastKnownGeo;
+    window.yaIsAirplaneish = isAirplaneish;
+    window.yaHaversineKm = haversineKm;
+  }
+} catch (eWin) {}
+
+async function lookUpAndKeep(query) {
+  const raw = String(query || "").trim();
+  if (!raw) return "I looked it up and did not find a page I will keep.";
+  if (isMathAsk(raw)) return evalSimpleMath(raw) || raw;
+  // Place/local intent — OSM near seat; NEVER wiki person/Katipunan fallthrough
+  if (isPlaceSearchQuery(raw) || isPlaceFollowUp(raw)) {
+    try {
+      return await searchPlacesNearSeat(raw);
+    } catch (err) {
+      const sub = placeSearchSubject(raw);
+      const last = loadLastKnownGeo();
+      const where = (last && last.label) || seatPlaceQuery();
+      const q = encodeURIComponent(sub + " " + where);
+      return "Place search hit a net snag. Try browse https://www.openstreetmap.org/search?query=" + q + " — or say your city/neighborhood.";
+    }
+  }
+  const candidates = splitSearchCandidates(raw);
+  let list = candidates.length ? candidates : [stripSearchFluff(raw) || raw];
+  if (isBishopPrmlQuery(raw) || isBishopOnlyQuery(raw)) {
+    list = [
+      "Christopher Bishop",
+      "Christopher Bishop Pattern Recognition and Machine Learning",
+      "Christopher M. Bishop PRML",
+      "Pattern Recognition and Machine Learning Bishop"
+    ];
+  }
+  function keepGate(q, title, body, url) {
+    if (!title && !body) return false;
+    if (isSearchInfraJunk(title, body, url || "")) return false;
+    if (isSearchFalseFriendJunk(title, body, url || "", q || raw)) return false;
+    if (isPlaceSearchQuery(q || raw) || isPlaceSearchQuery(raw)) {
+      if (isScientistBioHit(title, body)) return false;
+    }
+    if (!searchRelevant(q || raw, title, body)) return false;
+    if (!bishopKeepAllowed(q || raw, title, body, url || "")) return false;
+    return true;
+  }
+  const vagueTok = isVagueSingleTokenAsk(raw);
+
+  try {
+    const kept = [];
+    for (const item of list) {
+      if (nuclearBlocked(item)) continue;
+      if (isSearchInfraJunk(item, "", "") || isSearchInfraHost(item)) continue;
+      // Prefer wiki/public search — never keep infra hosts as academic hits
+      const web = await webSearch(item, true);
+      if (web && web.extract && keepGate(item, web.title, web.extract, "")) {
+        kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
+        continue;
+      }
+      // NEVER describeLink unless the candidate string itself contains an http(s) URL (not CHIEF_INBOX)
+      const href = /https?:\/\//i.test(item) ? extractHttpUrl(item) : null;
+      if (href && !isSearchInfraHost(href) && !/\bntfy\.sh\b/i.test(href)) {
+        const d = await describeLink(href, item);
+        if (d && keepGate(item, d.title, d.body, href)) {
+          kept.push({ title: d.title, extract: (d.body || "").slice(0, 700), source: "link" });
+        }
+      }
+    }
+    // Long original query: try first meaningful title alone if nothing kept
+    if (!kept.length && raw.length > 60) {
+      const first = stripSearchFluff(raw).split(/[,;\n]/)[0].trim();
+      if (first.length >= 4) {
+        const web = await webSearch(first, true);
+        if (web && keepGate(first, web.title, web.extract, "")) {
+          kept.push({ title: web.title, extract: web.extract, source: web.source || "web" });
+        }
+      }
+    }
+    // Drop any that still fail false-friend / bishop law (Saved N only after gates)
+    const gated = kept.filter((k) => keepGate(raw, k.title, k.extract, ""));
+        if (!gated.length) return "I looked it up and did not find a page I will keep.";
     state.lastAsk = "";
     save();
-    return web.extract + "\n\nSaved into the offline mind. Ask me again anytime. Source: " + web.title + ".";
+    const parts = gated.map((k, i) => (gated.length > 1 ? (i + 1) + ". " : "") + k.extract + "\n(Source: " + k.title + ")");
+    if (typeof vagueTok !== "undefined" && vagueTok) {
+      return parts.join("\n\n") + "\n\nLooked up — not saved (single-word ask). Say Christopher Bishop or PRML if you want it kept.";
+    }
+    return parts.join("\n\n") + "\n\nSaved " + gated.length + " note" + (gated.length === 1 ? "" : "s") + " into the offline mind. Ask me again anytime.";
   } catch (err) {
-    queueLearn(q);
+    queueLearn(raw);
     return "I could not reach the web. I queued that and will try on the next green light.";
   }
 }
@@ -2441,12 +4021,13 @@ async function harvestOnline() {
     try {
       const href = extractHttpUrl(q);
       if (href) {
-        const d = await describeLink(href);
-        if (d) learned.push(d.title);
+        if (isSearchInfraHost(href)) continue;
+        const d = await describeLink(href, q);
+        if (d && searchRelevant(q, d.title, d.body) && !isSearchInfraJunk(d.title, d.body, href)) learned.push(d.title);
         continue;
       }
       const web = await webSearch(q);
-      if (web && web.title && !wikiJunk(web.title, web.extract)) learned.push(web.title);
+      if (web && web.title && !wikiJunk(web.title, web.extract) && searchRelevant(q, web.title, web.extract) && !isSearchInfraJunk(web.title, web.extract, "")) learned.push(web.title);
     } catch (e) {}
   }
   state.pendingLearn = [];
@@ -2737,6 +4318,12 @@ function applyEatReply(text) {
 function llamaMemoriesSnippet(query) {
   // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
   // Prefer user/fed facts; Core: precept dumps stay out of the llama inject.
+  let contBits = "";
+  try {
+    if (typeof window !== "undefined" && typeof window.yaContinuityRecallSnippet === "function") {
+      contBits = window.yaContinuityRecallSnippet(query || "") || "";
+    }
+  } catch (e) {}
   const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
@@ -2989,10 +4576,82 @@ async function answer(userText) {
   }
   const forgot = tryForgetCommand(userText);
   if (forgot) return forgot;
+  const recalled = tryRecallCommand(userText);
+  if (recalled) return recalled;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
-  if (/^(ping\s+status|mind\s+status|status)$/i.test(String(userText || "").trim())) {
-    return pingStatusLine();
+  const browseOpen = String(userText || "").trim().match(/^(?:browse|open)\s+(https?:\/\/\S+)/i);
+  if (browseOpen) {
+    const url = browseOpen[1].replace(/[.,;:!?)\]]+$/, "");
+    if (nuclearBlocked(url)) return "No. That URL is blocked.";
+    if (isNativeSpine()) {
+      const ok = openBrowse(url);
+      return ok ? ("Opening in Safari: " + url) : ("Could not open " + url);
+    }
+    if (!mindWantsWeb()) {
+      return "Mind is amber. Tap the light green to browse, or open that URL in the native app (Safari sheet).";
+    }
+    const ok = openBrowse(url);
+    return ok ? ("Opened " + url) : ("Could not open " + url);
+  }
+  // Continuity seat — offline CoS recall / stamp (FRIEND-CONTINUITY pattern)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleContinuityChat === "function") {
+      const cont = window.yaHandleContinuityChat(userText);
+      if (cont) return cont;
+    }
+  } catch (e) {}
+  // Hardcode spine / offline CoS slice (spoken F2 RIZALBOT EMBEDDED)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleHardcodeChat === "function") {
+      const hc = window.yaHandleHardcodeChat(userText);
+      if (hc) return hc;
+    }
+  } catch (e) {}
+  // Offline CoS multi-turn mode (ya-cos-mode.js) — after hardcode, before compass
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleCosModeChat === "function") {
+      const cos = window.yaHandleCosModeChat(userText);
+      if (cos) return cos;
+    }
+  } catch (e) {}
+  // Compass / bounce seat (never bare here once scripts load)
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleCompassChat === "function") {
+      const compass = window.yaHandleCompassChat(userText);
+      if (compass != null) {
+        if (compass && typeof compass.then === "function") {
+          return await compass;
+        }
+        return compass;
+      }
+    }
+    if (typeof window !== "undefined" && typeof window.yaHandlePing === "function") {
+      const bounced = window.yaHandlePing(userText);
+      if (bounced != null) {
+        if (bounced && typeof bounced.then === "function") {
+          return await bounced;
+        }
+        return bounced;
+      }
+    }
+  } catch (e) {}
+  {
+    const statusTrim = String(userText || "").trim();
+    // Status/heart (and similar) → NativeHeart style; never Android "Packed GGUF missing from APK assets"
+    if (/^(?:ping\s+status|mind\s+status|status)[\/\s]+heart[.?!]*$/i.test(statusTrim) || /^status[\/]+heart[.?!]*$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return statusHeartLine();
+    }
+    if (/^(ping\s+status|mind\s+status|status)$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return pingStatusLine();
+    }
+    // Bare Heart → short heart status (not eat path / HANDOFF essay)
+    if (/^heart[.?!]*$/i.test(statusTrim)) {
+      await refreshNativeHeartForStatus();
+      return shortHeartStatusLine();
+    }
   }
 if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
     // BASE: ping/pong works offline or online; auto-heal bind even on airplane.
@@ -3015,27 +4674,45 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
   if (math) return math;
+  // Place/local intent early — before evolve/local/"I am listening"; never wiki person path
+  if (isPlaceSearchQuery(userText) || isPlaceFollowUp(userText)) {
+    if (!mindWantsWeb()) {
+      queueLearn(userText);
+      return "Place search needs green mind + device Location for precise seat (city/neighborhood, not Utah stamp). Tap the light green.";
+    }
+    return await lookUpAndKeep(userText);
+  }
   const evolvedTalk = tryEvolveCommand(userText);
   if (evolvedTalk) return evolvedTalk;
   const evolvedHit = matchEvolved(userText);
   if (evolvedHit) {
-    remember("Used evolved function " + evolvedHit.name);
-    if (String(evolvedHit.action || "") === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
-      return pingStatusLine();
+    const evAct = String(evolvedHit.action || "");
+    const raceLeak = (isRaceBoardText(evAct) || /\bYA_LAST_RACE\b/i.test(evAct)) && !isRaceChatCommand(userText);
+    if (!raceLeak) {
+      remember("Used evolved function " + evolvedHit.name);
+      if (evAct === "__PING_STATUS__" || /^ping status$/i.test(String(evolvedHit.trigger || ""))) {
+        return pingStatusLine();
+      }
+      return evAct;
     }
-    return evolvedHit.action;
+    // fall through — academic/freeform must not replay stale Top3/Pong/YA_LAST_RACE
   }
   if (typeof trySenseCommand === "function") {
     const senseTalk = trySenseCommand(userText);
     if (senseTalk) return senseTalk;
   }
   if (!signal()) {
+    const bag = retrieveBeforeReply(userText);
+    if (bag.direct) return bag.direct;
     const localOff = localEngine(userText);
     if (localOff === "DATE_LOOKUP") return sayUtahNow();
     const line = String(localOff || "").replace(/\n?Searching…/, "").replace(/SEARCH_NOW/g, "").trim();
     if (line && !/^I do not know that\b/.test(line) && !/^I am listening\b/.test(line)) return line;
-    return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or add function NAME: …";
+    if (bag.hits && bag.hits.length && !isRaceBoardText(bag.hits[0].text)) return bag.hits[0].text;
+    if (bag.continuity && !isRaceBoardText(bag.continuity) && !/\b(Top\s*3|Pong\s*[·.•]|Compass race)\b/i.test(bag.continuity)) return bag.continuity;
+    return "I am here. Airplane. Function 0 is on this device. I will not wait for a radio. Say remember this: … or Shelf: … or add function NAME: …";
   }
+
   const links = extractHttpUrls(userText);
   const videoAsk = isVideoAsk(userText);
   if (videoAsk && !links.length) {
@@ -3046,18 +4723,25 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
   }
   if (links.length) {
     if (!mindWantsWeb()) {
-      links.forEach((u) => queueLearn(u));
-      if (videoAsk || links.some((u) => youtubeId(u))) {
+      const keepable = links.filter((u) => !isSearchInfraHost(u) && !/\bntfy\.sh\b/i.test(u));
+      if (!keepable.length) return INFRA_WALL_MSG;
+      keepable.forEach((u) => queueLearn(u));
+      if (videoAsk || keepable.some((u) => youtubeId(u))) {
         return "Mind is amber. I queued that URL. Tap the light green and I will fetch, summarize, and keep a note in the gut.";
       }
-      return "Mind is offline. Tap the light green. I will open " + (links.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
+      return "Mind is offline. Tap the light green. I will open " + (keepable.length === 1 ? "that link" : "those links") + ", read the content, and keep it in the offline mind.";
     }
     const parts = [];
     for (const link of links) {
       try {
+        if (isSearchInfraHost(link) || /\bntfy\.sh\b/i.test(link)) {
+          parts.push(INFRA_WALL_MSG);
+          continue;
+        }
         const d = await describeLink(link);
         if (!d) {
           if (nuclearBlocked(link)) parts.push("I will not open " + link + ".");
+          else if (isSearchInfraJunk("", "", link)) parts.push(INFRA_WALL_MSG);
           else parts.push(WALL_MSG);
           continue;
         }
@@ -3068,7 +4752,10 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     }
     return parts.join("\n\n——\n\n");
   }
-  const eatAsk = /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
+  // Do not route bare Heart / Status/heart into wllama eat (APK leftover).
+  const bareOrStatusHeart = /^heart[.?!]*$/i.test(String(userText || "").trim())
+    || /^(?:ping\s+status|mind\s+status|status)[\/\s]+heart[.?!]*$/i.test(String(userText || "").trim());
+  const eatAsk = !bareOrStatusHeart && /\b(engine|eat|eating|seating|gguf|smarter|smollm|qwen|llama|heart)\b/.test(q);
   if (eatAsk && fnEnabled("model.local") && !/^(mint|mint essence|seal essence|vault|essences|my mints)\b/.test(q)) {
     ensureLlama(true);
     if (llamaEatDone || llamaIsReady()) return LLAMA_EAT_DONE;
@@ -3098,6 +4785,8 @@ if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim()
     }
     return await lookUpAndKeep(target);
   }
+  const bagOn = retrieveBeforeReply(userText);
+  if (bagOn.direct && !mindWantsWeb()) return bagOn.direct;
   const local = localEngine(userText);
   if (local === "DATE_LOOKUP") return sayUtahNow();
   const searchNow = local === "SEARCH_NOW";
@@ -3269,7 +4958,7 @@ function formatMindDump() {
   }
   lines.push("");
   lines.push("=== Links and videos (URL + chat summary only) ===");
-  const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text));
+  const linkNotes = (state.memories || []).filter((m) => m && /^(Link note:|Video note:)/i.test(m.text) && !isSearchInfraJunkMemory(m.text) && !isHygieneJunkMemory(m.text));
   if (!linkNotes.length) lines.push("(none yet)");
   linkNotes.forEach((m) => {
     lines.push(m.text.replace(/^(Link note:|Video note:)\s*/i, "").trim());
@@ -3281,6 +4970,7 @@ function formatMindDump() {
     if (/^(Link note:|Video note:)/i.test(m.text)) return false;
     if (/^Link .+ \[\d+\]:/i.test(m.text)) return false;
     if (/chars read$/i.test(m.text)) return false;
+    if (isSearchInfraJunkMemory(m.text) || isHygieneJunkMemory(m.text)) return false;
     return true;
   });
   if (!mem.length) lines.push("(none yet)");
@@ -3687,19 +5377,49 @@ function nativeHeartBytesCached() {
   return 0;
 }
 
-/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask. */
+/** Fallback catalog of seated www pack bytes (shelf/hardcode/modules) when native wwwBytes absent. Updated by ya-mind-books. */
+var SEATED_EMBED_FALLBACK_BYTES = 502524;
+
+function nativeWwwBytesCached() {
+  try {
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.wwwBytes === "number") {
+      return Number(window.YA_NATIVE.wwwBytes) || 0;
+    }
+    if (window.YA_NATIVE && typeof window.YA_NATIVE.seatedEmbedBytes === "number") {
+      return Number(window.YA_NATIVE.seatedEmbedBytes) || 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/** Packaged senses/*.jsonl + hardcode + www modules that live on device but outside Documents. */
+function seatedEmbedBytes() {
+  const nativeWww = nativeWwwBytesCached();
+  if (nativeWww > 0) return nativeWww;
+  try {
+    if (typeof window.YA_SEATED_EMBED_BYTES === "number" && window.YA_SEATED_EMBED_BYTES > 0) {
+      return Number(window.YA_SEATED_EMBED_BYTES) || 0;
+    }
+  } catch (e) {}
+  return SEATED_EMBED_FALLBACK_BYTES;
+}
+
+/** Offline-capable mind size — no network. Same measurer for mind card + mind.ask.
+ *  Counts: localStorage (gut/continuity/body) + Documents vault (heart+gut+mind/books) + seated www pack. */
 function mindBytes() {
   const ls = localStorageMindBytes();
   const nativeDocs = nativeVaultBytesCached();
   const heartNative = nativeHeartBytesCached();
   const heartState = (state && state.heart && Number(state.heart.bytes)) || 0;
-  // Prefer live Documents total from native spine when present (includes gut + root txt + heart).
+  const embed = seatedEmbedBytes();
+  // Prefer live Documents total from native spine when present (includes gut + mind/books + heart).
   if (nativeDocs > 0 || (window.YA_NATIVE && window.YA_NATIVE.vault === "documents" && typeof window.YA_NATIVE.vaultBytes === "number")) {
     // documentsBytes from native already includes heart.gguf on disk — don't add heart again.
-    return ls + nativeDocs;
+    // www pack sits in the app bundle, not Documents — add seated embed honestly.
+    return ls + nativeDocs + embed;
   }
   const heart = heartNative || heartState;
-  return ls + fedDocsBytes() + heart;
+  return ls + fedDocsBytes() + heart + embed;
 }
 
 function applyNativeVaultStatus(msg) {
@@ -3710,6 +5430,16 @@ function applyNativeVaultStatus(msg) {
     else if (typeof msg.documentsBytes === "number") window.YA_NATIVE.vaultBytes = msg.documentsBytes;
     if (typeof msg.heartBytes === "number") window.YA_NATIVE.heartBytes = msg.heartBytes;
     if (typeof msg.gutBytes === "number") window.YA_NATIVE.gutBytes = msg.gutBytes;
+    if (typeof msg.booksBytes === "number") window.YA_NATIVE.booksBytes = msg.booksBytes;
+    if (typeof msg.wwwBytes === "number") window.YA_NATIVE.wwwBytes = msg.wwwBytes;
+    if (typeof msg.seatedEmbedBytes === "number") window.YA_NATIVE.seatedEmbedBytes = msg.seatedEmbedBytes;
+    if (typeof msg.frameworkLinked === "boolean") window.YA_NATIVE.frameworkLinked = msg.frameworkLinked;
+    if (typeof msg.tokensOn === "boolean") window.YA_NATIVE.tokensOn = msg.tokensOn;
+    if (typeof msg.tokensOff === "boolean") window.YA_NATIVE.tokensOff = msg.tokensOff;
+    if (typeof msg.seated === "boolean") window.YA_NATIVE.seated = msg.seated;
+    if (typeof msg.metal === "boolean") window.YA_NATIVE.metal = msg.metal;
+    if (typeof msg.engine === "string") window.YA_NATIVE.engine = msg.engine;
+    if (typeof msg.mithrilBorrow === "string") window.YA_NATIVE.mithrilBorrow = msg.mithrilBorrow;
   } catch (e) {}
 }
 
@@ -3734,6 +5464,7 @@ async function refreshMindSize(opts) {
 let mindSizeSched = 0;
 function scheduleMindSizeRefresh() {
   try { renderMind(); } catch (e) {}
+  try { if (typeof window !== "undefined" && typeof window.yaTouchContinuity === "function") window.yaTouchContinuity(); } catch (e) {}
   if (mindSizeSched) clearTimeout(mindSizeSched);
   mindSizeSched = setTimeout(function () {
     mindSizeSched = 0;
@@ -4186,6 +5917,24 @@ async function finishXReturn() {
 
 const mindEl = document.getElementById("mind");
 const logEl = document.getElementById("log");
+
+if (logEl && !logEl.__yaLinkDelegated) {
+  logEl.__yaLinkDelegated = true;
+  logEl.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var a = t.closest("a.ya-link, a[data-ya-open]");
+    if (!a) return;
+    var u = a.getAttribute("data-ya-open") || a.getAttribute("href") || "";
+    if (!/^https?:\/\//i.test(u)) return;
+    ev.preventDefault();
+    try {
+      if (typeof openBrowse === "function" && openBrowse(u)) return;
+    } catch (e) {}
+    try { window.open(u, "_blank"); } catch (e2) {}
+  });
+}
+
 const form = document.getElementById("composer");
 const input = document.getElementById("input");
 const panel = document.getElementById("panel");
@@ -4232,9 +5981,19 @@ function render() {
   }
   logEl.innerHTML = state.messages.map((m) => {
     const who = m.role === "user" ? state.profile.name : botName();
-    return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div>${escapeHtml(m.text)}</article>`;
+    return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div><div class="body">${linkifyHtml(m.text)}</div></article>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+function linkifyHtml(text) {
+  const esc = escapeHtml(text);
+  // Autolink http(s) URLs (Open Maps · directions, OSM, browse targets)
+  return esc.replace(/(https?:\/\/[^\s<>"']+)/g, function (url) {
+    const clean = url.replace(/[),.;]+$/g, "");
+    const trail = url.slice(clean.length);
+    return '<a class="ya-link" href="' + clean + '" data-ya-open="' + clean + '">' + clean + "</a>" + trail;
+  });
 }
 
 function escapeHtml(s) {
@@ -4383,6 +6142,31 @@ document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
   save();
 });
+function openBrowse(url) {
+  const u = String(url || "").trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  if (nuclearBlocked(u)) return false;
+  if (isNativeSpine()) {
+    try {
+      window.webkit.messageHandlers.ya.postMessage({ op: "browse", url: u });
+      return true;
+    } catch (e) {
+      try {
+        window.webkit.messageHandlers.ya.postMessage({ op: "openUrl", url: u });
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+  }
+  try {
+    window.open(u, "_blank", "noopener,noreferrer");
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function isNativeSpine() {
   return !!(window.YA_NATIVE && window.YA_NATIVE.spine === "ios-native"
     && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ya);

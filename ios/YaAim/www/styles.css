@@ -147,3 +147,75 @@ label.field input { width: 100%; margin-top: 6px; background: var(--bg); border:
   to { transform: rotateY(360deg) rotateX(12deg); }
 }
 
+
+/* Open Maps / browse links in chat */
+a.ya-link{color:#9ecbff;text-decoration:underline;word-break:break-all;-webkit-tap-highlight-color:rgba(120,180,255,.25)}
+a.ya-link:active{opacity:.75}
+
+
+/* Find in chat — header 🔍 between title and online */
+button.find-open {
+  flex: 0 0 auto;
+  font-size: 15px;
+  line-height: 1;
+}
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--header-h, 52px);
+  z-index: 19;
+}
+.find-bar[hidden] { display: none !important; }
+.find-bar input#find-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+  outline: none;
+}
+.find-bar input#find-input:focus { border-color: color-mix(in srgb, var(--ink) 35%, var(--line)); }
+.find-count {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 3.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+button.find-nav {
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+button.find-nav:active { background: var(--bg); }
+button.find-nav:disabled { opacity: 0.4; cursor: default; }
+mark.ya-find-hit {
+  background: color-mix(in srgb, #d4b07a 55%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+mark.ya-find-hit.ya-find-current {
+  background: color-mix(in srgb, #f0c674 85%, #fff 10%);
+  outline: 1px solid color-mix(in srgb, #d4b07a 70%, transparent);
+}

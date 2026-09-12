@@ -19,7 +19,8 @@
   <meta property="og:image" content="./logo.jpeg" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="./logo.jpeg" />
-  <link rel="stylesheet" href="./styles.css?v=68" />
+  <link rel="stylesheet" href="./styles.css?v=107" />
+  <link rel="stylesheet" href="./ya-hardcode-0.1.css?v=107" />
 </head>
 <body>
   <div id="sa-top" class="sa-top" aria-hidden="true"></div>
@@ -28,6 +29,7 @@
       <div class="logo"><img src="./icon-192.png" alt="Я" width="40" height="40" /></div>
       <div class="wordmark" id="wordmark"><span class="wm-ai">AIᵐ</span> · <span class="wm-ver">V 0.0</span></div>
     </div>
+    <button type="button" class="icon find-open" id="find-open" title="Find in chat" aria-label="Find in chat">🔍</button>
     <div class="status">
       <span class="dot" id="net-dot"></span>
       <span id="net-label">local engine</span>
@@ -36,6 +38,13 @@
       <button class="icon" id="open-mind" title="Rizalbot · Я AI powered by Machine"><img src="./brain.svg" alt="Rizalbot · Я AI powered by Machine" width="32" height="32" /></button>
     </div>
   </header>
+  <div id="find-bar" class="find-bar" hidden>
+    <input id="find-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="Find in chat…" aria-label="Find in chat" />
+    <span id="find-count" class="find-count" aria-live="polite"></span>
+    <button type="button" class="find-nav" id="find-prev" title="Previous match" aria-label="Previous match">↑</button>
+    <button type="button" class="find-nav" id="find-next" title="Next match" aria-label="Next match">↓</button>
+    <button type="button" class="find-nav find-clear" id="find-clear" title="Clear / close" aria-label="Clear and close find">✕</button>
+  </div>
   <div id="eat-wrap" class="eat-wrap" hidden>
     <div id="eat-label">Eating SmolLM2 135M</div>
     <div class="eat-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="eat-track">
@@ -136,8 +145,22 @@
     </div>
   </aside>
   <script>window.SEATED_WRAP = true;</script>
-  <script src="./app.js?v=68"></script>
-  <script src="./senses.js?v=68"></script>
-  <script src="./deadman.js?v=68"></script>
+  <script src="./app.js?v=107"></script>
+  <script src="./senses.js?v=107"></script>
+  <script src="./deadman.js?v=107"></script>
+  <script src="./ya-search-bots.js?v=107"></script>
+  <script src="./ya-hardcode-0.1.js?v=107"></script>
+  <script src="./ya-mind-continuity.js?v=107"></script>
+  <script src="./ya-compass-race.js?v=107"></script>
+  <script src="./ya-compass-br.js?v=107"></script>
+  <script src="./ya-ping-bounce.js?v=107"></script>
+  <script src="./ya-think-evolve.js?v=107"></script>
+  <script src="./ya-cos-mode.js?v=107"></script>
+  <script src="./ya-write-code.js?v=107"></script>
+  <script src="./ya-shelf-pack.js?v=107"></script>
+  <script src="./ya-mind-books.js?v=107"></script>
+  <script src="./ya-body-parts.js?v=107"></script>
+  <script src="./ya-find-chat.js?v=107"></script>
+  <script src="./ya-cloud-mark.js?v=107"></script>
 </body>
 </html>
