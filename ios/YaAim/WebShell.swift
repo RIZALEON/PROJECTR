@@ -30,7 +30,7 @@ struct WebShell: UIViewRepresentable {
         } else {
             let html = """
             <!doctype html><meta charset=utf-8>
-            <body style="background:#0b0b0c;color:#e8e4d9;font:16px/1.4 -apple-system;padding:24px">
+            <body style=\"background:#0b0b0c;color:#e8e4d9;font:16px/1.4 -apple-system;padding:24px\">
             Function 0 is here. Offline. www missing from this bundle — rebuild in Xcode.
             </body>
             """
@@ -80,6 +80,9 @@ struct WebShell: UIViewRepresentable {
                 st["vaultBytes"] = NativeVault.documentsBytes()
                 st["wwwBytes"] = NativeVault.wwwBundleBytes()
                 st["seatedEmbedBytes"] = NativeVault.wwwBundleBytes()
+                st["appBytes"] = NativeVault.appBundleBytes()
+                st["bundleBytes"] = NativeVault.appBundleBytes()
+                st["yaFolderBytes"] = NativeVault.yaFolderBytes()
                 let files = ModelManager.status()
                 if let list = files["files"] { st["files"] = list }
                 if let id = body["id"] as? String { st["id"] = id }
@@ -190,7 +193,6 @@ struct WebShell: UIViewRepresentable {
                 while let shown = presenter.presentedViewController {
                     presenter = shown
                 }
-                // Apple Maps directions → hand off to Maps app when possible
                 let host = (url.host ?? "").lowercased()
                 if host == "maps.apple.com" || (host.hasSuffix(".apple.com") && host.contains("maps")) {
                     UIApplication.shared.open(url, options: [:]) { ok in
