@@ -92,6 +92,8 @@ struct WebShell: UIViewRepresentable {
                 presentSafari(urlString: raw, id: body["id"] as? String)
             case "geolocate":
                 requestGeolocate(id: body["id"] as? String)
+            case "fetch":
+                nativeFetch(urlString: (body["url"] as? String) ?? "", id: body["id"] as? String)
             default:
                 break
             }
@@ -169,6 +171,67 @@ struct WebShell: UIViewRepresentable {
             if let id = pendingGeoId { payload["id"] = id }
             pendingGeoId = nil
             reply(payload)
+        }
+
+        func nativeFetch(urlString: String, id: String?) {
+            let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+            func fail(_ reason: String) {
+                var payload: [String: Any] = ["op": "fetch", "ok": false, "reason": reason]
+                if let id = id { payload["id"] = id }
+                reply(payload)
+            }
+            guard let url = URL(string: trimmed),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" else {
+                fail("bad-url"); return
+            }
+            let host = (url.host ?? "").lowercased()
+            if host == "ntfy.sh" || host.hasSuffix(".ntfy.sh") {
+                fail("infra"); return
+            }
+            let stripped = trimmed.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "")
+            let candidates = [
+                URL(string: "https://r.jina.ai/http://" + stripped),
+                URL(string: "https://r.jina.ai/" + trimmed),
+                url
+            ].compactMap { $0 }
+            func tryNext(_ i: Int) {
+                guard i < candidates.count else { fail("fetch"); return }
+                var req = URLRequest(url: candidates[i], timeoutInterval: 18)
+                req.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+                req.setValue("text/plain, text/html, */*", forHTTPHeaderField: "Accept")
+                URLSession.shared.dataTask(with: req) { data, resp, err in
+                    DispatchQueue.main.async {
+                        if err != nil {
+                            tryNext(i + 1)
+                            return
+                        }
+                        let http = resp as? HTTPURLResponse
+                        let code = http?.statusCode ?? 0
+                        guard let data = data, (200..<400).contains(code) else {
+                            tryNext(i + 1)
+                            return
+                        }
+                        var text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines).count < 40 {
+                            tryNext(i + 1)
+                            return
+                        }
+                        if text.count > 80000 { text = String(text.prefix(80000)) }
+                        var payload: [String: Any] = [
+                            "op": "fetch",
+                            "ok": true,
+                            "status": code,
+                            "text": text,
+                            "url": trimmed,
+                            "via": candidates[i].absoluteString
+                        ]
+                        if let id = id { payload["id"] = id }
+                        self.reply(payload)
+                    }
+                }.resume()
+            }
+            tryNext(0)
         }
 
         func presentSafari(urlString: String, id: String?) {
