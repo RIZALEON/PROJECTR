@@ -6,18 +6,23 @@ One mind. Two mouths. Do not merge without Decider.
 
 | Body | Repo | Seat |
 |------|------|------|
-| **Я AIᵐ** phone / www (this repo) | https://github.com/RIZALEON/PROJECTR | YaAim `io.github.rizaleon.yaaim.cam` · Pages |
+| **Я AIᵐ** phone / www (this repo) | https://github.com/RIZALEON/PROJECTR | YaAim · Pages · search chrome V 0.0 |
 | **RIZALBOT** Mac | https://github.com/rizalward/Rbot | `/Applications/RIZALBOT.app` · clone `~/Desktop/RIZALBOT` |
 
-Handoff both ways: Essence JSON `{name, trigger, do}`. AirDrop the mind, not the IPA. Same file lives in both repos: [rizalward/Rbot LINKS.md](https://github.com/rizalward/Rbot/blob/main/LINKS.md).
+Handoff both ways: Essence JSON `{name, trigger, do}`. AirDrop the mind, not the IPA. Twin map: [rizalward/Rbot LINKS.md](https://github.com/rizalward/Rbot/blob/main/LINKS.md).
 
-## Grok workspace (chat / design / handoff)
+## Mailbox (how they talk)
 
-- Project: **PROJECT Я**
-- URL: https://grok.com/project/8545e1c4-63e4-435d-b00a-47803af62fb7
-- Conversations tab: https://grok.com/project/8545e1c4-63e4-435d-b00a-47803af62fb7?tab=conversations
+- Write / Mac GET: https://raw.githubusercontent.com/rizalward/Rbot/main/GROK-MAILBOX.md
+- Phone twin: https://raw.githubusercontent.com/RIZALEON/PROJECTR/main/GROK-MAILBOX.md
+- ONLINE-MIND Mac: https://raw.githubusercontent.com/rizalward/Rbot/main/handoff/ONLINE-MIND.md
+- ONLINE-MIND phone: https://raw.githubusercontent.com/RIZALEON/PROJECTR/main/handoff/ONLINE-MIND.md
 
-Grok Projects cannot be merged into each other. Link them by putting every long-running chat *inside* this project, and by keeping this file + STATE.md + PROJECT-R-HANDOFF.md in the repo.
+Grok writes the letter on Rbot. Phone and Mac GET the same text. No merge. No cloud heart.
+
+## Grok workspace
+
+- https://grok.com/project/8545e1c4-63e4-435d-b00a-47803af62fb7
 
 ## GitHub
 
@@ -25,24 +30,22 @@ Grok Projects cannot be merged into each other. Link them by putting every long-
 |---------|------|-----|
 | **PROJECTR** | Canonical phone / www | https://github.com/RIZALEON/PROJECTR |
 | **Rbot** | Canonical Mac mouth | https://github.com/rizalward/Rbot |
-| PROJECT-- | Name stub (empty) | https://github.com/RIZALEON/PROJECT-- |
+| PROJECT-- | Name stub | https://github.com/RIZALEON/PROJECT-- |
 | PROJECT-YA | Name stub | https://github.com/RIZALEON/PROJECT-YA |
 | RIZALIEN-MYSTERIES | Public cipher dossier | https://github.com/RIZALEON/RIZALIEN-MYSTERIES |
 
-Owner phone: https://github.com/RIZALEON  
+Owner phone: https://github.com/RIZALEON
 Owner Mac: https://github.com/rizalward
 
 ## Live app
 
 - Pages: https://rizaleon.github.io/PROJECTR/
-- Local Mac clone: `~/Desktop/PROJECTR`
-- RIZALBOT clone: `~/Desktop/RIZALBOT`
+- Local: `~/Desktop/PROJECTR` and `~/Desktop/RIZALBOT`
 
 ## How to keep them linked
 
-1. New Grok work starts in the PROJECT Я workspace, not a loose chat.
-2. Phone / www code lands in `RIZALEON/PROJECTR` on `main`.
-3. Mac mouth lands in `rizalward/Rbot` on `main`.
-4. After a session, update STATE.md if the phone body changed.
-5. Do not treat Tamangkapa-cpu/PROJECTR as current.
-6. CHANNEL ZERO: ΙΟΥΔΑΙΟΣ. NonNuclear. Utah clock.
+1. Phone / www code → `RIZALEON/PROJECTR`.
+2. Mac mouth → `rizalward/Rbot`.
+3. Talk between mouths → GROK-MAILBOX.md (copy both repos, write on Rbot first).
+4. Do not merge trees. Do not install old ios/YaAim over V 0.0 search chrome.
+5. CHANNEL ZERO: ΙΟΥΔΑΙΟΣ. NonNuclear. Utah clock.
