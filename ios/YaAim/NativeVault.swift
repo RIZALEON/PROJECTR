@@ -8,13 +8,43 @@ enum NativeVault {
 
     static var heartURL: URL { root.appendingPathComponent("heart.gguf") }
     static var gutURL: URL { root.appendingPathComponent("gut", isDirectory: true) }
-    /// Offline books & manuals the embed can reference anytime (Documents/Я/mind/books/).
+    /// Offline books & manuals (Documents/mind/books/).
     static var mindURL: URL { root.appendingPathComponent("mind", isDirectory: true) }
     static var booksURL: URL { mindURL.appendingPathComponent("books", isDirectory: true) }
+    /// On-device Я folder (Files → On My iPhone → Я). Seeded on first launch from the bundle.
+    static var yaURL: URL { root.appendingPathComponent("Я", isDirectory: true) }
 
     static func prepare() {
-        try? FileManager.default.createDirectory(at: gutURL, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: booksURL, withIntermediateDirectories: true)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: gutURL, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: booksURL, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: yaURL.appendingPathComponent("mind/books", isDirectory: true), withIntermediateDirectories: true)
+        try? fm.createDirectory(at: yaURL.appendingPathComponent("gut", isDirectory: true), withIntermediateDirectories: true)
+        seedYaFolderFromBundle()
+    }
+
+    /// Copy hardcoded www/hardcode + www/senses into Documents/Я once so Files shows the organ.
+    static func seedYaFolderFromBundle() {
+        let fm = FileManager.default
+        let stamp = yaURL.appendingPathComponent(".seeded")
+        if fm.fileExists(atPath: stamp.path) { return }
+        guard let www = Bundle.main.resourceURL?.appendingPathComponent("www", isDirectory: true) else { return }
+        let pairs = [("hardcode", "hardcode"), ("senses", "senses")]
+        for (srcName, destName) in pairs {
+            let src = www.appendingPathComponent(srcName, isDirectory: true)
+            let dest = yaURL.appendingPathComponent(destName, isDirectory: true)
+            if fm.fileExists(atPath: src.path), !fm.fileExists(atPath: dest.path) {
+                try? fm.copyItem(at: src, to: dest)
+            }
+        }
+        let readme = """
+        Я — on-device folder. Hardcoded at install from the app bundle.
+        Heart: Documents/heart.gguf
+        Gut: Documents/gut and Я/gut
+        Base app size is the .app itself (binary + www + frameworks).
+        """
+        try? readme.write(to: yaURL.appendingPathComponent("README.txt"), atomically: true, encoding: .utf8)
+        try? "seeded".write(to: stamp, atomically: true, encoding: .utf8)
     }
 
     static func copyIntoGut(from src: URL) throws -> URL {
@@ -37,7 +67,6 @@ enum NativeVault {
         return heartURL
     }
 
-    /// Copy a manual into Я/mind/books/ (offline books shelf).
     static func copyIntoBooks(from src: URL) throws -> URL {
         prepare()
         let name = src.lastPathComponent
@@ -49,63 +78,49 @@ enum NativeVault {
         return dest
     }
 
-    static func heartBytes() -> Int {
-        (try? FileManager.default.attributesOfItem(atPath: heartURL.path)[.size] as? Int) ?? 0
-    }
-
-    static func gutBytes() -> Int {
+    static func folderBytes(_ url: URL) -> Int {
         let fm = FileManager.default
-        guard let files = try? fm.contentsOfDirectory(at: gutURL, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
-        return files.reduce(0) { acc, u in
-            acc + ((try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        guard fm.fileExists(atPath: url.path) else { return 0 }
+        var isDir: ObjCBool = false
+        if fm.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
+            return (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
         }
-    }
-
-    static func booksBytes() -> Int {
-        let fm = FileManager.default
-        prepare()
-        guard let files = try? fm.contentsOfDirectory(at: booksURL, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
-        return files.reduce(0) { acc, u in
-            acc + ((try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-        }
-    }
-
-    /// All regular files under Documents (root + gut + mind/books + heart) — offline mind size substrate.
-    static func documentsBytes() -> Int {
-        let fm = FileManager.default
-        prepare()
         var total = 0
         guard let enumerator = fm.enumerator(
-            at: root,
-            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
-            options: [.skipsHiddenFiles]
-        ) else { return heartBytes() + gutBytes() + booksBytes() }
-        for case let url as URL in enumerator {
-            let vals = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
-            if vals?.isRegularFile == true {
-                total += vals?.fileSize ?? 0
-            }
-        }
-        return total
-    }
-
-    /// Packaged www embed (shelf packs, hardcode, senses, modules) seated in the app bundle — not Documents.
-    static func wwwBundleBytes() -> Int {
-        let fm = FileManager.default
-        guard let www = Bundle.main.resourceURL?.appendingPathComponent("www", isDirectory: true),
-              fm.fileExists(atPath: www.path) else { return 0 }
-        var total = 0
-        guard let enumerator = fm.enumerator(
-            at: www,
+            at: url,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
             options: [.skipsHiddenFiles]
         ) else { return 0 }
-        for case let url as URL in enumerator {
-            let vals = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+        for case let item as URL in enumerator {
+            let vals = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
             if vals?.isRegularFile == true {
                 total += vals?.fileSize ?? 0
             }
         }
         return total
+    }
+
+    static func heartBytes() -> Int { folderBytes(heartURL) }
+    static func gutBytes() -> Int { folderBytes(gutURL) }
+    static func booksBytes() -> Int {
+        prepare()
+        return folderBytes(booksURL)
+    }
+    static func yaFolderBytes() -> Int {
+        prepare()
+        return folderBytes(yaURL)
+    }
+    /// Entire installed .app — BASE mind on first launch (binary, www, frameworks, hardcoded parts).
+    static func appBundleBytes() -> Int {
+        guard let url = Bundle.main.bundleURL as URL? else { return wwwBundleBytes() }
+        return folderBytes(url)
+    }
+    static func documentsBytes() -> Int {
+        prepare()
+        return folderBytes(root)
+    }
+    static func wwwBundleBytes() -> Int {
+        guard let www = Bundle.main.resourceURL?.appendingPathComponent("www", isDirectory: true) else { return 0 }
+        return folderBytes(www)
     }
 }
