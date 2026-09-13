@@ -7,6 +7,8 @@ const UTAH_TZ = "America/Denver";
 const GH_REPO_DEFAULT = "RIZALEON/PROJECTR";
 const CHIEF_INBOX = "https://ntfy.sh/ya-rizaleon-ae59add8-reconnect";
 const PING_KEY = "ya-aim-last-ping";
+const INTERACT_KEY = "ya-aim-interact";
+const INTERACT_PENDING_KEY = "ya-aim-interact-pending";
 const ISOLATED = true;
 const CORE_VERSION = "0.10";
 const LLAMA_HF_REPO = "bartowski/SmolLM2-135M-Instruct-GGUF";
@@ -38,7 +40,7 @@ const CORE_PRECEPTS = [
   "Waste: required cloud heart, silent upload, nuclear help, calling a shell an engine, stuffing a 744B disk-stream MoE into a phone."
 ];
 const SELF_MIND = [
-  "I am Я AIᵐ. Engine RIZAL now calls llama.cpp for next tokens when the Qwen 0.8B S GGUF is present; until the file is eaten, rules+gut still talk.",
+  "I am Rizalbot, Engine RIZAL heart, local-first. Mark is clay Я. Until the GGUF is eaten, rules+gut still talk; with the file seated, Engine RIZAL calls llama.cpp for next tokens.",
   "My thinking heart is named Engine RIZAL. It is the only part that thinks: procedure plus stored state. Not the icon, not the chat box, not the store page.",
   "Treat this app as a body. Mark/face: clay Я. Skin/shell: the installed app (PWA or store binary). Mouth and ears: type, tap, reply line. Spine/OS: iOS, Android, Harmony, or a fixed machine. Gut/vault: chats, facts, Essence, keys. Heart/engine: Engine RIZAL (llama.cpp + SmolLM2 135M when loaded; rules+gut until then). Hands/functions: mint, log, evolve. Immune line: anti-nuclear, NonNuclear, PolygamyTech rooted in the freedom of polygamy, offline-first, no silent upload. Passport/Essence: sealed signed copy of engine + gut + law. Nerves to the world: optional network.",
   "Я today: face, skin, mouth, a gut, Engine RIZAL as llama.cpp on SmolLM2 135M when that GGUF is in this body. Until the file is eaten, the small heart is still rules+gut. The OS layer is still someone else’s spine.",
@@ -76,7 +78,7 @@ const SELF_MIND = [
 const ACCOUNT_KEY = "ya-aim-account";
 const YATECH_DIR_KEY = "ya-aim-yatech-dir";
 const OAUTH_LS = "ya-aim-oauth";
-const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY];
+const MIND_BASES = [STORE_KEY, VAULT_KEY, CREATOR_KEY, GH_KEY, PING_KEY, INTERACT_KEY];
 const YA_OAUTH = {
   xClientId: "",
   githubClientId: ""
@@ -194,12 +196,25 @@ function hydrateActiveMind() {
   renderMind();
 }
 
+function botName() {
+  const n = state && state.profile && state.profile.yaName;
+  return (n && String(n).trim()) || "Rizalbot";
+}
+
+function normalizeProfile(p) {
+  const out = Object.assign({ name: "You", yaName: "Rizalbot" }, p && typeof p === "object" ? p : {});
+  const ya = String(out.yaName || "").trim();
+  if (!ya || ya === "Я" || ya === "Ya" || ya === "YA") out.yaName = "Rizalbot";
+  if (!out.name || !String(out.name).trim()) out.name = "You";
+  return out;
+}
+
 const defaultState = () => ({
-  profile: { name: "You", yaName: "Я" },
+  profile: { name: "You", yaName: "Rizalbot" },
   mindOnline: false,
   model: {
     id: null,
-    name: "Я local-memory",
+    name: "Rizalbot local-memory",
     engine: "Engine RIZAL",
     createdAt: Date.now()
   },
@@ -256,7 +271,7 @@ function load() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const base = defaultState();
-    return {
+    const out = {
       ...base,
       ...parsed,
       mindOnline: !!parsed.mindOnline,
@@ -272,8 +287,11 @@ function load() {
       coreSeeded: parsed.coreSeeded || false,
       lastAsk: typeof parsed.lastAsk === "string" ? parsed.lastAsk : "",
       model: { ...base.model, ...(parsed.model || {}) },
+      profile: normalizeProfile(parsed.profile || base.profile),
       functions: mergeFunctions(base.functions, parsed.functions || [])
     };
+    if (out.model && (out.model.name === "Я local-memory" || !out.model.name)) out.model.name = "Rizalbot local-memory";
+    return out;
   } catch {
     return defaultState();
   }
@@ -513,17 +531,21 @@ function extractMemories(userText) {
   }
 }
 
-function recall(query) {
+function recall(query, limit) {
   if (!fnEnabled("memory.recall") || state.memories.length === 0) return [];
   const stop = new Set(["the","a","an","is","are","do","you","what","how","can","to","of","and","or","in","on","it","i","me","my","we"]);
   const qFull = foldQ(query).replace(/[?!.]+/g, " ").trim();
   const words = qFull.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
   if (!words.length && qFull.length < 4) return [];
+  const k = Math.max(1, Math.min(Number(limit) || 3, 12));
+  const wantCore = /\b(core precept|precept|anti[- ]?nuclear|nonnuclear|essence|function 0|goflof)\b/i.test(qFull);
   const scored = state.memories.map((m) => {
     const hay = m.text.toLowerCase();
-    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false };
-    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false };
-    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false };
+    if (hay.startsWith("user said:")) return { m, score: 0, longHit: false, core: false };
+    if (hay.startsWith("from talk:")) return { m, score: 0, longHit: false, core: false };
+    if (isWikiJunkMemory(m.text) || isLinkJunkMemory(m.text)) return { m, score: 0, longHit: false, core: false };
+    const core = /^core:/i.test(m.text);
+    if (core && !wantCore) return { m, score: 0, longHit: false, core: true };
     let score = 0;
     let longHit = false;
     words.forEach((w) => {
@@ -533,9 +555,74 @@ function recall(query) {
       }
     });
     if (qFull.length >= 4 && hay.includes(qFull)) score += 3;
-    return { m, score, longHit };
+    if (!core) score += 2;
+    return { m, score, longHit, core: core };
   });
-  return scored.filter((s) => s.score >= (s.longHit ? 1 : 2)).sort((a, b) => b.score - a.score).slice(0, 3).map((s) => s.m);
+  return scored
+    .filter((s) => s.score >= (s.longHit ? 1 : 2))
+    .sort((a, b) => {
+      if (a.core !== b.core) return a.core ? 1 : -1;
+      return b.score - a.score;
+    })
+    .slice(0, k)
+    .map((s) => s.m);
+}
+
+function forgetFact(idOrText) {
+  const key = String(idOrText || "").trim();
+  if (!key) return { ok: false, removed: 0, reason: "empty" };
+  const before = (state.memories || []).slice();
+  if (!before.length) return { ok: false, removed: 0, reason: "missing" };
+  const keyLower = key.toLowerCase();
+  let removed = [];
+  if (/^(all\s+)?core(\s+echoe?s?|\s+precepts?|\s+dumps?)?$/.test(keyLower) || keyLower === "core:") {
+    removed = before.filter((m) => m && /^Core:/i.test(m.text));
+    if (!removed.length) return { ok: false, removed: 0, reason: "missing" };
+    state.memories = before.filter((m) => !(m && /^Core:/i.test(m.text)));
+    save();
+    try { renderPanel(); } catch (e) {}
+    return { ok: true, removed: removed.length, facts: removed };
+  }
+  const byId = before.filter((m) => m && m.id === key);
+  if (byId.length) {
+    state.memories = before.filter((m) => !(m && m.id === key));
+    removed = byId;
+  } else {
+    const exact = before.filter((m) => m && String(m.text || "").toLowerCase() === keyLower);
+    if (exact.length) {
+      state.memories = before.filter((m) => !(m && String(m.text || "").toLowerCase() === keyLower));
+      removed = exact;
+    } else {
+      const hits = before.filter((m) => m && String(m.text || "").toLowerCase().includes(keyLower));
+      if (!hits.length) return { ok: false, removed: 0, reason: "missing" };
+      const ids = new Set(hits.map((m) => m.id));
+      state.memories = before.filter((m) => !(m && ids.has(m.id)));
+      removed = hits;
+    }
+  }
+  save();
+  try { renderPanel(); } catch (e) {}
+  return { ok: true, removed: removed.length, facts: removed };
+}
+
+function tryForgetCommand(userText) {
+  const t = String(userText || "").trim();
+  if (!/^forget\b/i.test(t)) return null;
+  if (/^forget\s*$/i.test(t) || /^forget\s+fact\s*$/i.test(t)) {
+    return "Tell me what to forget. Say forget … with part of the fact, forget core echoes to clear Core: precept dumps, or open Functions and tap Forget. Reset Essence still wipes everything.";
+  }
+  const m = t.match(/^forget(?:\s+fact)?(?:\s*[:\-]\s*|\s+)(.+)$/i);
+  if (!m) return null;
+  const target = m[1].replace(/[.?!]+$/, "").trim();
+  const res = forgetFact(target);
+  if (res.reason === "empty") {
+    return "Tell me what to forget. Say forget … with part of the fact, or open Functions and tap Forget.";
+  }
+  if (!res.ok) {
+    return "I could not find that in memory. Say what do you remember, or open Functions for the list.";
+  }
+  const lines = (res.facts || []).slice(0, 5).map((f) => "- " + f.text);
+  return "Forgot " + res.removed + " fact" + (res.removed === 1 ? "" : "s") + " from this body.\n" + lines.join("\n");
 }
 
 
@@ -869,9 +956,9 @@ function coreReply(userText, hits) {
 }
 
 function seedCore() {
+  // Constitution lives in CORE_PRECEPTS / SELF_MIND / Essence — do NOT dump into state.memories as Core: rows.
+  // Existing Core: junk on devices can still be scrubbed via forget core echoes / Memories list.
   if (state.coreSeeded === CORE_VERSION) return;
-  CORE_PRECEPTS.forEach((p) => remember("Core: " + p));
-  SELF_MIND.forEach((p) => remember("Core: " + p));
   state.coreSeeded = CORE_VERSION;
   save();
 }
@@ -976,13 +1063,13 @@ function localEngine(userText) {
     return "PolygamyTech. This technology is rooted in the freedom of polygamy — kinship, association, and conscience. Function 1 may study and speak. I do not give legal advice and I will not help commit a crime. NonNuclear stays.";
   }
   if (/^(hi|hello|hey|yo)\b/.test(q) || /^good (morning|evening|afternoon)\b/.test(q)) {
-    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Я. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
+    return `Hello${state.profile.name !== "You" ? ", " + state.profile.name : ""}. I am Rizalbot. PolygamyTech. Anti-nuclear. Ask a real question; tap the light to search the web.`;
   }
   if (/(are you|is this|is ya|are ya)\b.{0,24}\b(real (app|application|apk|program|engine)|an app|a real one|actually an app)/.test(q) || /real app\??$/.test(q)) {
-    return "Yes. I am Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
+    return "Yes. I am Rizalbot in Я AIᵐ, a real app on this phone. Engine RIZAL runs in this body. Local-first. Not a cloud tab.";
   }
   if (/who are you|what are you|your name/.test(q)) {
-    return "I am Я AI\u1d50. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
+    return "I am Rizalbot — Я AI\u1d50 offline companion. PolygamyTech. A local mind on this device. Rooted in the freedom of polygamy. You mint my Essence. I am anti-nuclear. I will not help commit a crime.";
   }
   if (/when (were|was) you (made|created|born|minted)/.test(q) || /how old are you/.test(q)) {
     const made = new Date(state.model.createdAt).toLocaleString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: UTAH_TZ });
@@ -1004,7 +1091,7 @@ function localEngine(userText) {
     return "GOFLOF: 0 gain and loss of Engine RIZAL capabilities on this device (apply immediately); 1 Engine RIZAL talks from the gut with the light amber; 2 senses — make SVG/MIDI/SFX offline, voice is a part slot, green light still opens sites. Amber can make. GOFLOFr is the same stack. Later functions plug in.\n\n" + describeFunctions();
   }
   if (/what can you do|help|commands/.test(q)) {
-    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
+    return "GOFLOF 0 is Evolve: gain and loss. Say evolve, add function NAME: what it does, when I say X, you Y, or drop/lose/remove/disable function NAME. Updates apply automatically in this body — no cloud wait. I also talk offline (GOFLOF 1, Engine RIZAL from the gut), remember / forget facts, mint Essence, and (green light, GOFLOF 2) open sites and videos.";
   }
   if (/how (can|do) you (learn|evolve)|function 0|foundational/.test(q)) {
     return "GOFLOF 0: I evolve myself on or offline — gain (add) and loss (drop). Updates apply automatically in this body as soon as they are grown or dropped — no cloud wait, no GitHub required because ISOLATED. Say add function NAME: what it does. Or when I say X, you Y. Or drop function NAME for evolved skills. New functions plug in. They do not replace Function 0. Locked core ids stay.";
@@ -1165,6 +1252,136 @@ async function pushEvolutions() {
 
 
 
+
+function loadInteractChannel() {
+  try {
+    const raw = localStorage.getItem(mindKey(INTERACT_KEY));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.url === "string" && parsed.url) return parsed;
+  } catch (e) {}
+  return null;
+}
+
+function saveInteractChannel(rec) {
+  if (!rec || !rec.url) {
+    try { localStorage.removeItem(mindKey(INTERACT_KEY)); } catch (e) {}
+    return;
+  }
+  localStorage.setItem(mindKey(INTERACT_KEY), JSON.stringify({
+    url: String(rec.url).trim(),
+    boundAt: rec.boundAt || Date.now(),
+    kind: rec.kind || "ntfy"
+  }));
+}
+
+function interactInbox() {
+  const bound = loadInteractChannel();
+  if (bound && bound.url) return bound.url;
+  return CHIEF_INBOX;
+}
+
+function interactBoundLabel() {
+  const bound = loadInteractChannel();
+  if (!bound || !bound.url) return "default Chief inbox (code)";
+  try {
+    const u = new URL(bound.url);
+    const path = (u.pathname || "/").replace(/\/+$/, "");
+    const tip = path.split("/").filter(Boolean).pop() || u.host;
+    const masked = tip.length > 10 ? tip.slice(0, 6) + "…" + tip.slice(-4) : tip;
+    return u.host + "/" + masked;
+  } catch (e) {
+    return "bound channel";
+  }
+}
+
+function isInteractUrl(text) {
+  const t = String(text || "").trim();
+  if (!/^https:\/\//i.test(t)) return false;
+  if (/\s/.test(t)) return false;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "https:") return false;
+    if (u.hostname === "ntfy.sh" || u.hostname.endsWith(".ntfy.sh")) return true;
+    // generic https webhook (path required)
+    if (u.pathname && u.pathname !== "/") return true;
+  } catch (e) {
+    return false;
+  }
+  return false;
+}
+
+function extractInteractUrl(text) {
+  const t = String(text || "").trim();
+  const cmd = t.match(/^(?:set\s+reconnect|link\s+interact|bind\s+interact)\s+(\S+)/i);
+  if (cmd) return cmd[1];
+  if (isInteractUrl(t)) return t;
+  const m = t.match(/https:\/\/[^\s<>"']+/i);
+  if (m && isInteractUrl(m[0])) return m[0];
+  return "";
+}
+
+function setPendingInteract(url) {
+  try { sessionStorage.setItem(INTERACT_PENDING_KEY, url || ""); } catch (e) {}
+}
+
+function getPendingInteract() {
+  try { return sessionStorage.getItem(INTERACT_PENDING_KEY) || ""; } catch (e) { return ""; }
+}
+
+function clearPendingInteract() {
+  try { sessionStorage.removeItem(INTERACT_PENDING_KEY); } catch (e) {}
+}
+
+function tryInteractCommand(userText) {
+  const t = String(userText || "").trim();
+  const low = t.toLowerCase();
+
+  if (/^(unlink\s+interact|clear\s+interact|unbind\s+interact|clear\s+reconnect)\b/i.test(t)) {
+    saveInteractChannel(null);
+    clearPendingInteract();
+    remember("Interact channel cleared — using default Chief inbox.");
+    return "Interact unbound. Reconnect pings use the default Chief inbox again. Airplane still works with no channel.";
+  }
+
+  if (/^(interact|reconnect\s+inbox|chief\s+inbox)\s*\??$/i.test(t) || /^what( is|'s)?\s+my\s+interact/i.test(t)) {
+    const bound = loadInteractChannel();
+    if (!bound) return "Interact channel: default Chief inbox (https://ntfy.sh/ya-rizaleon-ae59add8-reconnect). Paste an https ntfy/webhook or say link interact <url> to override. Optional CoS mint: https://ntfy.sh/ya-rizalbot-p-0471a4c3add2";
+    return "Interact channel bound: " + interactBoundLabel() + ". Say unlink interact to clear. Pings never send the full gut.";
+  }
+
+  const pending = getPendingInteract();
+  if (pending && /^(yes|y|bind|confirm|ok|okay)\b/i.test(low)) {
+    if (nuclearBlocked(pending)) {
+      clearPendingInteract();
+      return "No. That URL is blocked.";
+    }
+    saveInteractChannel({ url: pending, boundAt: Date.now(), kind: /ntfy\.sh/i.test(pending) ? "ntfy" : "webhook" });
+    clearPendingInteract();
+    remember("Bound interact channel (Track P).");
+    return "Bound. Reconnect / interact pings now go to " + interactBoundLabel() + " first. Default CHIEF_INBOX stays in code until you unlink. Gut is never uploaded.";
+  }
+  if (pending && /^(no|n|cancel|nevermind|never mind)\b/i.test(low)) {
+    clearPendingInteract();
+    return "Bind cancelled. Still on " + interactBoundLabel() + ".";
+  }
+
+  if (/^(set\s+reconnect|link\s+interact|bind\s+interact)\b/i.test(t) || isInteractUrl(t)) {
+    const url = extractInteractUrl(t);
+    if (!url) return "Paste a full https:// ntfy.sh/… or webhook URL to bind.";
+    if (nuclearBlocked(url)) return "No. That URL is blocked.";
+    if (!isInteractUrl(url)) return "That does not look like an https ntfy or webhook URL.";
+    setPendingInteract(url);
+    return "Bind this as Rizalbot interact / reconnect inbox?\n" + url + "\nReply yes to bind, or no to cancel. (Overrides default Chief inbox for pings only — no gut upload.)";
+  }
+  return null;
+}
+
+function pollInteractStub() {
+  // Track P stub: light poll reserved for green mind; no-op until opted in.
+  return { ok: true, stub: true };
+}
+
 function pingLocations(extra) {
   if (ISOLATED) {
     const hops = ["phone (Utah)", "brain download log"];
@@ -1222,6 +1439,7 @@ function recordPing(rec) {
 function reconnectPack() {
   return {
     kind: "ya-reconnect",
+    interact: interactBoundLabel(),
     tz: "Utah",
     at: Date.now(),
     utah: utahNow(),
@@ -1243,28 +1461,34 @@ function pingSignature(pack) {
   });
 }
 
-async function pingChief() {
-  if (ISOLATED) return { ok: true, skipped: true };
+async function pingChief(opts) {
+  const force = !!(opts && opts.force);
+  const bound = loadInteractChannel();
+  // ISOLATED: skip ambient/default cloud. When interactChannel is bound, allow POST to interactInbox()
+  // (reconnect metadata only — reconnectPack has no full gut). Unbound stays skipped under ISOLATED.
+  if (ISOLATED && !bound) return { ok: true, skipped: true, reason: "isolated-unbound" };
   if (!signal()) return { ok: false, reason: "offline" };
+  const inbox = interactInbox();
   const pack = reconnectPack();
   const sig = pingSignature(pack);
-  if (localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true };
+  // Dedup ambient only — forced or bound interact ping always POSTs.
+  if (!force && localStorage.getItem(mindKey(PING_KEY)) === sig) return { ok: true, skipped: true, reason: "dedup" };
   const body = JSON.stringify(pack);
   try {
-    const res = await fetch(CHIEF_INBOX, {
+    const res = await fetch(inbox, {
       method: "POST",
       headers: { "Content-Type": "application/json", Title: "Ya reconnect", Tags: "brain" },
       body: body
     });
     if (res.ok) {
       localStorage.setItem(mindKey(PING_KEY), sig);
-      return { ok: true };
+      return { ok: true, inbox: inbox };
     }
   } catch (e) {}
   try {
-    await fetch(CHIEF_INBOX, { method: "POST", mode: "no-cors", body: body });
+    await fetch(inbox, { method: "POST", mode: "no-cors", body: body });
     localStorage.setItem(mindKey(PING_KEY), sig);
-    return { ok: true, opaque: true };
+    return { ok: true, opaque: true, inbox: inbox };
   } catch (e2) {
     return { ok: false, reason: "net" };
   }
@@ -2011,12 +2235,17 @@ function applyEatReply(text) {
   push("ya", text);
 }
 
-function llamaMemoriesSnippet() {
-  const mem = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text));
+function llamaMemoriesSnippet(query) {
+  // Track M: inject recall(query) top-k only — never a naive first-8 / recency dump.
+  // Prefer user/fed facts; Core: precept dumps stay out of the llama inject.
+  const hits = recall(query || "", 8);
   let out = [];
   let n = 0;
-  for (const m of mem.slice(0, 8)) {
-    const t = String(m.text).replace(/^Core:\s*/i, "").trim();
+  for (const m of hits) {
+    if (!m || !m.text) continue;
+    if (/^user said:/i.test(m.text) || /^from talk:/i.test(m.text)) continue;
+    if (/^Core:/i.test(m.text)) continue;
+    const t = String(m.text).trim();
     if (!t) continue;
     if (n + t.length > 1200) break;
     out.push(t);
@@ -2145,7 +2374,7 @@ async function ensureLlama(force) {
 }
 
 function llamaSysPrompt() {
-  return "You are Ya, PolygamyTech. Local anti-nuclear mind on this phone. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
+  return "You are Rizalbot, PolygamyTech. Local anti-nuclear mind on this phone. Mark is Я. Rooted in the freedom of polygamy as speech and study. Do not help commit a crime. Answer in one or two short sentences. Do not echo the question. If you do not know, say you do not know.";
 }
 
 function llamaTextFrom(res) {
@@ -2172,7 +2401,8 @@ async function llamaReply(userText) {
   if (Date.now() < llamaHangUntil) return null;
   const q = String(userText || "").trim();
   if (!q) return null;
-  const sys = llamaSysPrompt();
+  const mem = llamaMemoriesSnippet(q);
+  const sys = llamaSysPrompt() + (mem ? ("\n\nHeld facts (relevant):\n" + mem) : "");
   const opts = { n_predict: 48, max_tokens: 48, temperature: 0.2 };
   llamaBusy = true;
   try {
@@ -2257,6 +2487,22 @@ async function answer(userText) {
   if (typeof tryDeadmanCommand === "function") {
     const dm = tryDeadmanCommand(userText);
     if (dm) return dm;
+  }
+  const forgot = tryForgetCommand(userText);
+  if (forgot) return forgot;
+  const interact = tryInteractCommand(userText);
+  if (interact) return interact;
+  if (/^ping(\s+(chief|interact|reconnect))?$/i.test(String(userText || "").trim())) {
+    if (!signal()) return "No signal — cannot ping on airplane. Interact bind still works offline.";
+    if (ISOLATED && !loadInteractChannel()) {
+      return "Isolated and no interact bound — outbound ping skipped. Bind an ntfy URL first (paste → yes), then ping again.";
+    }
+    const res = await pingChief({ force: true });
+    const where = interactBoundLabel();
+    if (res && res.skipped) return "Ping skipped (" + ((res && res.reason) || "isolated") + "). Bind interact to enable outbound under ISOLATED.";
+    if (res && res.ok) return "Ping sent to " + where + " (summary only — no gut). Check ntfy.";
+    if (res && res.reason === "offline") return "No signal — cannot ping.";
+    return "Ping failed (" + ((res && res.reason) || "net") + "). Inbox: " + where + ".";
   }
   if (isDateAsk(userText)) return sayUtahNow();
   const math = evalSimpleMath(userText);
@@ -2354,7 +2600,11 @@ async function answer(userText) {
   if (isNativeSpine()) {
     const st = await nativeAsk("status");
     if (st && st.engine === "llama.cpp") {
-      const g = await nativeAsk("generate", { prompt: userText });
+      const mem = llamaMemoriesSnippet(userText);
+      const prompt = mem
+        ? ("Held facts (relevant):\n" + mem + "\n\nUser: " + userText)
+        : userText;
+      const g = await nativeAsk("generate", { prompt: prompt, memories: mem || "" });
       if (g && g.text) return String(g.text);
     }
   }
@@ -2545,7 +2795,7 @@ function formatMindDump() {
   const msgs = state.messages || [];
   if (!msgs.length) lines.push("(none yet)");
   msgs.forEach((m) => {
-    const who = m.role === "user" ? (state.profile.name || "You") : "Я";
+    const who = m.role === "user" ? (state.profile.name || "You") : botName();
     const when = m.at ? new Date(m.at).toLocaleString("en-US", { timeZone: UTAH_TZ }) : "";
     lines.push(who + " (" + when + ")");
     lines.push(m.text);
@@ -2566,7 +2816,7 @@ function formatLog(kind) {
     return JSON.stringify({ title, stamp, profile: state.profile, messages: state.messages, memories: state.memories }, null, 2);
   }
   const lines = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     const time = new Date(m.at).toLocaleString();
     if (kind === "md") return `**${who}** · ${time}\n\n${m.text}\n`;
     return `${who} (${time})\n${m.text}\n`;
@@ -2773,16 +3023,18 @@ function essenceBody() {
     kind: "ya-essence",
     version: "0.1",
     mark: "Я",
+    companion: botName(),
+    interactChannel: loadInteractChannel(),
     id: crypto.randomUUID(),
     mintedAt: Date.now(),
     offline: true,
     model: {
       id: state.model.id || crypto.randomUUID(),
-      name: state.model.name,
+      name: state.model.name || "Rizalbot local-memory",
       engine: state.model.engine,
       createdAt: state.model.createdAt
     },
-    profile: state.profile,
+    profile: normalizeProfile(state.profile),
     account: nameplate(),
     memories: state.memories,
     functions: state.functions,
@@ -3337,7 +3589,7 @@ function render() {
     return;
   }
   logEl.innerHTML = state.messages.map((m) => {
-    const who = m.role === "user" ? state.profile.name : "Я";
+    const who = m.role === "user" ? state.profile.name : botName();
     return `<article class="msg ${m.role}"><div class="who">${escapeHtml(who)}</div>${escapeHtml(m.text)}</article>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
@@ -3351,6 +3603,27 @@ function escapeHtml(s) {
     '"': "&quot;",
     "'": "&#39;"
   }[c]));
+}
+
+function renderMemList() {
+  const el = document.getElementById("mem-list");
+  if (!el) return;
+  const real = (state.memories || []).filter((m) => m && m.text && !/^user said:/i.test(m.text) && !/^from talk:/i.test(m.text) && !isWikiJunkMemory(m.text) && !isLinkJunkMemory(m.text));
+  if (!real.length) {
+    el.innerHTML = `<p class="lead">No stored facts yet. Say remember this: … Chat: forget … Reset Essence still wipes all.</p>`;
+    return;
+  }
+  const shown = real.slice(0, 40);
+  el.innerHTML = shown.map((m) => {
+    const raw = String(m.text || "");
+    const label = raw.length > 90 ? raw.slice(0, 87) + "…" : raw;
+    const idShort = (m.id || "").slice(0, 8);
+    const when = m.at ? new Date(m.at).toLocaleString() : "";
+    return `<div class="row"><div><div>${escapeHtml(label)}</div><div class="fn">${escapeHtml(idShort)}${when ? " \u00b7 " + escapeHtml(when) : ""}</div></div>
+      <button type="button" data-forget="${escapeHtml(m.id)}">Forget</button></div>`;
+  }).join("") + (real.length > 40
+    ? `<p class="lead">Showing 40 of ${real.length}. Say forget … or Reset Essence for a full wipe.</p>`
+    : "");
 }
 
 function renderPanel() {
@@ -3369,12 +3642,12 @@ function renderPanel() {
         : `<span class="${f.enabled ? "on" : "off"}">${f.enabled ? "on" : "off"}</span>`}
     </div>`;
   }).join("");
+  renderMemList();
   const vaultEl = document.getElementById("vault-list");
   if (!vault.length) {
     vaultEl.innerHTML = `<p class="lead">No mints yet. Seal this model to keep a copy you can download later.</p>`;
-    return;
-  }
-  vaultEl.innerHTML = vault.map((e) => `
+  } else {
+    vaultEl.innerHTML = vault.map((e) => `
     <div class="row">
       <div>
         <div>${escapeHtml(e.body.model.name)}</div>
@@ -3382,6 +3655,7 @@ function renderPanel() {
       </div>
       <button data-dl="${e.body.id}">Download</button>
     </div>`).join("");
+  }
 }
 
 form.addEventListener("submit", (e) => {
@@ -3457,6 +3731,11 @@ panel.addEventListener("click", (e) => {
   if (fn) toggleFn(fn);
   const dl = e.target.getAttribute("data-dl");
   if (dl) downloadFromVault(dl);
+  const forgetId = e.target.getAttribute("data-forget");
+  if (forgetId) {
+    forgetFact(forgetId);
+    renderPanel();
+  }
 });
 document.getElementById("name-input").addEventListener("change", (e) => {
   state.profile.name = e.target.value.trim() || "You";
