@@ -78,7 +78,8 @@
 | Я GitHub ☁️ 🧠 | https://github.com/RIZALEON/PROJECTR/pull/12 |
 
 Live seat: **On My iPhone → Я/**  
-Shared template: https://x.ai/bot/hb7nNB2zNxCXUCsBL4Hgb
+Shared template: https://x.ai/bot/hb7nNB2zNxCXUCsBL4Hgb  
+**Public face (X):** [https://x.com/rizalthebot](https://x.com/rizalthebot) · `@rizalthebot`
 
 ---
 

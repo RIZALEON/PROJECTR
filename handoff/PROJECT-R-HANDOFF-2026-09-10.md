@@ -88,3 +88,4 @@ Prefer on-device Metal; keep cloud usage light. Do not commit ios/llama.xcframew
 | iOS YaAim (tip `a574ce1`) | source on PR #12 | IPA/zip when Mac builds | On My iPhone Я + iCloud twin dump |
 | Android APK | release v0.55 attaches 0.54-battery + www tip tgz | same release assets → Drive mirror | dump when Mac/phone sync |
 
+**Public face (X):** [https://x.com/rizalthebot](https://x.com/rizalthebot) · `@rizalthebot`
