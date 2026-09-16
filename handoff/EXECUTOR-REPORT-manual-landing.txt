@@ -1,0 +1,60 @@
+EXECUTOR REPORT — Bolte Manual Landing (Decider last two functions)
+Time: 2026-09-15 ~22:58 MDT (America/Denver)
+
+## BLOCKER (critical)
+This executor subagent's Shell/Read schemas do NOT include machineId.
+ListMachines / CopyToBox / CopyFromBox / CloudAgent are absent from this executor's tool list.
+Every Shell call runs on Linux box (hostname=cursor, user=box).
+Cannot: read live /Users/rizal/Documents/ЯBOT/ЯBOT/*, edit Mac sources, xcodebuild, relaunch Debug app.
+
+## What was built on box (ready for parent Mac seat)
+Pack: /workspace/manual-landing-seat.tgz
+Unpack dir: /workspace/manual-landing-seat/
+
+### Implementation (success criteria coded)
+1. Bolte (ClayButton asset "Bolte") sets showManualLanding = true
+2. ManualLandingView: Color.black + Image("ManualCover") scaledToFit
+3. GeometryReader % hotspots:
+   - Top ~20–35% vertical center strip → dismiss (house)
+   - Bottom ~70–95% vertical → offline PDF export (arrow)
+4. PDF resolve order: Bundle USER-MANUAL.pdf → App Support/ЯBOT/MACHINE MIND → Documents/ЯBOT/USER-MANUAL.pdf
+5. Export: copy to Downloads + reveal; NSSavePanel fallback (sandbox-safe)
+6. USER-MANUAL.pdf placed in ЯBOT/ for PBXFileSystemSynchronizedRootGroup auto-bundle
+7. ManualCover.imageset from user-manual-cover-landing.jpg
+8. USER-MANUAL.md chrome note folded (Bolte / house / arrow)
+9. Preview PNG: /workspace/manual-landing-preview.png (+ clean sibling)
+
+### Parent must run (machineId 55d92eb0-0ce0-4959-b297-440d80e59e38)
+A) CopyFromBox:
+   - /workspace/manual-landing-seat.tgz
+     → /Users/rizal/Documents/ЯBOT/manual-landing-seat.tgz
+   - /workspace/manual-landing-preview.png
+     → show Decider
+B) Shell+machineId:
+```bash
+cd /Users/rizal/Documents/ЯBOT && tar xzf manual-landing-seat.tgz \
+  && bash manual-landing-seat/handoff/apply-manual-landing-macos.sh
+```
+C) Xcode Run (scheme ЯBOT, My Mac) if xcodebuild not enough
+
+### Files in pack (changed / added)
+- ЯBOT/ContentView.swift (showManualLanding + Bolte ClayButton + overlay)
+- ЯBOT/ManualLandingView.swift (NEW)
+- ЯBOT/ClayButtons.swift (focusEffectDisabled)
+- ЯBOT/Assets.xcassets/ManualCover.imageset/* (NEW)
+- ЯBOT/USER-MANUAL.pdf (bundled resource)
+- USER-MANUAL.md (chrome note)
+- handoff/apply-manual-landing-macos.sh
+- handoff/manual-landing-preview.png
+
+### Box mirrors also updated
+- /workspace/ContentView.swift, ManualLandingView.swift, ClayButtons.swift, USER-MANUAL.md
+- APP-TEMPLATE-0.1 + AESTHETIC + official-templates source-project seats
+
+### xcodebuild
+NOT RUN (no Mac). Apply script will attempt it on Mac.
+
+### Live Mac ContentView note
+Decider said Bolte is already ClayButton with empty { }. Box baseline still had ClayAssetImage —
+pack replaces with ClayButton action. If live ContentView diverged heavily, parent should
+diff before overwrite or merge showManualLanding + ManualLandingView only.

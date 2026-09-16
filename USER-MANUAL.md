@@ -4,7 +4,7 @@
 **Signature:** RIZALBOT🤖 / CoS  
 **Decider HARDCODE:** PDF USER MANUAL always rides every transfer / upgrade / offload / handoff.  
 **Timezone:** America/Denver  
-**Updated:** 2026-09-15 22:24 MDT
+**Updated:** 2026-09-15 22:57 MDT
 
 ---
 
@@ -54,6 +54,18 @@ Original tablet title: **Я OPERATING SYSTEM — USER GIVER MANUAL · TABLET** (
 
 ---
 
+---
+
+## Chrome · Bolte manual landing
+
+**Bolte** (far upper-left ClayButton in chromeOverlays) opens the **all-black tableta** landing — USER GIVEЯ MANUAL book cover (`ManualCover`).
+
+On that landing:
+- **Top mascot (holding house)** → return to main bot chat screen.
+- **Bottom mascot (holding down arrow)** → offline download/export of seated `USER-MANUAL.pdf` (Bundle → Application Support `MACHINE MIND` → Documents/ЯBOT). No network required.
+
+Most recent manual always rides MACHINE MIND of the built app (Copy Bundle Resources via FileSystemSynchronizedRootGroup: `ЯBOT/USER-MANUAL.pdf`).
+
 ## Pack include (HARDCODE)
 
 Every pack script / MAC-SEAT / tgz / handoff **must** include:
@@ -79,6 +91,7 @@ Never ship APP-TEMPLATE or AESTHETIC packs without the living cover.
 
 | When (MDT) | What |
 |---|---|
+| 2026-09-15 ~22:57 | Chrome: Bolte → black ManualCover landing; house → chat; arrow → offline USER-MANUAL.pdf export (MACHINE MIND). |
 | 2026-09-14 | Cover seated. 680 instructions written. Tablet declared. |
 | 2026-09-15 ~22:24 | Canonical rename seat → `USER-MANUAL.pdf` / `.md`. Living-cover HARDCODE. Я KOMMAND 0 · RESPAWN folded in. Packs + ya-respawn restore manual. |
 
