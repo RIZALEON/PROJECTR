@@ -1,9 +1,10 @@
 APP-TEMPLATE-0.1 MANIFEST
-Date: 2026-09-15 22:19:37 MDT (America/Denver)
+Date: 2026-09-15 22:24 MDT (America/Denver)
 Signature: RIZALBOT🤖 / CoS
+HARDCODE: USER-MANUAL.pdf + USER-MANUAL.md always rides
 
    1223568  ./AESTHETIC-WINNER-stormclay-3d-font-pack.png
-      2597  ./APP-CONTRACT-0.1.md
+      3102  ./APP-CONTRACT-0.1.md
    2083438  ./Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
      39165  ./Assets.xcassets/AppIcon.appiconset/AppIcon-128.png
        835  ./Assets.xcassets/AppIcon.appiconset/AppIcon-16.png
@@ -36,9 +37,11 @@ Signature: RIZALBOT🤖 / CoS
      21420  ./Fonts/Stormclay.ttf
    3218664  ./Fonts/StormclayGold.ttf
    1995668  ./Fonts/StormclayWhite.ttf
-      2041  ./MANIFEST.txt
+       157  ./MANIFEST.txt
         88  ./OFFICIAL.json
        647  ./PROVENANCE.txt
+      3374  ./USER-MANUAL.md
+    990677  ./USER-MANUAL.pdf
    2083438  ./source-project/ЯBOT/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
      39165  ./source-project/ЯBOT/Assets.xcassets/AppIcon.appiconset/AppIcon-128.png
        835  ./source-project/ЯBOT/Assets.xcassets/AppIcon.appiconset/AppIcon-16.png
@@ -86,4 +89,4 @@ Signature: RIZALBOT🤖 / CoS
      12694  ./source/ContentView.swift
       1002  ./source/Info.plist
        181  ./source/MyApp.swift
-      2446  ./ya-respawn.sh
+      3379  ./ya-respawn.sh

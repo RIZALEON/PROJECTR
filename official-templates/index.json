@@ -1,6 +1,12 @@
 {
   "updated": "2026-09-15",
   "timezone": "America/Denver",
+  "notes": "HARDCODE: USER-MANUAL.pdf (+ USER-MANUAL.md) always rides every transfer/upgrade/offload/handoff/pack. Living cover — fold INTO it, never beside. ya-respawn restores manuals from most_recent official template. Я KOMMAND 0 = RESPAWN.",
+  "user_manual": {
+    "pdf": "USER-MANUAL.pdf",
+    "md": "USER-MANUAL.md",
+    "always_rides": true
+  },
   "templates": [
     {
       "id": "AESTHETIC-TEMPLATE-CLAY-2026-09-15",

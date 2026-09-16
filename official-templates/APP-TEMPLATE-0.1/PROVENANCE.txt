@@ -1,9 +1,9 @@
 APP-TEMPLATE-0.1
-Date: 2026-09-15 22:19:29 MDT (America/Denver)
+Date: 2026-09-15 22:24 MDT (America/Denver)
 Signature: RIZALBOT🤖 / CoS
 Parent aesthetic template: AESTHETIC-TEMPLATE-CLAY-2026-09-15
 Live Mac seat intended: /Users/rizal/Documents/ЯBOT/
-Pack assembled on Cursor box — executor Shell has no machineId; could not read rizals-MacBook-Neo.local.
-Sources: AESTHETIC-TEMPLATE-CLAY-2026-09-15 (assets+swift) + claymation-font-upgrade (StormclayWhite/Gold + winner PNG).
-RESPAWN: pending in CompanionRouter at pack time (noted in APP-CONTRACT-0.1.md).
-Parent should CopyFromBox → Mac Documents/ЯBOT + PROJECTRXCODE and re-sync from live seat when machineId Shell is available.
+HARDCODE: USER-MANUAL.pdf (+ USER-MANUAL.md) always rides every transfer/upgrade/offload/handoff.
+Я KOMMAND 0 · RESPAWN via ya-respawn.sh restores manuals from most_recent (APP-TEMPLATE-0.1).
+PDF leaf p.18 folded from USER-MANUAL.md (living cover) — original 17-page tablet preserved.
+Source PDF: Drive R_OS_USER_GIVER_MANUAL_680.pdf (id 1-cN_1noOCtexLRQBqtYc7WKTYSLhj-KX) + Mac Downloads candidate.

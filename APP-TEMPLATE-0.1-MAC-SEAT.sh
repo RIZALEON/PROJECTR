@@ -65,6 +65,24 @@ if [[ -d "$PRX/AESTHETIC-TEMPLATE-CLAY-2026-09-15" && ! -d "$PRX/official-templa
 fi
 
 cp -f "$SRC/ya-respawn.sh" "$YBOT/ya-respawn.sh"
+
+# HARDCODE — living cover USER MANUAL always rides
+for root in "$YBOT" "$PRX" "$YBOT/official-templates/$NAME" "$PRX/official-templates/$NAME" "$YBOT/$NAME" "$PRX/$NAME"; do
+  mkdir -p "$root"
+  [[ -f "$SRC/USER-MANUAL.pdf" ]] && cp -f "$SRC/USER-MANUAL.pdf" "$root/USER-MANUAL.pdf"
+  [[ -f "$SRC/USER-MANUAL.md" ]] && cp -f "$SRC/USER-MANUAL.md" "$root/USER-MANUAL.md"
+done
+# also aesthetic pack if present
+for aes in AESTHETIC-TEMPLATE-CLAY-2026-09-15; do
+  for root in "$YBOT/official-templates/$aes" "$PRX/official-templates/$aes" "$YBOT/$aes" "$PRX/$aes"; do
+    if [[ -d "$root" || -d "$(dirname "$root")" ]]; then
+      mkdir -p "$root" 2>/dev/null || true
+      [[ -f "$SRC/USER-MANUAL.pdf" ]] && cp -f "$SRC/USER-MANUAL.pdf" "$root/USER-MANUAL.pdf" 2>/dev/null || true
+      [[ -f "$SRC/USER-MANUAL.md" ]] && cp -f "$SRC/USER-MANUAL.md" "$root/USER-MANUAL.md" 2>/dev/null || true
+    fi
+  done
+done
+
 chmod +x "$YBOT/ya-respawn.sh" "$YBOT/official-templates/$NAME/ya-respawn.sh"
 
 OUT_TGZ="$YBOT/${NAME}.tgz"
