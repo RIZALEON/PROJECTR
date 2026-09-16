@@ -1,0 +1,57 @@
+AESTHETIC-TEMPLATE-CLAY-2026-09-15
+Date: 2026-09-15 America/Denver
+Generated: 2026-09-15 18:45:42 MDT
+Signature: RIZALBOT🤖 / CoS waypoint
+
+PATH  SIZE_BYTES  MTIME_AMERICA_DENVER
+AESTHETIC-CONTRACT.md  1884  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png  2083438  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-128.png  39165  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-16.png  835  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-256.png  151657  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-32.png  2880  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-512.png  587755  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/AppIcon-64.png  10341  2026-09-15 18:45:22 MDT
+Assets.xcassets/AppIcon.appiconset/Contents.json  991  2026-09-15 18:45:22 MDT
+Assets.xcassets/Bolte.imageset/Bolte.png  413523  2026-09-15 18:45:22 MDT
+Assets.xcassets/Bolte.imageset/Contents.json  239  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnComposer.imageset/BtnComposer.png  305835  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnComposer.imageset/Contents.json  245  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnMind.imageset/BtnMind.png  660140  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnMind.imageset/Contents.json  241  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnOffline.imageset/BtnOffline.png  1679771  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnOffline.imageset/Contents.json  244  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnOnline.imageset/BtnOnline.png  1614494  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnOnline.imageset/Contents.json  243  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnPlus.imageset/BtnPlus.png  139315  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnPlus.imageset/Contents.json  241  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnSearch.imageset/BtnSearch.png  301903  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnSearch.imageset/Contents.json  243  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnSend.imageset/BtnSend.png  159877  2026-09-15 18:45:22 MDT
+Assets.xcassets/BtnSend.imageset/Contents.json  241  2026-09-15 18:45:22 MDT
+Assets.xcassets/ClayWall.imageset/ClayWall.jpg  577380  2026-09-15 18:45:22 MDT
+Assets.xcassets/ClayWall.imageset/Contents.json  242  2026-09-15 18:45:22 MDT
+Assets.xcassets/Contents.json  53  2026-09-15 18:45:22 MDT
+Fonts/OFL.txt  265  2026-09-15 18:45:22 MDT
+Fonts/Stormclay.ttf  21420  2026-09-15 18:45:22 MDT
+MANIFEST.txt  2475  2026-09-15 18:45:42 MDT
+PROVENANCE.txt  499  2026-09-15 18:45:22 MDT
+source-project/AESTHETIC-CONTRACT.md  1884  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/ChatMessage.swift  438  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/ClayButtons.swift  2442  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/ClayComposer.swift  6311  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/ClayTheme.swift  8345  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/CompanionRouter.swift  4551  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/ContentView.swift  12694  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/Fonts/OFL.txt  265  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/Fonts/Stormclay.ttf  21420  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/Info.plist  1002  2026-09-15 18:45:22 MDT
+source-project/ЯBOT/MyApp.swift  181  2026-09-15 18:45:22 MDT
+source/ChatMessage.swift  438  2026-09-15 18:45:22 MDT
+source/ClayButtons.swift  2442  2026-09-15 18:45:22 MDT
+source/ClayComposer.swift  6311  2026-09-15 18:45:22 MDT
+source/ClayTheme.swift  8345  2026-09-15 18:45:22 MDT
+source/CompanionRouter.swift  4551  2026-09-15 18:45:22 MDT
+source/ContentView.swift  12694  2026-09-15 18:45:22 MDT
+source/Info.plist  1002  2026-09-15 18:45:22 MDT
+source/MyApp.swift  181  2026-09-15 18:45:22 MDT
