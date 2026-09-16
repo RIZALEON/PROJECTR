@@ -1,140 +1,104 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Unified clay composer from Decider mock: + adds files, Send ships text + files.
+/// Clay text chat command bar — purple molded well, dark field only (no plus/Send in art).
 struct ClayComposerBar: View {
     @Binding var draft: String
     @Binding var attachments: [ClayAttachment]
-    var placeholder: String
+    var placeholder: String = ""
     var focused: FocusState<Bool>.Binding
     var onSend: () -> Void
     var onAddFiles: () -> Void
+
+    /// Short clay field — natural aspect of Decider text-window art (~9.7:1).
+    private let barHeight: CGFloat = 52
+    private let barWidth: CGFloat = 580 // Decider: a bit longer
 
     var canSend: Bool {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attachments.isEmpty
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             if !attachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(attachments) { item in
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.fill")
-                                    .font(.system(size: 11, weight: .bold))
-                                Text(item.name)
-                                    .font(ClayTheme.clayFont(size: 11, weight: .bold))
-                                    .lineLimit(1)
-                                Button {
-                                    attachments.removeAll { $0.id == item.id }
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 12))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .foregroundStyle(ClayTheme.offWhite)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule()
-                                    .fill(ClayTheme.purpleDeep.opacity(0.85))
-                                    .overlay(Capsule().stroke(ClayTheme.gold.opacity(0.4), lineWidth: 1))
-                                    .clayEmboss()
-                            )
+                            Text(item.name)
+                                .font(ClayTheme.clayFont(size: 11, weight: .bold))
+                                .foregroundStyle(ClayTheme.offWhite)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .onTapGesture { attachments.removeAll { $0.id == item.id } }
                         }
                     }
                 }
             }
 
-            HStack(spacing: 0) {
-                // + add files (left, inside clay frame)
-                Button(action: onAddFiles) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(ClayTheme.purple)
-                            .frame(width: 28, height: 28)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(ClayTheme.orangeBolt, lineWidth: 2)
-                            )
-                            .clayEmboss()
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .heavy))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Add files")
-                .padding(.leading, 10)
+            ZStack {
+                Image("BtnComposer")
+                    .renderingMode(.original)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: barWidth, height: barHeight)
+                    .shadow(color: Color.black.opacity(0.3), radius: 4, y: 2)
 
-                TextField(placeholder, text: $draft, axis: .vertical)
+                TextField("", text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(ClayTheme.clayFont(size: 14, weight: .semibold))
                     .foregroundStyle(ClayTheme.offWhite)
-                    .lineLimit(1...4)
+                    .lineLimit(1...2)
                     .focused(focused)
-                    .padding(.vertical, 12)
-                    .padding(.trailing, 8)
-                    .onSubmit(onSend)
-
-                Button(action: onSend) {
-                    Text("Send")
-                        .clayText(size: 14, weight: .heavy, color: .white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [ClayTheme.purple, ClayTheme.purpleDeep],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                                )
-                                .clayEmboss()
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSend)
-                .opacity(canSend ? 1 : 0.5)
-                .help("Send text and files")
-                .padding(.trailing, 10)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
+                    .frame(width: barWidth, height: barHeight)
+                    .background(Color.clear)
+                    .onSubmit { if canSend { onSend() } }
             }
-            .frame(minHeight: 56)
-            .background(composerClayFrame)
+            .frame(width: barWidth, height: barHeight)
+            .frame(maxWidth: .infinity) // center
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Chat command")
         }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
     }
+}
 
-    private var composerClayFrame: some View {
+/// Chat search well — same BtnComposer clay as the command bar, shorter, sits beside search.
+struct ClaySearchBar: View {
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+    var onClose: () -> Void
+
+    private let barHeight: CGFloat = 36
+    private let barWidth: CGFloat = 340
+
+    var body: some View {
         ZStack {
-            if ClayImage.exists("BtnComposer") {
-                Image("BtnComposer")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFill()
-                    .clipped()
-                    .opacity(0.92)
-            }
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(ClayTheme.purpleClay.opacity(ClayImage.exists("BtnComposer") ? 0.35 : 1))
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(ClayTheme.purple, lineWidth: 5)
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(ClayTheme.charcoalDeep.opacity(0.94))
-                .padding(8)
-            ClayNoiseOverlay(opacity: 0.22)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            Image("BtnComposer")
+                .renderingMode(.original)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: barWidth, height: barHeight)
+                .shadow(color: Color.black.opacity(0.3), radius: 4, y: 2)
+
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .font(ClayTheme.clayFont(size: 13, weight: .semibold))
+                .foregroundStyle(ClayTheme.offWhite)
+                .focused(focused)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
+                .frame(width: barWidth, height: barHeight)
+                .background(Color.clear)
+                .onSubmit { /* live filter — keep open */ }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .clayEmboss()
+        .frame(width: barWidth, height: barHeight)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Search chat")
+        .help("Search chat for words and phrases")
     }
 }
 
@@ -142,10 +106,7 @@ struct ClayAttachment: Identifiable, Equatable {
     let id: UUID
     let name: String
     let url: URL
-
     init(id: UUID = UUID(), name: String, url: URL) {
-        self.id = id
-        self.name = name
-        self.url = url
+        self.id = id; self.name = name; self.url = url
     }
 }

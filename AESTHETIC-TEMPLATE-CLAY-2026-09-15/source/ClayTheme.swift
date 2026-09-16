@@ -27,9 +27,14 @@ enum ClayTheme {
     static let bubbleRadius: CGFloat = 22
     static let chromeSize: CGFloat = 64
 
-    /// Chunky claymation type — rounded, heavy, slight emboss via ClayText.
+    /// Stormclay — bundled claymation face on every device (macOS / iOS / visionOS).
+    static let stormclayFamily = "Stormclay"
+    static let stormclayPostScript = "Stormclay-Regular"
+
     static func clayFont(size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        // Single-weight display face; weight kept for call-site API compatibility.
+        _ = weight
+        return .custom(stormclayFamily, size: size)
     }
 }
 
@@ -89,20 +94,14 @@ struct ClayNoiseOverlay: View {
     var opacity: Double = 0.12
     var body: some View {
         Canvas { ctx, size in
-            // Deterministic mottling (stable across redraws)
-            var seed: UInt64 = 0xC1A7_C1A7
-            func next() -> CGFloat {
-                seed = seed &* 6364136223846793005 &+ 1
-                return CGFloat(seed % 10_000) / 10_000
-            }
-            for _ in 0..<160 {
-                let x = next() * size.width
-                let y = next() * size.height
-                let r = 4 + next() * 24
-                let bright = next() > 0.5
+            for _ in 0..<180 {
+                let x = CGFloat.random(in: 0...size.width)
+                let y = CGFloat.random(in: 0...size.height)
+                let r = CGFloat.random(in: 4...28)
+                let bright = Bool.random()
                 ctx.fill(
-                    Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r * (0.6 + next() * 0.6))),
-                    with: .color(bright ? Color.white.opacity(0.04) : Color.black.opacity(0.07))
+                    Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r * CGFloat.random(in: 0.6...1.2))),
+                    with: .color(bright ? Color.white.opacity(0.035) : Color.black.opacity(0.06))
                 )
             }
         }

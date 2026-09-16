@@ -1,7 +1,6 @@
 SOURCE NOTE (2026-09-15 America/Denver)
-Requested live Mac seat: /Users/rizal/Documents/ЯBOT/
-This executor Shell has no machineId parameter — cannot read rizals-MacBook-Neo.local.
-Pack assembled from newest box clay mirrors (ClayTheme/Composer/ContentView, clay-buttons,
-ybot-clay-v2, true-buttons-seat, toggle-goldtrim, stormclay-update, appicon-out).
-Parent should re-sync from live Mac seat with Shell+machineId 55d92eb0-0ce0-4959-b297-440d80e59e38
-when available, then overwrite twin seats.
+Live Mac seat: /Users/rizal/Documents/ЯBOT/
+Pack refreshed from live ЯBOT Assets + Clay*.swift + Fonts + light source-project.
+Twins: Documents/ЯBOT, Documents/PROJECTRXCODE, iCloud Drive Я/, GitHub RIZALEON/PROJECTR,
+Google Drive MACHINE MIND (contract/index; full binary on GitHub/Mac/iCloud).
+Signature: RIZALBOT🤖 / CoS waypoint

@@ -2,10 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @State private var messages: [ChatMessage] = [
-        ChatMessage(role: .assistant, text: "Here. Clay seat live · offline-first · claymation base."),
-        ChatMessage(role: .system, text: "Laws seated: NonNuclear · teachings forever · dual tongue · BOLTE · mind loop.")
-    ]
+    @State private var messages: [ChatMessage] = []
     @State private var draft: String = ""
     @State private var isOnline: Bool = false
     @State private var showJumpToLatest: Bool = false
@@ -16,9 +13,9 @@ struct ContentView: View {
     @State private var attachments: [ClayAttachment] = []
     @State private var showFilePicker: Bool = false
     @FocusState private var composerFocused: Bool
+    @FocusState private var searchFocused: Bool
 
-    private let placeholder =
-        "Type here · same as CoS — commands · ping · think … Ask anything"
+    private let placeholder = ""
 
     var body: some View {
         ZStack {
@@ -65,53 +62,33 @@ struct ContentView: View {
 
     private var openClaySeat: some View {
         VStack(spacing: 0) {
-            headerBar
-                .padding(.horizontal, 8)
-                .padding(.bottom, 10)
-
             messageList
-                .padding(.horizontal, 4)
-
-            if showSearch {
-                searchBar
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 8)
+                .padding(.top, 8)
+            if showSearch, !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(searchHitLabel)
+                    .font(ClayTheme.clayFont(size: 11, weight: .bold))
+                    .foregroundStyle(ClayTheme.gold)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 6)
             }
-
             composerRow
-                .padding(.horizontal, 4)
-                .padding(.top, 10)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 14)
+                .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: 820)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.top, 64)
     }
 
-    private var headerBar: some View {
-        HStack(spacing: 10) {
-            ClayAssetImage("Bolte", system: "bolt.circle.fill", size: 30)
-                .clipShape(Circle())
-                .shadow(color: ClayTheme.purple.opacity(0.5), radius: 8)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ЯBOT")
-                    .clayText(size: 22, weight: .heavy, color: ClayTheme.offWhite)
-                Text(isOnline ? "clay · link bonus" : "clay · offline premier")
-                    .clayText(size: 10, weight: .bold, color: ClayTheme.muted, raised: false)
-            }
-
-            Spacer()
-
-            Button(action: {}) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ClayTheme.offWhite.opacity(0.9))
-                    .frame(width: 32, height: 32)
-                    .background(Circle().fill(ClayTheme.slab).clayEmboss())
-            }
-            .buttonStyle(.plain)
-            .help("Share")
-        }
+    private var searchHitLabel: String {
+        let n = filteredMessages.count
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if n == 0 { return "No matches for “\(q)”" }
+        return n == 1 ? "1 match" : "\(n) matches"
     }
+
+
 
     private var messageList: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -142,16 +119,6 @@ struct ContentView: View {
                 )
             }
 
-            if showJumpToLatest {
-                ClayButton(
-                    asset: "BtnArrowDown",
-                    systemFallback: "chevron.down",
-                    width: 44,
-                    height: 44,
-                    help: "Jump to latest"
-                ) { jumpToken += 1 }
-                .padding(8)
-            }
         }
         .frame(maxHeight: .infinity)
     }
@@ -200,24 +167,11 @@ struct ContentView: View {
     }
 
     private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(ClayTheme.gold)
-            TextField("Search clay transcript", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(ClayTheme.clayFont(size: 13, weight: .semibold))
-                .foregroundStyle(ClayTheme.offWhite)
+        ClaySearchBar(text: $searchText, focused: $searchFocused) {
+            showSearch = false
+            searchText = ""
+            searchFocused = false
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(ClayTheme.charcoalDeep)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(ClayTheme.gold.opacity(0.45), lineWidth: 1.5)
-                )
-                .clayEmboss(raised: false)
-        )
     }
 
     private var composerRow: some View {
@@ -234,64 +188,84 @@ struct ContentView: View {
     // MARK: - Clay chrome (visual contract: wall mock)
 
     private var chromeOverlays: some View {
-        VStack {
-            HStack(alignment: .top, spacing: 12) {
-                topLeftChrome
-                Spacer()
-                topRightChrome
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
+                // Top-left: BOLTE + search glass; clay search well appears beside the glass.
+                HStack(alignment: .center, spacing: 8) {
+                    ClayButton(
+                        asset: "Bolte",
+                        systemFallback: "bolt.heart.fill",
+                        width: 32,
+                        height: 32,
+                        help: "BOLTE"
+                    ) { }
+
+                    ClayButton(
+                        asset: "BtnSearch",
+                        systemFallback: "magnifyingglass",
+                        width: 32,
+                        height: 32,
+                        help: "Search chat"
+                    ) {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                            showSearch.toggle()
+                        }
+                        if showSearch {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                searchFocused = true
+                            }
+                        } else {
+                            searchText = ""
+                            searchFocused = false
+                        }
+                    }
+
+                    if showSearch {
+                        searchBar
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                    }
+                }
+                .frame(minHeight: 36)
+
+                Spacer(minLength: 12)
+
+                // Mode + mind — same size, center-aligned pair (far upper right).
+                HStack(alignment: .center, spacing: 8) {
+                    ClayModeButton(isOnline: $isOnline, width: 32, height: 32) {
+                        messages.append(
+                            ChatMessage(
+                                role: .system,
+                                text: CompanionRouter.reply(to: "mode", isOnline: isOnline)
+                            )
+                        )
+                    }
+
+                    ClayButton(
+                        asset: "BtnMind",
+                        systemFallback: "brain.head.profile",
+                        width: 32,
+                        height: 32,
+                        help: "Machine mind"
+                    ) {
+                        mindPulse.toggle()
+                        messages.append(
+                            ChatMessage(role: .assistant, text: CompanionRouter.reply(to: "mind", isOnline: isOnline))
+                        )
+                    }
+                }
+                .frame(height: 32)
             }
+            .frame(minHeight: 52)
             .padding(.horizontal, 14)
-            .padding(.top, 10)
-            Spacer()
+            .padding(.top, 12)
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private var topLeftChrome: some View {
-        HStack(alignment: .center, spacing: 14) {
-            ClayAssetImage("Bolte", system: "bolt.heart.fill", size: 62)
-                .frame(width: 68, height: 68)
-                .shadow(color: ClayTheme.orangeBolt.opacity(0.45), radius: 12, y: 4)
-                .help("BOLTE — first RZL Being")
-
-            ClayButton(
-                asset: "BtnSearch",
-                systemFallback: "magnifyingglass",
-                width: 52,
-                height: 64,
-                help: "Search transcript"
-            ) {
-                showSearch.toggle()
-                if !showSearch { searchText = "" }
-            }
-        }
-    }
-
-    private var topRightChrome: some View {
-        HStack(alignment: .center, spacing: 14) {
-            ClayModeButton(isOnline: $isOnline, width: 108, height: 108) {
-                messages.append(
-                    ChatMessage(
-                        role: .system,
-                        text: CompanionRouter.reply(to: "mode", isOnline: isOnline)
-                    )
-                )
-            }
-
-            ClayButton(
-                asset: "BtnMind",
-                systemFallback: "brain.head.profile",
-                width: 68,
-                height: 60,
-                help: "Machine mind — mind loop"
-            ) {
-                mindPulse.toggle()
-                messages.append(
-                    ChatMessage(role: .assistant, text: CompanionRouter.reply(to: "mind", isOnline: isOnline))
-                )
-            }
-            .shadow(color: ClayTheme.gold.opacity(mindPulse ? 0.45 : 0.0), radius: mindPulse ? 12 : 0)
-        }
-    }
 
     // MARK: - Send
 
