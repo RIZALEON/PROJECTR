@@ -1,0 +1,7 @@
+Copyright 2026 Rizal Institute (Stormclay)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+Stormclay v0.2 — original claymation display face for PROJECT Я / RIZALBOT.
+Not Claygraph. Not a foundry clone.
+
+https://scripts.sil.org/OFL

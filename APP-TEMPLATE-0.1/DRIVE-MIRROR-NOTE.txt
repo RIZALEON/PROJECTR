@@ -1,0 +1,18 @@
+DRIVE-MIRROR-NOTE — APP-TEMPLATE-0.1
+Date: 2026-09-15 22:19:29 MDT (America/Denver)
+Signature: RIZALBOT🤖 / CoS
+
+Google Drive folder id for CoS mirror:
+  1nlsYA64RRCxoaidboYS16rd_0KuU60d7
+
+Box artifacts for parent CopyFromBox → Mac:
+  /workspace/APP-TEMPLATE-0.1.tgz
+  /workspace/APP-TEMPLATE-0.1/
+  /workspace/official-templates/
+  /workspace/ya-respawn.sh
+  /workspace/APP-TEMPLATE-0.1-MAC-SEAT.sh
+
+Mac seat script (run with machineId 55d92eb0-0ce0-4959-b297-440d80e59e38):
+  bash /Users/rizal/Documents/APP-TEMPLATE-0.1-MAC-SEAT.sh /Users/rizal/Documents/APP-TEMPLATE-0.1.tgz
+
+Full binary tgz may exceed MCP create_file payload; CoS should upload from Mac or CopyFromBox path.

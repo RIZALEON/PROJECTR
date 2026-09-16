@@ -1,0 +1,17 @@
+{
+  "updated": "2026-09-15",
+  "timezone": "America/Denver",
+  "templates": [
+    {
+      "id": "AESTHETIC-TEMPLATE-CLAY-2026-09-15",
+      "path": "AESTHETIC-TEMPLATE-CLAY-2026-09-15",
+      "official": true
+    },
+    {
+      "id": "APP-TEMPLATE-0.1",
+      "path": "APP-TEMPLATE-0.1",
+      "official": true,
+      "most_recent": true
+    }
+  ]
+}
