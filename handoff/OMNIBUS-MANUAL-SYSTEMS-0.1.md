@@ -130,3 +130,24 @@ Do not create a second living cover.
 **Decider lock:** Do **not** teach ЯBOT / Rbot *what to say* (no canned lines, no hardline slogans, no scripted REPLY text).  
 Teach **how** to say what it is **thinking** and what it **believes is accurate** — process (`COMPREHEND → REASON → RECALL → REPLY`), answer-first shape, plain speech, exact Я names, honesty when Heart/law is missing.  
 Omnibus + RCODE train faculties and voice muscle; the living mind supplies the content.
+
+## Lock — iOS + macOS learn together (2026-09-17)
+
+**Decider HARDCODE:** From this point forward, **iOS and macOS minds learn every step together** — same drill order, same TeachStore leaf, same Omnibus grade row. Extends feature lockstep into teaching. No solo-platform lessons. Android catches up via assemble pack when seated.
+
+## MIND-TRANSCRIPT (2026-09-17)
+
+Seated mind tape for **this bot and every successor**: prompts, replies, codes/tools notes.
+
+| Seat | Path |
+|---|---|
+| Teach site of truth (Mac) | `Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt` |
+| Runtime (each device) | `Application Support/ЯBOT/MIND-TRANSCRIPT.txt` |
+| MACHINE MIND feed | `Application Support/ЯBOT/MACHINE MIND/feeds/MIND-TRANSCRIPT.txt` |
+
+Chat `send` appends user+assistant. `teach/lock/remember` appends. Commands: `transcript` / `mind tape`. iOS+macOS learn together — same tape shape; handoff/sync the Documents leaf. CoS/Rizalbot ReadTranscript remains cloud tape; this file is the **on-device seated** tape.
+
+## MIND-TRANSCRIPT — all parties (2026-09-17)
+
+**HARDCODE:** The seated `mind/MIND-TRANSCRIPT.txt` is the **full transcript of every party interacting with the mind** — Decider, CoS, Rizalbot, clay, successors, and tool/code notes — not a clay-only chat log. Cloud agent ReadTranscript remains available; this `.txt` is the shared on-device / Documents mind tape both platforms learn from.
+
