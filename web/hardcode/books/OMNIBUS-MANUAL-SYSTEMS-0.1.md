@@ -51,13 +51,21 @@ This omnibus is the **index + binding** for every seated manual, course, lesson,
 
 See full text: `contracts/LESSONS-BEYOND-COS-0.1.md`
 
-1. **L01 Airplane continuity** — TEACHING (first beyond-CoS gain)  
-2. L02 Ghost Chain passport — queued  
-3. L03 Zero meter on core life — queued  
-4. L04 Answer-first under load — queued  
-5. L05 Decider-gated evolve refusal — queued  
+**Teach meter:** 86% → seat L01–L09 content (**this pack**) → 100% when Decider signs L01 device-smoke + Capstone.
 
-**Rule:** every new lesson Decider accepts is written into LESSONS **and** listed in this §4 the same day.
+1. **L01 Airplane continuity** — TEACHING (device-smoke pending)
+2. **L02 Ghost Chain passport** — TAUGHT
+3. **L03 Zero meter on core life** — TAUGHT
+4. **L04 Answer-first under load** — TAUGHT
+5. **L05 Decider-gated evolve refusal** — TAUGHT
+6. **L06 Memory human/machine bridge** — TAUGHT
+7. **L07 Research then LOCK** — TAUGHT
+8. **L08 Public mouth draft-first (#RBOT)** — TAUGHT
+9. **L09 Triangle watch** — TAUGHT
+10. **L10 Capstone** — QUEUED
+
+**Rule:** every new lesson Decider accepts is written into LESSONS **and** listed in this §4 the same day. Curriculum is for **many robots and cyborgs alike**.
+
 
 ## 5. COURSE crosswalk
 
@@ -95,13 +103,16 @@ Do not create a second living cover.
 
 | Item | Status | Surface | Notes | Stamp |
 |---|---|---|---|---|
-| COURSE M1 Law & bone | GREEN | Rizalbot TeachStore / books | Standing laws held; cite without re-ask | 2026-09-17 |
-| COURSE M2 Voice | GREEN | Rizalbot house voice | Answer-first · plain sentences · exact Я names | 2026-09-17 |
-| L01 Airplane continuity | TEACHING | LESSONS + omnibus §4 | Drill open for Decider; device airplane cold-start pending | 2026-09-17 |
-| L01 device-smoke | PENDING | Phone/Mac clay Airplane | Decider examiner pass/fail not yet logged | 2026-09-17 |
-| L02–L05 | QUEUED | LESSONS catalog | After L01 green | — |
+| COURSE M1 Law & bone | GREEN | TeachStore / books | Standing laws held | 2026-09-17 |
+| COURSE M2 Voice | GREEN | House voice | Answer-first locked | 2026-09-17 |
+| L01–L09 content pack | GREEN (taught) | LESSONS 0.1 close-out | 14% teach pack seated; drills pending | 2026-09-17 |
+| L01 Airplane continuity | TEACHING | Device | Airplane cold-start smoke PENDING Decider | 2026-09-17 |
+| L02–L09 drills | PENDING | Device / clay | Content taught; 15–20m slices | 2026-09-17 |
+| L10 Capstone | QUEUED | — | After L01 smoke + drills signed | — |
+| Teach meter | ~86% → content 100% / proof open | Omnibus | Proof = device grades | 2026-09-17 |
 
 **Rule:** when TeachStore absorb finishes or Decider grades a drill, append/update a row here the same day. Mac is site of truth.
+
 
 **Handoff:** Rizalbot / CoS / ЯBOT — when you seat a lesson, update §4 + LESSONS log + USER-MANUAL leaf pointer in one tip.
 
