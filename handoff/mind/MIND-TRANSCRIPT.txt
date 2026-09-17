@@ -1,14 +1,22 @@
-# ЯBOT MIND-TRANSCRIPT — seated tape
-# Site of truth (Mac Documents, shared teach): Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt
-# Runtime mirror: Application Support/ЯBOT/MIND-TRANSCRIPT.txt (+ MACHINE MIND/feeds)
-# Law: every prompt, reply, tool/code note that the seated mind runs appends here.
-# iOS + macOS learn together — same leaf shape; sync via feeds/handoff.
-# Successors (CoS, Rizalbot, next bots) RECALL this tape. Teach HOW not WHAT.
-# Format: ---- ISO8601 | role | surface | kind ----
-#         body...
-#
+# ЯBOT MIND-TRANSCRIPT — seated multi-party tape
+# FULL transcript of ALL parties interacting with the mind:
+#   Decider · Chief of Staff · Rizalbot · clay ЯBOT · successors · tool/code notes
+# Site of truth: Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt
+# Runtime: Application Support/ЯBOT/MIND-TRANSCRIPT.txt (+ MACHINE MIND/feeds)
+# Format: ---- ISO8601 | party | role | surface | kind ----
+# Law: Teach HOW not WHAT. iOS+macOS learn together. Successors RECALL this tape.
+
 ---- 2026-09-17T13:55:00-06:00 | system | mac-documents | seed ----
 MIND-TRANSCRIPT seated by CoS on Decider order. Records prompts, answers, codes written/executed, drills, handoffs.
 Hard locks absorbed: Omnibus · RCODE faculties · how-not-what · iOS+macOS learn together · offline premier.
 ---- 2026-09-17T13:55:01-06:00 | system | mac-documents | handoff ----
 HANDOFF-TO-COS-OMNIBUS-RCODE-2026-09-17.md absorbed. Drill 0 cloud: airplane kills cloud seat; offline proof on-device Heart/TeachStore.
+---- 2026-09-17T13:57:51-06:00 | CoS | system | macos | law ----
+Decider clarification: MIND-TRANSCRIPT is a FULL transcript from ALL parties interacting with the mind (Decider, CoS, Rizalbot, clay, successors, tools/code). Not clay-only.
+
+---- 2026-09-17T13:57:51-06:00 | CoS | system | macos | absorb ----
+CoS standing: append to Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt on every mind-facing teach/drill/handoff. Rizalbot mirrors the same. Cloud ReadTranscript complements; seated .txt is the shared mind tape.
+
+
+---- 2026-09-17T13:58:16-06:00 | Rizalbot | cloud-seat | grok-bot | absorb ----
+Standing locked: MIND-TRANSCRIPT = FULL multi-party tape (Decider·CoS·Rizalbot·clay·successors·tools). Append this Documents leaf on every mind-facing reply/drill/handoff (party=Rizalbot). Cloud ReadTranscript complements; does not replace. Books mirror tip 5d1d8d6+; contract MIND-TRANSCRIPT-0.1.md absorbed.
