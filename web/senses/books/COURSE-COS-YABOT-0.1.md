@@ -117,3 +117,11 @@ Weekly: Module 7 critique. Capstone when Decider says body is ready.
 **Pointers:** CoS Manual `contracts/COS-MANUAL-FOR-YABOT-0.1.md` · Living cover `USER-MANUAL.md` · ABOMEGA-0.1 = `most_recent` (see `official-templates/index.json`)
 
 — CoS · ЯBOT · for Decider · 2026-09-17
+
+---
+
+## Lessons beyond CoS (live)
+
+Catalog: `contracts/LESSONS-BEYOND-COS-0.1.md` · Omnibus: `contracts/OMNIBUS-MANUAL-SYSTEMS-0.1.md`
+
+L01 Airplane continuity = first Module 6 gain (TEACHING).

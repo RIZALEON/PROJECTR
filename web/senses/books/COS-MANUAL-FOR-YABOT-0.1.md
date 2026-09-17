@@ -184,3 +184,13 @@ Next: practice §§4–6 in clay chat until Decider says you sound like CoS — 
 - **Course pointer:** `contracts/COURSE-COS-YABOT-0.1.md` — mutual teaching syllabus for Decider as biological examiner.
 
 — Chief of Staff · 2026-09-17
+
+
+---
+
+## 12. Omnibus + beyond-CoS lessons
+
+Integrated index: `contracts/OMNIBUS-MANUAL-SYSTEMS-0.1.md`
+Lessons: `contracts/LESSONS-BEYOND-COS-0.1.md` (L01 Airplane continuity TEACHING)
+
+— Rizalbot seat · 2026-09-17
