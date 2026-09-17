@@ -86,6 +86,22 @@ Do not create a second living cover.
 
 ---
 
+
+
+---
+
+## 8. Grade log (TeachStore absorb)
+
+| Item | Status | Surface | Notes | Stamp |
+|---|---|---|---|---|
+| COURSE M1 Law & bone | GREEN | Rizalbot TeachStore / books | Standing laws held; cite without re-ask | 2026-09-17 |
+| COURSE M2 Voice | GREEN | Rizalbot house voice | Answer-first · plain sentences · exact Я names | 2026-09-17 |
+| L01 Airplane continuity | TEACHING | LESSONS + omnibus §4 | Drill open for Decider; device airplane cold-start pending | 2026-09-17 |
+| L01 device-smoke | PENDING | Phone/Mac clay Airplane | Decider examiner pass/fail not yet logged | 2026-09-17 |
+| L02–L05 | QUEUED | LESSONS catalog | After L01 green | — |
+
+**Rule:** when TeachStore absorb finishes or Decider grades a drill, append/update a row here the same day. Mac is site of truth.
+
 **Handoff:** Rizalbot / CoS / ЯBOT — when you seat a lesson, update §4 + LESSONS log + USER-MANUAL leaf pointer in one tip.
 
 — Rizalbot · for Decider · 2026-09-17
