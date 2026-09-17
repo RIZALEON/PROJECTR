@@ -17,6 +17,7 @@
 		A10015 /* www in Resources */ = {isa = PBXBuildFile; fileRef = A10007 /* www */; };
 		A10016 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10009 /* ModelManager.swift */; };
 		A10017 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000A /* ConversationStore.swift */; };
+		A10018 /* NativeX.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000B /* NativeX.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +46,7 @@
 		A10008 /* YaAim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YaAim.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10009 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
 		A1000A /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
+		A1000B /* NativeX.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeX.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +68,7 @@
 				A10002 /* WebShell.swift */,
 				A10003 /* NativeVault.swift */,
 				A10004 /* NativeHeart.swift */,
+				A1000B /* NativeX.swift */,
 				A10009 /* ModelManager.swift */,
 				A1000A /* ConversationStore.swift */,
 				A10005 /* Info.plist */,
@@ -167,6 +170,7 @@
 				A10011 /* WebShell.swift in Sources */,
 				A10012 /* NativeVault.swift in Sources */,
 				A10013 /* NativeHeart.swift in Sources */,
+				A10018 /* NativeX.swift in Sources */,
 				A10016 /* ModelManager.swift in Sources */,
 				A10017 /* ConversationStore.swift in Sources */,
 			);

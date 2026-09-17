@@ -21,6 +21,38 @@ enum NativeVault {
         try? fm.createDirectory(at: yaURL.appendingPathComponent("mind/books", isDirectory: true), withIntermediateDirectories: true)
         try? fm.createDirectory(at: yaURL.appendingPathComponent("gut", isDirectory: true), withIntermediateDirectories: true)
         seedYaFolderFromBundle()
+        seatRbotPinContract()
+    }
+
+    /// Seat RBOT pin contract into Documents/mind/books + Я/mind/books (offline shelf).
+    static func seatRbotPinContract() {
+        let fm = FileManager.default
+        prepareDirsOnly()
+        let name = "rbot-pin-contract.json"
+        let dests = [
+            booksURL.appendingPathComponent(name),
+            yaURL.appendingPathComponent("mind/books/\(name)")
+        ]
+        guard let www = Bundle.main.resourceURL?.appendingPathComponent("www", isDirectory: true) else { return }
+        let candidates = [
+            www.appendingPathComponent("hardcode/books/\(name)"),
+            www.appendingPathComponent("senses/books/\(name)")
+        ]
+        guard let src = candidates.first(where: { fm.fileExists(atPath: $0.path) }) else { return }
+        for dest in dests {
+            try? fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if fm.fileExists(atPath: dest.path) {
+                try? fm.removeItem(at: dest)
+            }
+            try? fm.copyItem(at: src, to: dest)
+        }
+    }
+
+    private static func prepareDirsOnly() {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: gutURL, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: booksURL, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: yaURL.appendingPathComponent("mind/books", isDirectory: true), withIntermediateDirectories: true)
     }
 
     /// Copy hardcoded www/hardcode + www/senses into Documents/Я once so Files shows the organ.

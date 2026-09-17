@@ -47,5 +47,16 @@
 	</array>
 	<key>UISupportsDocumentBrowser</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>io.github.rizaleon.yaaim.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>yaaim</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

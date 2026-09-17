@@ -22,7 +22,8 @@
     "Bookshelf: Laws binder — NonNuclear · Decider 100%-offline · ping law · place law Я/ · gain>drop · agents-to-phone · no silent gut upload · tokensOn seated-on-device.",
     "Bookshelf: PROJECTRXCODE / write-code — xcode: and darwin: offline manifests; NativeHeart Embed&Sign on Mac build path; team 88HACKXHZL · bundle io.github.rizaleon.yaaim.cam; never commit llama.xcframework binary.",
     "Bookshelf: Path — On My iPhone → Я/mind/books/ houses manuals & case files the embed references anytime offline. Chat: books · manual X · Shelf: books · rummage books.",
-    "Shelf: books — CoS manual+case and Rizalbot manual+case seated for anytime offline reference (Track B / rummage)."
+    "Shelf: books — CoS manual+case and Rizalbot manual+case seated for anytime offline reference (Track B / rummage).",
+    "Bookshelf: RBOT pin contract — @RizaltheBot #RBOT door pin 2100475587387347030 · smoke ask 2100476375895519660 · native X write draft_then_confirm · Path: Я/mind/books/rbot-pin-contract.json"
   ];
 
   /** Full manual bodies for `manual cos` / `manual rizalbot` (thin excerpts + path). */

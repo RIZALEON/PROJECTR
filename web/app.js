@@ -1372,7 +1372,14 @@ function pingStatusLine() {
     : "amber · offline · local";
   const sz = formatBytes(mindBytes());
   const nEv = (state.evolved || []).length;
-  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heartStatusFrag();
+  let xFrag = "";
+  try {
+    if (window.YA_NATIVE && window.YA_NATIVE.xWrite) xFrag = " · X-write pipe";
+    if (typeof window.YA_RBOT_X === "object" && window.YA_RBOT_X.contract) {
+      xFrag += " · #RBOT pin " + window.YA_RBOT_X.contract.pinId;
+    }
+  } catch (e2) {}
+  return "Status · " + mind + " · MIND SIZE " + sz + " · evolved " + nEv + heartStatusFrag() + xFrag;
 }
 
 function ensureDemoPingStatusSkill() {
@@ -4580,6 +4587,15 @@ async function answer(userText) {
   if (recalled) return recalled;
   const interact = tryInteractCommand(userText);
   if (interact) return interact;
+  try {
+    if (typeof window !== "undefined" && typeof window.yaHandleRbotXChat === "function") {
+      const rbotx = window.yaHandleRbotXChat(userText);
+      if (rbotx != null) {
+        if (rbotx && typeof rbotx.then === "function") return await rbotx;
+        return rbotx;
+      }
+    }
+  } catch (e) {}
   const browseOpen = String(userText || "").trim().match(/^(?:browse|open)\s+(https?:\/\/\S+)/i);
   if (browseOpen) {
     const url = browseOpen[1].replace(/[.,;:!?)\]]+$/, "");
@@ -5850,7 +5866,7 @@ function startXLink() {
       + "?response_type=code"
       + "&client_id=" + encodeURIComponent(cfg.xClientId)
       + "&redirect_uri=" + encodeURIComponent(redirect)
-      + "&scope=" + encodeURIComponent("users.read")
+      + "&scope=" + encodeURIComponent("tweet.read tweet.write users.read offline.access")
       + "&state=" + encodeURIComponent(stateTok)
       + "&code_challenge=" + encodeURIComponent(challenge)
       + "&code_challenge_method=S256";

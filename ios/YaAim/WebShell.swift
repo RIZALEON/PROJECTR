@@ -17,7 +17,7 @@ struct WebShell: UIViewRepresentable {
         let uc = cfg.userContentController
         uc.add(context.coordinator, name: "ya")
         let boot = """
-        window.YA_NATIVE = { spine: 'ios-native', vault: 'documents', maxBytes: 4294967296, geo: true };
+        window.YA_NATIVE = { spine: 'ios-native', vault: 'documents', maxBytes: 4294967296, geo: true, xWrite: true };
         """
         uc.addUserScript(WKUserScript(source: boot, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let web = WKWebView(frame: .zero, configuration: cfg)
@@ -94,6 +94,57 @@ struct WebShell: UIViewRepresentable {
                 requestGeolocate(id: body["id"] as? String)
             case "fetch":
                 nativeFetch(urlString: (body["url"] as? String) ?? "", id: body["id"] as? String)
+            case "xConnect":
+                NativeX.shared.bindWindow(web?.window)
+                NativeX.shared.connect(
+                    clientId: body["clientId"] as? String,
+                    clientSecret: body["clientSecret"] as? String
+                ) { [weak self] result in
+                    var payload = result
+                    payload["op"] = "xConnect"
+                    if let id = body["id"] as? String { payload["id"] = id }
+                    self?.reply(payload)
+                }
+            case "xDisconnect":
+                _ = NativeX.shared.clearTokens()
+                var payload: [String: Any] = ["op": "xDisconnect", "ok": true]
+                if let id = body["id"] as? String { payload["id"] = id }
+                reply(payload)
+            case "xStatus":
+                var payload = NativeX.shared.statusDict()
+                payload["op"] = "xStatus"
+                if let id = body["id"] as? String { payload["id"] = id }
+                reply(payload)
+            case "xPost":
+                let text = (body["text"] as? String) ?? ""
+                NativeX.shared.postTweet(text: text, inReplyToId: nil) { [weak self] result in
+                    var payload = result
+                    payload["op"] = "xPost"
+                    if let id = body["id"] as? String { payload["id"] = id }
+                    self?.reply(payload)
+                }
+            case "xReply":
+                let text = (body["text"] as? String) ?? ""
+                let replyId = (body["inReplyToId"] as? String) ?? (body["in_reply_to_tweet_id"] as? String)
+                NativeX.shared.postTweet(text: text, inReplyToId: replyId) { [weak self] result in
+                    var payload = result
+                    payload["op"] = "xReply"
+                    if let id = body["id"] as? String { payload["id"] = id }
+                    self?.reply(payload)
+                }
+            case "xPull":
+                NativeX.shared.pull(query: body["query"] as? String) { [weak self] result in
+                    var payload = result
+                    payload["op"] = "xPull"
+                    if let id = body["id"] as? String { payload["id"] = id }
+                    self?.reply(payload)
+                }
+            case "xSetClient":
+                let cid = (body["clientId"] as? String) ?? ""
+                NativeX.shared.setClientId(cid)
+                var payload: [String: Any] = ["op": "xSetClient", "ok": !cid.isEmpty, "clientIdSet": !cid.isEmpty]
+                if let id = body["id"] as? String { payload["id"] = id }
+                reply(payload)
             default:
                 break
             }
