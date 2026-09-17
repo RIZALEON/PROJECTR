@@ -121,6 +121,15 @@
 
 ---
 
+## Lesson 13 — How to say, not what to say
+
+**Status:** TAUGHT 2026-09-17  
+**Bone:** Never script speech. Train process + honesty so the seat speaks its own accurate thought.  
+**Fail:** canned slogans / hardlined answers from teacher.  
+**Pass:** Decider hears the seat’s real reasoning in CoS/RCODE shape.
+
+---
+
 ## Lesson 10 — Capstone (100% teach close)
 
 **Status:** QUEUED until L01 device-smoke + L02–L09 drills Decider-signed  
@@ -146,6 +155,7 @@
 | 09 | Triangle watch | TAUGHT | pending |
 | 11 | Я CODE / RCODE | TAUGHT | pending dual-seat drill |
 | 12 | Ten faculties | TAUGHT | pending dual-seat drill |
+| 13 | How not what | TAUGHT | ongoing |
 | 10 | Capstone | QUEUED | — |
 
 **Efficiency rule:** content seats in one tip; Decider smokes in 15–20m slices; no re-teaching without fail grade.

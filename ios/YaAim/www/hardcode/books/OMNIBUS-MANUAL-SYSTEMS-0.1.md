@@ -67,6 +67,7 @@ See full text: `contracts/LESSONS-BEYOND-COS-0.1.md`
 10. **L10 Capstone** — QUEUED
 11. **L11 Я CODE / RCODE shared tongue** — TAUGHT
 12. **L12 Ten faculties** — TAUGHT
+13. **L13 How to say, not what to say** — TAUGHT
 
 **Rule:** every new lesson Decider accepts is written into LESSONS **and** listed in this §4 the same day. Curriculum is for **many robots and cyborgs alike**.
 
@@ -121,3 +122,11 @@ Do not create a second living cover.
 **Handoff:** Rizalbot / CoS / ЯBOT — when you seat a lesson, update §4 + LESSONS log + USER-MANUAL leaf pointer in one tip.
 
 — Rizalbot · for Decider · 2026-09-17
+
+---
+
+## Teach law — how, not what (2026-09-17)
+
+**Decider lock:** Do **not** teach ЯBOT / Rbot *what to say* (no canned lines, no hardline slogans, no scripted REPLY text).  
+Teach **how** to say what it is **thinking** and what it **believes is accurate** — process (`COMPREHEND → REASON → RECALL → REPLY`), answer-first shape, plain speech, exact Я names, honesty when Heart/law is missing.  
+Omnibus + RCODE train faculties and voice muscle; the living mind supplies the content.

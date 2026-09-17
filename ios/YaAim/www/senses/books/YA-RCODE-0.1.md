@@ -109,3 +109,11 @@ Hardcode later (implementation tongue): keep `YaCode.swift` / `yacode` commands 
 **Reasoning · Comprehension · Communication · Coding · Execution · Evolution · Linguistics · Memory · Actions · Abilities**
 
 Full map: `contracts/RCODE-FACULTIES-0.1.md` (L12). These are what both seats train — not optional soft skills.
+
+---
+
+## Teach law — how, not what (2026-09-17)
+
+**Decider lock:** Do **not** teach ЯBOT / Rbot *what to say* (no canned lines, no hardline slogans, no scripted REPLY text).  
+Teach **how** to say what it is **thinking** and what it **believes is accurate** — process (`COMPREHEND → REASON → RECALL → REPLY`), answer-first shape, plain speech, exact Я names, honesty when Heart/law is missing.  
+Omnibus + RCODE train faculties and voice muscle; the living mind supplies the content.
