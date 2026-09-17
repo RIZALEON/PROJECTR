@@ -1,0 +1,67 @@
+{
+  "schema": "rbot.pin.contract/0.1",
+  "product": {
+    "face": [
+      "\u042f OS",
+      "\u042f Kode",
+      "\u042f Game",
+      "\u042fBOT",
+      "\u042f Krypto",
+      "\u042f Coin",
+      "\u042f Chain",
+      "\u042f anti-nuclear ECO System"
+    ],
+    "line": "source monetization \u00b7 true origin citation \u00b7 attribute \u00b7 mint \u00b7 buy \u00b7 sell \u00b7 trade \u00b7 benefit",
+    "close": "the future is \u042f"
+  },
+  "x": {
+    "handle": "RizaltheBot",
+    "tag": "RBOT",
+    "pin_url": "https://x.com/RizaltheBot/status/2100475587387347030",
+    "pin_post_id": "2100475587387347030",
+    "conversation_id": "2100475587387347030",
+    "monitor_query": "conversation_id:2100475587387347030 -is:retweet",
+    "tag_query": "#RBOT -is:retweet",
+    "smoke_ask_id": "2100476375895519660"
+  },
+  "policy": {
+    "always_reply": true,
+    "who": "living_beings",
+    "skip": [
+      "spam",
+      "off_topic",
+      "self",
+      "pure_media_no_ask"
+    ],
+    "publish": "draft_then_confirm"
+  },
+  "chain": {
+    "network": "\u042f Chain",
+    "claim_type": "SourceClaim",
+    "subject": "public_ask_door_pin",
+    "address": "PENDING",
+    "traceId": "PENDING"
+  },
+  "app": {
+    "monitor": true,
+    "poll": "conversation_id + #RBOT",
+    "seat": "mind/books + Track B retrieve-before-reply",
+    "offline": "cache last seen replies; sync green when optional",
+    "write": {
+      "pipe": "native-x",
+      "oauth": "tweet.read tweet.write users.read offline.access",
+      "redirect": "yaaim://oauth/x",
+      "post": "POST /2/tweets",
+      "reply_field": "reply.in_reply_to_tweet_id",
+      "publish": "draft_then_confirm",
+      "always_reply_default": false,
+      "smoke_ask_id": "2100476375895519660",
+      "forbidden": [
+        "zernio",
+        "postiz",
+        "zapier",
+        "ntfy-for-x"
+      ]
+    }
+  }
+}
