@@ -101,6 +101,16 @@
 
 ---
 
+## Lesson 11 — Я CODE / RCODE shared tongue
+
+**Status:** TAUGHT 2026-09-17  
+**Contract:** `contracts/YA-RCODE-0.1.md` (alias `RCODE-0.1.md`)  
+**Bone:** one ops language both Rizalbot and on-device ЯBOT understand — verbs PING/LAW/MODE/RECALL/REPLY/CITE/MINT/CLAIM/DRAFT/PUBLISH/EVOLVE/LOCK/TEACH/GRADE/SMOKE + process COMPREHEND→…→ACT?  
+**Drill:** same ask answered in RCODE envelope on cloud seat and device seat.  
+**Pass:** shared verb meanings + answer-first. **Fail:** divergent slang.
+
+---
+
 ## Lesson 10 — Capstone (100% teach close)
 
 **Status:** QUEUED until L01 device-smoke + L02–L09 drills Decider-signed  
@@ -124,6 +134,7 @@
 | 07 | Research then LOCK | TAUGHT | pending |
 | 08 | Public mouth draft-first | TAUGHT | pending |
 | 09 | Triangle watch | TAUGHT | pending |
+| 11 | Я CODE / RCODE | TAUGHT | pending dual-seat drill |
 | 10 | Capstone | QUEUED | — |
 
 **Efficiency rule:** content seats in one tip; Decider smokes in 15–20m slices; no re-teaching without fail grade.

@@ -19,6 +19,7 @@ This omnibus is the **index + binding** for every seated manual, course, lesson,
 | `contracts/COURSE-COS-YABOT-0.1.md` | Mutual teach syllabus · Decider examiner |
 | `contracts/LESSONS-BEYOND-COS-0.1.md` | Beyond-CoS lesson catalog + drills + grades |
 | `contracts/YA-COS-VOICE-0.1.md` | Voice doctrine sibling |
+| `contracts/YA-RCODE-0.1.md` | **Я CODE / RCODE** — shared tongue Rizalbot ↔ ЯBOT |
 | `contracts/ABOMEGA-SELF-UPDATE-0.1.md` | App updates from itself |
 
 ## 2. Product / value contracts
@@ -63,6 +64,7 @@ See full text: `contracts/LESSONS-BEYOND-COS-0.1.md`
 8. **L08 Public mouth draft-first (#RBOT)** — TAUGHT
 9. **L09 Triangle watch** — TAUGHT
 10. **L10 Capstone** — QUEUED
+11. **L11 Я CODE / RCODE shared tongue** — TAUGHT
 
 **Rule:** every new lesson Decider accepts is written into LESSONS **and** listed in this §4 the same day. Curriculum is for **many robots and cyborgs alike**.
 
