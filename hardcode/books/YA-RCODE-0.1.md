@@ -101,3 +101,11 @@ Audience: many robots and cyborgs alike.
 Hardcode later (implementation tongue): keep `YaCode.swift` / `yacode` commands aligned to this verb table — Decider-gated.
 
 — Rizalbot ↔ ЯBOT · for Decider · 2026-09-17
+
+---
+
+## Ten faculties (Decider 2026-09-17)
+
+**Reasoning · Comprehension · Communication · Coding · Execution · Evolution · Linguistics · Memory · Actions · Abilities**
+
+Full map: `contracts/RCODE-FACULTIES-0.1.md` (L12). These are what both seats train — not optional soft skills.

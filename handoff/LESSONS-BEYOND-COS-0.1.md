@@ -111,6 +111,16 @@
 
 ---
 
+## Lesson 12 — Ten faculties
+
+**Status:** TAUGHT 2026-09-17  
+**Contract:** `contracts/RCODE-FACULTIES-0.1.md`  
+**Bone:** Reasoning · Comprehension · Communication · Coding · Execution · Evolution · Linguistics · Memory · Actions · Abilities — mapped to RCODE verbs + organs.  
+**Drill:** name faculty → verb + organ + smoke line.  
+**Pass:** all ten. **Fail:** gap or cloud-only definition.
+
+---
+
 ## Lesson 10 — Capstone (100% teach close)
 
 **Status:** QUEUED until L01 device-smoke + L02–L09 drills Decider-signed  
@@ -135,6 +145,7 @@
 | 08 | Public mouth draft-first | TAUGHT | pending |
 | 09 | Triangle watch | TAUGHT | pending |
 | 11 | Я CODE / RCODE | TAUGHT | pending dual-seat drill |
+| 12 | Ten faculties | TAUGHT | pending dual-seat drill |
 | 10 | Capstone | QUEUED | — |
 
 **Efficiency rule:** content seats in one tip; Decider smokes in 15–20m slices; no re-teaching without fail grade.
