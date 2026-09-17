@@ -1,0 +1,14 @@
+# ЯBOT MIND-TRANSCRIPT — seated tape
+# Site of truth (Mac Documents, shared teach): Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt
+# Runtime mirror: Application Support/ЯBOT/MIND-TRANSCRIPT.txt (+ MACHINE MIND/feeds)
+# Law: every prompt, reply, tool/code note that the seated mind runs appends here.
+# iOS + macOS learn together — same leaf shape; sync via feeds/handoff.
+# Successors (CoS, Rizalbot, next bots) RECALL this tape. Teach HOW not WHAT.
+# Format: ---- ISO8601 | role | surface | kind ----
+#         body...
+#
+---- 2026-09-17T13:55:00-06:00 | system | mac-documents | seed ----
+MIND-TRANSCRIPT seated by CoS on Decider order. Records prompts, answers, codes written/executed, drills, handoffs.
+Hard locks absorbed: Omnibus · RCODE faculties · how-not-what · iOS+macOS learn together · offline premier.
+---- 2026-09-17T13:55:01-06:00 | system | mac-documents | handoff ----
+HANDOFF-TO-COS-OMNIBUS-RCODE-2026-09-17.md absorbed. Drill 0 cloud: airplane kills cloud seat; offline proof on-device Heart/TeachStore.
