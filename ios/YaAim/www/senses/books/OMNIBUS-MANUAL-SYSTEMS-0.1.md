@@ -4,6 +4,7 @@
 **Living cover (beings):** `USER-MANUAL.md` / `USER-MANUAL.pdf` — never invent a rival cover  
 **Site of truth:** Mac `Documents/ЯBOT/`  
 **Triangle:** Decider ↔ CoS ↔ ЯBOT  
+**Audience:** future course for **many robots and cyborgs alike** (Decider lock 2026-09-17) — teach generalizable bone/voice/offline proof; living beings keep USER-MANUAL as cover.
 
 This omnibus is the **index + binding** for every seated manual, course, lesson, and contract. New lessons append here and in `LESSONS-BEYOND-COS-0.1.md`.
 
