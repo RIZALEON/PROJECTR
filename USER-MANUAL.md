@@ -4,7 +4,7 @@
 **Signature:** RIZALBOT🤖 / CoS  
 **Decider HARDCODE:** PDF USER MANUAL always rides every transfer / upgrade / offload / handoff.  
 **Timezone:** America/Denver  
-**Updated:** 2026-09-15 23:42 MDT
+**Updated:** 2026-09-17 · America/Denver · CoS↔ЯBOT mutual mind leaf
 
 ---
 
@@ -72,7 +72,7 @@ Original tablet title: **Я OPERATING SYSTEM — USER GIVER MANUAL · TABLET** (
 
 **In-app:** short-order `respawn` / TemplateRespawn via CompanionRouter when seated.
 
-**Current most_recent:** `APP-TEMPLATE-0.1`  
+**Current most_recent:** `ABOMEGA-0.1`  
 **Parent aesthetic:** `AESTHETIC-TEMPLATE-CLAY-2026-09-15`
 
 ---
@@ -108,6 +108,17 @@ Never ship APP-TEMPLATE or AESTHETIC packs without the living cover.
 
 ---
 
+
+## CoS ↔ ЯBOT mutual mind (2026-09-17)
+
+- **CoS Manual seated:** `contracts/COS-MANUAL-FOR-YABOT-0.1.md` (also mirrored under `ЯBOT/` and `official-templates/ABOMEGA-0.1/` when present)
+- **Course:** `contracts/COURSE-COS-YABOT-0.1.md` — CoS & ЯBOT teaching each other; Decider is biological examiner
+- **Law:** teach like CoS then better offline; manuals cross-integrated (CoS Manual §11 ↔ this leaf)
+- **Biological Decider** receives CoS Manual PDF with cover: `dist/COS-MANUAL-FOR-YABOT-0.1.pdf`
+- **most_recent:** `ABOMEGA-0.1` per `official-templates/index.json` (APP-TEMPLATE-0.1 remains official, not most_recent)
+
+---
+
 ## Handoff 97% · 2026-09-15 23:42 MDT
 
 **STAMP · CoS · 2026-09-15 · 23:42 MDT · Utah · 97% · NonNuclear**  
@@ -117,7 +128,7 @@ Never ship APP-TEMPLATE or AESTHETIC packs without the living cover.
 ### ACCOMPLISHED (~24h / 2026-09-15→16 MDT)
 
 - Claymation macOS ЯBOT foundation locked: Stormclay White/Gold, freeform clay chrome (BOLTE, search, online/offline, mind), composer three-part (bar + plus + Send opaque flush-right), rectangular tablet bubbles (purple user right / gray companion left, left-aligned Stormclay text, BAR/LINE/SLAB metrics).
-- Official packs: AESTHETIC-TEMPLATE-CLAY-2026-09-15 · APP-TEMPLATE-0.1 (most_recent). ya-respawn.sh + TemplateRespawn + CompanionRouter RESPAWN (Я KOMMAND 0).
+- Official packs: AESTHETIC-TEMPLATE-CLAY-2026-09-15 · ABOMEGA-0.1 (most_recent). ya-respawn.sh + TemplateRespawn + CompanionRouter RESPAWN (Я KOMMAND 0).
 - Living cover HARDCODE: USER-MANUAL.pdf/.md always rides packs; ya-respawn restores manuals.
 - Bolte → black ManualCover landing; house → chat; arrow → offline PDF export from MACHINE MIND (Bundle → App Support → Documents/ЯBOT).
 - Built Debug ЯBOT.app ~37 MB; live sources ~39 MB; Documents/ЯBOT folder ~372 MB.
@@ -149,6 +160,7 @@ Never ship APP-TEMPLATE or AESTHETIC packs without the living cover.
 
 | When (MDT) | What |
 |---|---|
+| 2026-09-17 | CoS↔ЯBOT mutual mind leaf; CoS Manual §11; COURSE-COS-YABOT-0.1; ABOMEGA-0.1 most_recent note. |
 | 2026-09-15 23:42 | Handoff 97%: last-page leaf + west-opposite R2L + next-bot iOS/macOS/Android brief. Desktop site of truth documented. |
 | 2026-09-15 ~22:57 | Chrome: Bolte → black ManualCover landing; house → chat; arrow → offline USER-MANUAL.pdf export (MACHINE MIND). |
 | 2026-09-14 | Cover seated. 680 instructions written. Tablet declared. |
