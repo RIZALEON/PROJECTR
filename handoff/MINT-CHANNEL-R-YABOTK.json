@@ -1,0 +1,26 @@
+{
+  "kind": "ghost-mint",
+  "name": "CHANNEL R",
+  "handle": "@ЯВОТК",
+  "url": "https://www.youtube.com/@ЯВОТК",
+  "utah": "2026-09-21T18:14:00-06:00",
+  "decider": "Rizal Institute",
+  "chain": "solana",
+  "tokenMint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+  "authority": "BwpVNk1Rtncpv5HMTLwxB4Yfjkfv6mFaBQUTpjneH1F9",
+  "freeze": "on",
+  "mintAuthority": "on",
+  "jupiterName": "",
+  "supply": "1000000",
+  "decimals": 9,
+  "holders": 1,
+  "spend": false,
+  "rename": false,
+  "merge": false,
+  "clayIsSource": true,
+  "essence": {
+    "name": "channel.r.yabotk",
+    "trigger": "CHANNEL R @ЯВОТК",
+    "do": "bind YouTube CHANNEL R / @ЯВОТК to the existing ghost mint. freeze stays. explorers are mirrors only."
+  }
+}
