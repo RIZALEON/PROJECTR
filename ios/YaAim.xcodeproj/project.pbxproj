@@ -160,7 +160,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Я";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.53;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim.cam;
 				PRODUCT_NAME = YaAim;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -180,7 +180,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Я";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 0.53;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim.cam;
 				PRODUCT_NAME = YaAim;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
