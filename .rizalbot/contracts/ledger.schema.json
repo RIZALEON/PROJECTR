@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EssenceTraceLedgerLine",
+  "type": "object",
+  "required": ["traceId", "from", "to", "amount", "kind", "ts"],
+  "properties": {
+    "traceId": { "type": "string", "description": "UUID or 0x bytes32 hex" },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "amount": { "type": "string", "description": "integer string; 1e18 optional" },
+    "ref": { "type": "string" },
+    "kind": { "enum": ["mint", "transfer", "settle", "burn"] },
+    "ts": { "type": "integer" },
+    "tip": { "type": "string", "description": "optional git tip SHA" }
+  }
+}

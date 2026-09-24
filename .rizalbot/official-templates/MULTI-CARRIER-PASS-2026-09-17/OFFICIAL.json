@@ -1,0 +1,20 @@
+{
+  "id": "MULTI-CARRIER-PASS-2026-09-17",
+  "name": "Multi-carrier PASS (USB+QR+BT+LAN)",
+  "date": "2026-09-17",
+  "timezone": "America/Denver",
+  "official": true,
+  "most_recent": true,
+  "platforms": ["macOS", "iOS-Device"],
+  "bundle_id_device": "io.github.rizaleon.yaaim",
+  "law": "Offline premier · no cloud GREEN for device smoke · Machine DNA on every hop",
+  "carriers": {
+    "bluetooth": "DEVICE PASS bidirectional",
+    "usb": "DEVICE PASS bidirectional",
+    "qr": "DEVICE PASS Mac→iPhone",
+    "lan": "DEVICE PASS bidirectional (return-path when Mac browse-blind)",
+    "nfc": "staged / CoreNFC unavailable on this iPhone"
+  },
+  "respawn": "./ya-respawn.sh MULTI-CARRIER-PASS-2026-09-17",
+  "self_update": true
+}

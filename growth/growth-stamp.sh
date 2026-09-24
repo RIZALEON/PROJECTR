@@ -183,19 +183,33 @@ print(f"{sa} {sd} {ka} {kd} {ja} {jd} {ma} {md} {oa} {od}")
     fi
     if [[ -n "$seed_path" ]]; then
       seed_sha=$(grep -E '^- source_sha:' "$seed_path" | awk '{print $3}' | head -1)
+      local seed_branch
+      seed_branch=$(grep -E '^- source_branch:' "$seed_path" | awk '{print $3}' | head -1)
       local up_path=""
       case "$expected_src" in
         *RIZALBOT*) up_path="$REPO_RIZALBOT" ;;
         *PROJECTR*) up_path="$REPO_PROJECTR" ;;
         *Rbot*) up_path="$REPO_RBOT" ;;
       esac
-      local defb="main"
-      case "$expected_src" in
-        *RIZALBOT*) defb="seat-wallet-landing" ;;
-      esac
+      # Prefer SEED.md source_branch (usually seed-growth-*); fall back to tree default
+      local defb="${seed_branch:-}"
+      if [[ -z "$defb" ]]; then
+        defb="main"
+        case "$expected_src" in
+          *RIZALBOT*) defb="seat-wallet-landing" ;;
+        esac
+      fi
       if [[ -n "$up_path" && -d "$up_path/.git" ]]; then
-        if git -C "$up_path" rev-parse --verify "origin/$defb" >/dev/null 2>&1; then
+        # Local HEAD matches just-refreshed seeds before they are committed
+        local head_now
+        head_now=$(git -C "$up_path" rev-parse HEAD 2>/dev/null || true)
+        # Prefer local HEAD when it matches the seed (pre-commit refresh) or equals recorded sha
+        if [[ -n "$seed_sha" && -n "$head_now" && ( "$head_now" == "$seed_sha" || "$head_now" == "$seed_sha"* || "$seed_sha" == "$head_now"* ) ]]; then
+          upstream_sha="$head_now"
+        elif git -C "$up_path" rev-parse --verify "origin/$defb" >/dev/null 2>&1; then
           upstream_sha=$(git -C "$up_path" rev-parse "origin/$defb" 2>/dev/null || true)
+        elif git -C "$up_path" rev-parse --verify "$defb" >/dev/null 2>&1; then
+          upstream_sha=$(git -C "$up_path" rev-parse "$defb" 2>/dev/null || true)
         else
           upstream_sha=$(git -C "$up_path" rev-parse HEAD 2>/dev/null || true)
         fi

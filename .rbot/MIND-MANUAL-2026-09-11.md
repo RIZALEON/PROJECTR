@@ -137,3 +137,51 @@ This is the file I pass along. Live git after SuperGrok dark:
 - **`45d0241`**: `do` for Utah time runs `formatClock` (America/Denver). Re-Play if ping still echoes the string.
 - **`5a0a122`**: Mind Manual on repo; remember hardcoded.
 - Pass this file + `SAME-PAGE.md` + `handoff/`. Do not scrape grok.com. Do not merge Rbot and PROJECTR.
+
+## GROWTH MONITOR + SEEDS (2026-09-24)
+
+**Purpose.** Stamp how the three app trees grow, and plant each tree's seed (real files, squashed — no history merge) inside the others so each carries the others' fruit.
+
+**Law.** Clay (device) owns source; GitHub is a mirror. NonNuclear: no chain actions, no freeze/URI changes, no merges of this PR without Decider, no force-pushes. Crown/token name is **Я** (never rename to R). Real mint: `BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv` (…Npc…).
+
+### The three trees
+
+| Tree | GitHub | Role |
+|---|---|---|
+| RIZALBOT | `RIZALEON/RIZALBOT` (branch `seat-wallet-landing`) | Mac+iOS clay body |
+| PROJECTR | `RIZALEON/PROJECTR` (`main`) | Outer/world tree (phone/web + Pages) |
+| Rbot | `rizalward/Rbot` (`main`) | Handoff/log channel + macos seat |
+
+### Hidden seeds (subtree files, not submodules)
+
+| Host tree | Seed folder | Source |
+|---|---|---|
+| PROJECTR | `.rizalbot/` | RIZALBOT `@seat-wallet-landing` |
+| PROJECTR | `.rbot/` | Rbot `@main` |
+| Rbot | `.projectr/` | PROJECTR `@main` |
+| Rbot | `.rizalbot/` | RIZALBOT `@seat-wallet-landing` |
+| RIZALBOT | `.projectr/` | PROJECTR `@main` |
+| RIZALBOT | `.rbot/` | Rbot `@main` |
+
+Each seed folder has a `SEED.md` recording source repo, branch, sha, exclusions (`.git`, nested seed folders, files >25 MB, `*.tgz`/`*.zip`), and remaps `.github/workflows` → `.github-seed/workflows` so seeded CI does not run twice. Mac and phone code stay separated by path.
+
+### How to run the growth stamp
+
+```bash
+GROWTH_RIZALBOT_PATH=/path/to/RIZALBOT \
+GROWTH_PROJECTR_PATH=/path/to/PROJECTR \
+GROWTH_RBOT_PATH=/path/to/Rbot \
+  bash growth/growth-stamp.sh
+```
+
+Writes `growth/GROWTH-LEDGER.json` (machine) and `growth/GROWTH.md` (human table): branches, commits in last 7/14/30 days (all branches, no merges), lines added/deleted by file type (swift/kt/js/md/other), last commit (America/Denver), head shas, and **SEED FRESHNESS** per seed folder (`fresh` or `stale by N commits`).
+
+Optional CI: `.github/workflows/growth-stamp.yml` (`workflow_dispatch` + daily) refreshes the ledger on branch `seed-growth-2026-09-24` only.
+
+### In-app monitor
+
+- **RIZALBOT (Swift):** `clay/ЯBOT/GrowthMonitor.swift` + bundled `clay/ЯBOT/growth/GROWTH-LEDGER.json`. Auto-included via PBXFileSystemSynchronizedRootGroup. Chat command **`growth` / `growth monitor`** → `GrowthMonitor.reportText()`. Mac build needed to compile.
+- **PROJECTR (web/phone):** `growth.js` + standalone `growth.html` (also under `web/`). Fetches `growth/GROWTH-LEDGER.json` and renders the panel. Not hooked into `index.html`/`app.js` (kept standalone to stay safe).
+- **Rbot macos/:** Swift + ledger dropped under `macos/growth/` for human pickup; **not** referenced in `project.pbxproj` (objectVersion 56 explicit refs — leave for Decider/Mac).
+
+Branch for this work: `seed-growth-2026-09-24`. **Do not merge without Decider.**

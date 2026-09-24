@@ -157,6 +157,7 @@ static func classify(_ raw: String) -> ChatLane {
             "rzl", ".rzl", "mode", "heart", "heart status", "ghost", "ghost status",
             "essence", "token", "coin", "coin carriers", "coin mysteries", "coin dna",
             "transcript", "mind tape", "mind transcript", "tape", "snapshot",
+            "growth", "growth monitor",
         ]
         if commandExact.contains(lower) { return .command }
         let commandPrefixes = [
@@ -200,6 +201,7 @@ static func classify(_ raw: String) -> ChatLane {
             11 evolve — Decider-gated; not self-granted
             12 snapshot — revision checkpoint note
             13 mode — online/offline status
+            13g growth / growth monitor — three-tree growth + seed freshness
             13b online / offline — flip green nerve
             13c search <query> — web search when ONLINE only
             13c2 nearby / search chinese restaurant — closest + closest-best (time+place)
@@ -529,6 +531,9 @@ static func classify(_ raw: String) -> ChatLane {
         }
         if lower == "mode" {
             return ModeStore.shared.label
+        }
+        if lower == "growth" || lower == "growth monitor" {
+            return GrowthMonitor.reportText()
         }
         // PLACE seat first — never let proximity ear steal place / place set / teach locks
         if lower == "place" || lower == "time" || lower == "where am i" || lower == "when" {

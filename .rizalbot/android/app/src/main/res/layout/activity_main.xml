@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/clay_bg"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Я · ABOMEGA 0.1"
+        android:textColor="@color/clay_gold"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
+
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+        <TextView
+            android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/welcome"
+            android:textColor="@color/clay_text"
+            android:textSize="15sp"
+            android:lineSpacingExtra="4dp" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="12dp">
+        <EditText
+            android:id="@+id/input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/hint"
+            android:textColor="@color/clay_text"
+            android:textColorHint="#88F5F0E8"
+            android:backgroundTint="@color/clay_purple"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLines="4" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/send"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+</LinearLayout>

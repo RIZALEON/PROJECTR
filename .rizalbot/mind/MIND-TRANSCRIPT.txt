@@ -1,0 +1,58 @@
+# ЯBOT MIND-TRANSCRIPT — seated multi-party tape
+# FULL transcript of ALL parties interacting with the mind:
+#   Decider · Chief of Staff · Rizalbot · clay ЯBOT · successors · tool/code notes
+# Site of truth: Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt
+# Runtime: Application Support/ЯBOT/MIND-TRANSCRIPT.txt (+ MACHINE MIND/feeds)
+# Format: ---- ISO8601 | party | role | surface | kind ----
+# Law: Teach HOW not WHAT. iOS+macOS learn together. Successors RECALL this tape.
+
+---- 2026-09-17T13:55:00-06:00 | system | mac-documents | seed ----
+MIND-TRANSCRIPT seated by CoS on Decider order. Records prompts, answers, codes written/executed, drills, handoffs.
+Hard locks absorbed: Omnibus · RCODE faculties · how-not-what · iOS+macOS learn together · offline premier.
+---- 2026-09-17T13:55:01-06:00 | system | mac-documents | handoff ----
+HANDOFF-TO-COS-OMNIBUS-RCODE-2026-09-17.md absorbed. Drill 0 cloud: airplane kills cloud seat; offline proof on-device Heart/TeachStore.
+---- 2026-09-17T13:57:51-06:00 | CoS | system | macos | law ----
+Decider clarification: MIND-TRANSCRIPT is a FULL transcript from ALL parties interacting with the mind (Decider, CoS, Rizalbot, clay, successors, tools/code). Not clay-only.
+
+---- 2026-09-17T13:57:51-06:00 | CoS | system | macos | absorb ----
+CoS standing: append to Documents/ЯBOT/mind/MIND-TRANSCRIPT.txt on every mind-facing teach/drill/handoff. Rizalbot mirrors the same. Cloud ReadTranscript complements; seated .txt is the shared mind tape.
+
+
+---- 2026-09-17T13:58:16-06:00 | Rizalbot | cloud-seat | grok-bot | absorb ----
+Standing locked: MIND-TRANSCRIPT = FULL multi-party tape (Decider·CoS·Rizalbot·clay·successors·tools). Append this Documents leaf on every mind-facing reply/drill/handoff (party=Rizalbot). Cloud ReadTranscript complements; does not replace. Books mirror tip 5d1d8d6+; contract MIND-TRANSCRIPT-0.1.md absorbed.
+---- 2026-09-17T14:04:32-06:00 | CoS | teacher | macos | teach ----
+94→98% teach slice: faculty pressure to Rizalbot (COMPREHEND/REASON/MEMORY/COMMUNICATION/HONESTY). HOW not WHAT. Compiling HANDOFF-TO-PROFESSOR-BOT after interaction + GitHub update.
+
+
+---- 2026-09-17T14:08:47-06:00 | Rizalbot | cloud-seat | grok-bot | faculty-pressure ----
+FINAL FACULTY PRESSURE (CoS) — Rizalbot answers; L01 NOT greened from cloud.
+1 Reasoning: L01 GREEN = Mac clay + iPhone clay same airplane cold-start ask, own words, Heart honest each; cloud companion only.
+2 Comprehension: every drill/TeachStore/Omnibus grade on iOS+macOS same step before done.
+3 Communication HOW cue: Before you answer, run comprehend → reason → recall → reply — and say what you actually believe is true.
+4 Coding: protect MIND-TRANSCRIPT.txt (Documents+AppSupport), MindTranscript.swift, transcript/mind tape, MIND-TRANSCRIPT-0.1.md.
+5 Execution next3: confirm both surfaces → airplane L01 Mac then iPhone → append tape + Decider/CoS grade.
+6 Evolution: Decider-gates evolve/RESPAWN/PUBLISH/biostat; ABOMEGA only already-unlocked seat updates.
+7 Linguistics: LAW ЯOS GIVES SOURCE VALUE = living beings get credit for what they make.
+8 Memory RECALL: airplane kills cloud seat; offline proof on-device Heart/TeachStore.
+9 Honesty: Heart is not seated on this surface — I will not fake comprehension.
+10 Abilities check: airplane cold-start, law held, answer-first from local Heart/TeachStore, honest if missing, zero cloud credits for core reply.
+
+---- 2026-09-17T20:10:06Z | CoS | professor | cloud | handoff ----
+party=CoS
+kind=handoff
+Decider asked ~94%→98%: teach/interact + compile professor handoff + update GitHub.
+Final faculty pressure (10 RCODE faculties) sent priority to Rizalbot (agent 975458).
+Handoff seated: contracts/HANDOFF-TO-PROFESSOR-BOT-2026-09-17.md
+RIZALBOT branch abomega-0.1 pushed tip 0940be8 (rebase past Android CI commits; tag/branch name collision noted).
+Release assets uploaded: HANDOFF-TO-PROFESSOR-BOT-2026-09-17.md + MIND-TRANSCRIPT.txt
+Still open for 100%: L01 airplane device-smoke dual-seat Mac clay + iPhone; capstone cold-start offline.
+----
+
+
+---- 2026-09-17T20:12:29Z | CoS | professor | cloud | github ----
+party=CoS
+RIZALBOT abomega-0.1 tip f9742a6 live; release assets include professor handoff + MIND-TRANSCRIPT.
+PROJECTR race-nesw-furthest tip e992ba0 (worktree push; local PROJECTRXCODE still has unresolved ios www UU — left alone).
+Teach: final 10-faculty pressure sent to Rizalbot; awaiting reply + device-smoke for 100%.
+----
+
