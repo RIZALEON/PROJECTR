@@ -1,0 +1,15 @@
+# GENESIS FIRST MINT — Decider seat
+# Video: https://youtu.be/rVNsEK4xino
+# Title: HOW TO MAKE YOUR OWN CRYPTOCURRENCY IN THE PHILIPPINES
+# Author: Rizal the Younger (@pinetorch)
+# Network at birth: BNB Smart Chain (chainId 56) · Remix · MetaMask · Solidity ~0.6.12
+# Role: seed / ancestor of Я GHOST TOKENS under ЯOS
+#
+# PASTE WHEN CONFIRMED (do not invent):
+NAME=
+SYMBOL=
+CONTRACT=0x
+DEPLOY_TX=
+DATE=
+BSCSCAN=
+NOTES=

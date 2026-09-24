@@ -1,0 +1,22 @@
+{
+  "title": "Я WALLET",
+  "subtitle": "Offline-premier twin · public Solana mirror",
+  "name": "Я",
+  "symbol": "Я",
+  "mint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+  "cluster": "mainnet-beta",
+  "supply_ui": "1000000",
+  "decimals": 9,
+  "explorer": "https://solscan.io/token/BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+  "tx": "https://solscan.io/tx/2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94",
+  "metadata_account": "Ci9V7hLbsGJPnrWTN5pvT5H5JPoi6EAiF1b2KVZwr5M9",
+  "utilities": [
+    "cite",
+    "clear_clog",
+    "tip_settle",
+    "seat_twin",
+    "evolve"
+  ],
+  "law": "Crown Я. Try Я first; R only by Decider order. Explorers are mirrors — clay owns source.",
+  "mode": "on_or_offline"
+}

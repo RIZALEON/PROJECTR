@@ -1,0 +1,16 @@
+{
+  "name": "Я",
+  "symbol": "Я",
+  "description": "Crown Я. Clay owns source. Explorers are mirrors. NonNuclear. Decider Rizal.",
+  "image": "https://raw.githubusercontent.com/rizalward/Rbot/main/macos/RIZALBOT/www/icon-512.png",
+  "external_url": "https://github.com/rizalward/Rbot",
+  "properties": {
+    "category": "fungible",
+    "files": [
+      {
+        "uri": "https://raw.githubusercontent.com/rizalward/Rbot/main/macos/RIZALBOT/www/icon-512.png",
+        "type": "image/png"
+      }
+    ]
+  }
+}

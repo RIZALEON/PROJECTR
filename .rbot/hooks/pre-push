@@ -1,0 +1,20 @@
+#!/bin/sh
+# Block weights. Never git llama.xcframework or heart.gguf.
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+    continue
+  fi
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    names=$(git diff --name-only "$local_sha")
+  else
+    names=$(git diff --name-only "$remote_sha" "$local_sha")
+  fi
+  hit=$(printf '%s\n' "$names" | grep -E 'llama\.xcframework|heart\.gguf|\.gguf$' || true)
+  if [ -n "$hit" ]; then
+    echo "pre-push blocked (NonNuclear / no weights in git):"
+    echo "$hit"
+    exit 1
+  fi
+done
+exit 0

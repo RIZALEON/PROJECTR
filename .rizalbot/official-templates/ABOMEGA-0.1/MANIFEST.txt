@@ -1,0 +1,4 @@
+ABOMEGA-0.1 — next RESPAWN point (2026-09-17 America/Denver)
+source-project/ЯBOT = live clay sources (Heart GGUF via HEART-SEAT.txt)
+USER-MANUAL.pdf rides always
+Restore: Documents/ЯBOT/ya-respawn.sh ABOMEGA-0.1

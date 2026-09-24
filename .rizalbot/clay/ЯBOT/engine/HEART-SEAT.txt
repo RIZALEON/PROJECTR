@@ -1,0 +1,6 @@
+ABOMEGA 0.1 Heart seat
+Canonical local: Documents/ЯBOT/ЯBOT/engine/heart.gguf
+Model: Qwen2.5-3B-Instruct Q4 (~2.0 GB)
+Also: hearts-archive/heart-chat-qwen25-3b-q4.gguf
+Git does not carry the GGUF — copy into engine/ before Mac/iOS Heart builds.
+llama-completion binary may ride if under size; otherwise rebuild from ya-deps/llama.cpp.

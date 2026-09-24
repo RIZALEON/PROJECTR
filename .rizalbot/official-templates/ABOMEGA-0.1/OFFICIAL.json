@@ -1,0 +1,17 @@
+{
+  "id": "ABOMEGA-0.1",
+  "name": "ABOMEGA conjoined 0.1",
+  "date": "2026-09-17",
+  "timezone": "America/Denver",
+  "official": true,
+  "most_recent": false,
+  "platforms": [
+    "macOS",
+    "iOS-Simulator",
+    "iOS-Device"
+  ],
+  "bundle_id_device": "io.github.rizaleon.yaaim",
+  "heart": "Qwen2.5-3B-Instruct Q4 (local engine/heart.gguf \u2014 not in git)",
+  "law": "App updates from itself \u00b7 \u042fOS GIVES SOURCE VALUE \u00b7 offline premier",
+  "self_update": true
+}
