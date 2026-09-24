@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "kind": "SPL-fungible-blast",
+  "cluster": "mainnet-beta",
+  "intendedName": "Я",
+  "name": "Я",
+  "symbol": "Я",
+  "note": "Explorer-verified mainnet twin hardcoded into clay 2026-09-19. Crown Я.",
+  "mint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+  "decimals": 9,
+  "supply_ui": "1000000",
+  "supply_raw": "1000000000000000",
+  "owner_ata": "8bCnr63CTdC2YbELK3x4vxJYNt6cueGBbEvRURFZc9Q1",
+  "mint_authority": "BwpVNk1Rtncpv5HMTLwxB4Yfjkfv6mFaBQUTpjneH1F9",
+  "freeze_authority": "BwpVNk1Rtncpv5HMTLwxB4Yfjkfv6mFaBQUTpjneH1F9",
+  "fee_payer": "BwpVNk1Rtncpv5HMTLwxB4Yfjkfv6mFaBQUTpjneH1F9",
+  "signature": "2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94",
+  "slot": 448281123,
+  "block_time_unix": 1789787259,
+  "block_time_utc": "2026-09-19 03:07:39 UTC",
+  "fee_lamports": 10000,
+  "status": "finalized",
+  "instructions": [
+    "SystemProgram.CreateAccount (mint account, 82 bytes → Token Program)",
+    "TokenProgram.InitializeMint2 (decimals=9, mint+freeze authority)",
+    "AssociatedTokenProgram.Create (owner ATA)",
+    "TokenProgram.MintTo (1_000_000 UI → ATA)"
+  ],
+  "metadata_account": "Ci9V7hLbsGJPnrWTN5pvT5H5JPoi6EAiF1b2KVZwr5M9",
+  "metadata_signature": "2jRr6staQgpyAYDHRS5gasVu57j6qDaZ6VtPAYoCPq2eHUkf3d3zUNQ3FmNYdorqAWVzuVnNaFPwnrm3HkNiRe8H",
+  "metadata": {
+    "ok": true,
+    "triedName": "Я",
+    "triedSymbol": "Я",
+    "metadata": "Ci9V7hLbsGJPnrWTN5pvT5H5JPoi6EAiF1b2KVZwr5M9",
+    "signature": "2jRr6staQgpyAYDHRS5gasVu57j6qDaZ6VtPAYoCPq2eHUkf3d3zUNQ3FmNYdorqAWVzuVnNaFPwnrm3HkNiRe8H",
+    "tx": "https://solscan.io/tx/2jRr6staQgpyAYDHRS5gasVu57j6qDaZ6VtPAYoCPq2eHUkf3d3zUNQ3FmNYdorqAWVzuVnNaFPwnrm3HkNiRe8H",
+    "mint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv"
+  },
+  "explorer": {
+    "solscan_token": "https://solscan.io/token/BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+    "solscan_tx": "https://solscan.io/tx/2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94",
+    "solscan_account": "https://solscan.io/account/BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+    "explorer_address": "https://explorer.solana.com/address/BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+    "explorer_tx": "https://explorer.solana.com/tx/2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94",
+    "solana_fm_address": "https://solana.fm/address/BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+    "solana_fm_tx": "https://solana.fm/tx/2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94"
+  },
+  "tx": "https://solscan.io/tx/2Lxr2mEZnFnwwBMQjCgRt8EJLaJbwEp61K51mdx16z8oncWg2JCXzCKnisMi78V3L4w7w2pizQ8P1p2H5XMLvx94",
+  "utilities": [
+    "cite",
+    "clear_clog",
+    "tip_settle",
+    "seat_twin",
+    "evolve"
+  ],
+  "law": "Crown Я. Try Я first; R only by Decider order. Explorers are mirrors — clay owns source.",
+  "verified_at": "2026-09-19 06:01:48 UTC"
+}

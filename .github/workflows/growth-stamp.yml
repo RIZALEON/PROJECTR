@@ -1,0 +1,39 @@
+name: growth-stamp
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 14 * * *"  # ~08:17 America/Denver
+permissions:
+  contents: write
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    # Only commit back onto the seed-growth branch — never main / seat-wallet-landing
+    if: github.ref == 'refs/heads/seed-growth-2026-09-24' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: seed-growth-2026-09-24
+          fetch-depth: 0
+      - name: Stamp growth (this tree only + remote peers via gh)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Point local path at this checkout; peers resolved via gh API inside script
+          case "${{ github.repository }}" in
+            */RIZALBOT) export GROWTH_RIZALBOT_PATH="$PWD" ;;
+            */PROJECTR) export GROWTH_PROJECTR_PATH="$PWD" ;;
+            */Rbot)     export GROWTH_RBOT_PATH="$PWD" ;;
+          esac
+          bash growth/growth-stamp.sh
+      - name: Commit ledger if changed
+        run: |
+          git config user.name "growth-stamp[bot]"
+          git config user.email "growth-stamp[bot]@users.noreply.github.com"
+          git add growth/GROWTH-LEDGER.json growth/GROWTH.md
+          if git diff --cached --quiet; then
+            echo "No growth changes"
+          else
+            git commit -m "growth: refresh ledger $(date -u +%Y-%m-%d)"
+            git push origin HEAD:seed-growth-2026-09-24
+          fi
