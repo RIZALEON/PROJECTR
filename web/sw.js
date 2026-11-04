@@ -1,9 +1,10 @@
-const CACHE = "projectr-v0-55";
+const CACHE = "projectr-v0-56";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./ya-runtime-core.js",
   "./senses.js",
   "./deadman.js",
   "./manifest.json",
