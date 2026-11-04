@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ABOMEGA" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#7B2CBF</item>
+        <item name="colorPrimaryVariant">#240046</item>
+        <item name="colorOnPrimary">#FFD60A</item>
+        <item name="android:statusBarColor">#12001F</item>
+        <item name="android:navigationBarColor">#12001F</item>
+        <item name="android:windowBackground">#12001F</item>
+    </style>
+</resources>

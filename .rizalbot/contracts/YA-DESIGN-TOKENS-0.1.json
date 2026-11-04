@@ -1,0 +1,55 @@
+{
+  "id": "YA-DESIGN-TOKENS-0.1",
+  "stamp": "2026-09-16",
+  "timezone": "America/Denver",
+  "parent": "APP-TEMPLATE-0.1",
+  "aesthetic": "AESTHETIC-TEMPLATE-CLAY-2026-09-15",
+  "law": "Do not invent a new aesthetic. Inherit Stormclay claymation.",
+  "colors": {
+    "purple": [0.42, 0.28, 0.86],
+    "purpleDeep": [0.30, 0.18, 0.68],
+    "purpleClay": [0.38, 0.24, 0.72],
+    "gold": [0.86, 0.68, 0.28],
+    "charcoal": [0.14, 0.14, 0.15],
+    "charcoalDeep": [0.06, 0.06, 0.07],
+    "slab": [0.34, 0.34, 0.36],
+    "slabRaised": [0.42, 0.42, 0.44],
+    "slabRecess": [0.22, 0.22, 0.24],
+    "bubbleUser": [0.82, 0.82, 0.84],
+    "bubbleAssistant": [0.40, 0.40, 0.42],
+    "offWhite": [0.96, 0.96, 0.97],
+    "muted": [0.70, 0.70, 0.72],
+    "orangeBolt": [0.98, 0.55, 0.12],
+    "onlineGreen": [0.22, 0.78, 0.42],
+    "offlineRed": [0.90, 0.32, 0.22]
+  },
+  "metrics": {
+    "fontChat": 16,
+    "panelRadius": 36,
+    "bubbleRadius": 20,
+    "bubbleClearGap": 36,
+    "bubbleShadowReserve": 10,
+    "chatBarWidth": 580,
+    "slateOverhang": 48,
+    "slateContentInset": 16,
+    "tabletUserMaxWidth": 420,
+    "tabletAssistantMaxWidth": 560,
+    "chromeSize": 64,
+    "tracking": 1.6
+  },
+  "fonts": {
+    "chat": "Stormclay White",
+    "system": "Stormclay Gold",
+    "legacy": "Stormclay"
+  },
+  "laws": [
+    "Claymation everywhere",
+    "Stormclay White chat / Gold chrome",
+    "Rectangular 4-corner tablets never pointed",
+    "fixed fontChat 16",
+    "user right / companion left / text left-aligned",
+    "3-part composer inside long bar",
+    "RESPAWN = most_recent APP-TEMPLATE-0.1"
+  ],
+  "platforms": ["macos-yabot", "ios-yaaim", "android-stub"]
+}

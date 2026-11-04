@@ -1,0 +1,238 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		B10001 /* YaAimMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YaAimMacApp.swift; sourceTree = "<group>"; };
+		B10002 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
+		B10003 /* NativeVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeVault.swift; sourceTree = "<group>"; };
+		B10004 /* NativeHeart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHeart.swift; sourceTree = "<group>"; };
+		B10005 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		B10006 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
+		B10007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10009 /* YaAimMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YaAimMac.entitlements; sourceTree = "<group>"; };
+		B1000A /* copy-www.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "copy-www.sh"; sourceTree = "<group>"; };
+		B1000B /* YaAimMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YaAimMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10010 /* YaAimMacApp.swift */ = {isa = PBXBuildFile; fileRef = B10001 /* YaAimMacApp.swift */; };
+		B10011 /* WebShell.swift */ = {isa = PBXBuildFile; fileRef = B10002 /* WebShell.swift */; };
+		B10012 /* NativeVault.swift */ = {isa = PBXBuildFile; fileRef = B10003 /* NativeVault.swift */; };
+		B10013 /* NativeHeart.swift */ = {isa = PBXBuildFile; fileRef = B10004 /* NativeHeart.swift */; };
+		B10014 /* ModelManager.swift */ = {isa = PBXBuildFile; fileRef = B10005 /* ModelManager.swift */; };
+		B10015 /* ConversationStore.swift */ = {isa = PBXBuildFile; fileRef = B10006 /* ConversationStore.swift */; };
+		B10016 /* Assets.xcassets */ = {isa = PBXBuildFile; fileRef = B10008 /* Assets.xcassets */; };
+		B10020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10010 /* YaAimMacApp.swift in Sources */,
+				B10011 /* WebShell.swift in Sources */,
+				B10012 /* NativeVault.swift in Sources */,
+				B10013 /* NativeHeart.swift in Sources */,
+				B10014 /* ModelManager.swift in Sources */,
+				B10015 /* ConversationStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10021 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10016 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10023 /* Copy www from iOS */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy www from iOS";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "\"${SRCROOT}/YaAimMac/copy-www.sh\"\n";
+		};
+		B10030 /* YaAimMac */ = {
+			isa = PBXGroup;
+			children = (
+				B10001 /* YaAimMacApp.swift */,
+				B10002 /* WebShell.swift */,
+				B10003 /* NativeVault.swift */,
+				B10004 /* NativeHeart.swift */,
+				B10005 /* ModelManager.swift */,
+				B10006 /* ConversationStore.swift */,
+				B10007 /* Info.plist */,
+				B10008 /* Assets.xcassets */,
+				B10009 /* YaAimMac.entitlements */,
+				B1000A /* copy-www.sh */,
+			);
+			path = YaAimMac;
+			sourceTree = "<group>";
+		};
+		B10031 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B1000B /* YaAimMac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B10032 = {
+			isa = PBXGroup;
+			children = (
+				B10030 /* YaAimMac */,
+				B10031 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B10040 /* YaAimMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B10052 /* Target */;
+			buildPhases = (
+				B10020 /* Sources */,
+				B10022 /* Frameworks */,
+				B10021 /* Resources */,
+				B10023 /* Copy www from iOS */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YaAimMac;
+			productName = YaAimMac;
+			productReference = B1000B /* YaAimMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B10050 /* Project */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10060 /* Debug */,
+				B10061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10052 /* Target */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10062 /* Debug */,
+				B10063 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B10061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		B10062 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = YaAimMac/YaAimMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 55;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YaAimMac/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Я";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.55;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim.mac;
+				PRODUCT_NAME = YaAimMac;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B10063 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = YaAimMac/YaAimMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 55;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YaAimMac/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Я";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.55;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rizaleon.yaaim.mac;
+				PRODUCT_NAME = YaAimMac;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B10070 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					B10040 = { CreatedOnToolsVersion = 16.0; };
+				};
+			};
+			buildConfigurationList = B10050 /* Project */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = B10032;
+			productRefGroup = B10031 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B10040 /* YaAimMac */,
+			);
+		};
+	};
+	rootObject = B10070 /* Project object */;
+}

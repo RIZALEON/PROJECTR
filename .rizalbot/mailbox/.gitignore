@@ -1,0 +1,8 @@
+SEED.json
+*.seed
+*.mnemonic
+*keypair*.json
+id.json
+.env
+.env.*
+secrets/

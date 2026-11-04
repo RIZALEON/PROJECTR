@@ -1,0 +1,3 @@
+#!/bin/sh
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+exec /bin/sh "$ROOT/hooks/sync-mailbox.sh"

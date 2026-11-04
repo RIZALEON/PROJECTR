@@ -1,0 +1,7 @@
+RIZALBOT Mac — hardcoded offline seat (can go online)
+
+1. git pull in ~/Desktop/RIZALBOT
+2. open macos/RIZALBOT.xcodeproj
+3. Signing → Team → Play
+4. RIZALBOT.app is copied to Desktop
+5. Keep in Dock

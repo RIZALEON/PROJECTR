@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GROWTH MONITOR — PROJECT Я</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; background: #0b0f14; color: #e8eef7; }
+    h2 { letter-spacing: 0.04em; }
+    .growth-card { background: #141a22; border-radius: 12px; padding: 0.9rem 1rem; margin: 0.75rem 0; }
+    .growth-seed { font-size: 0.9rem; opacity: 0.9; margin: 0.2rem 0; }
+    .growth-stamp, .growth-law { opacity: 0.75; font-size: 0.9rem; }
+    a { color: #7ec8ff; }
+  </style>
+</head>
+<body>
+  <p><a href="./index.html">← back</a></p>
+  <div id="growth-root">Loading…</div>
+  <script src="./growth.js"></script>
+  <script>GrowthMonitor.mount("#growth-root", "growth/GROWTH-LEDGER.json");</script>
+</body>
+</html>

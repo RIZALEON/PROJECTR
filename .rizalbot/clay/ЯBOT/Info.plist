@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
+	<key>CFBundleDisplayName</key>
+	<string>ЯBOT</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>io.github.rizaleon.yaaim</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>yabot</string>
+			</array>
+		</dict>
+	</array>
+	<key>NFCReaderUsageDescription</key>
+	<string>ЯBOT may use NFC to tap short offline coin path tokens between LINKs.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ЯBOT uses Bluetooth so LINKs can sync Я COIN path-scout and Machine DNA nearby without the cloud.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>ЯBOT uses Bluetooth so LINKs can sync Я COIN path-scout and Machine DNA nearby without the cloud.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_ya-coin-lan._tcp</string>
+		<string>_yabot-coin._tcp</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>ЯBOT may use the camera to read QR optical handshakes for offline coin path hops.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ЯBOT uses the local link (Bluetooth / peer Wi‑Fi / LAN Bonjour) so Я COIN can hop seat↔seat offline — no internet required.</string>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>ЯBOT may use nearby interaction so coin hops stay on-device between seats.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>StormclayWhite.ttf</string>
+		<string>StormclayGold.ttf</string>
+		<string>Stormclay.ttf</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ЯBOT uses your place only for nearby search (closest + closest-best). Offline seat stays premier.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ЯBOT may use your place for proximity answers when you ask nearby / restaurant search.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>ЯBOT uses your place for nearby restaurant and space answers.</string>
+</dict>
+</plist>

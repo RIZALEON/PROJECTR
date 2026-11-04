@@ -1,0 +1,7 @@
+RIZALBOT Mac — Xcode (this is the signed Dock app)
+
+1. Double-click Open in Xcode.command
+2. Signing & Capabilities → Team → your Apple ID (Personal Team is enough)
+3. Press Run. Xcode signs it. Keep in Dock.
+
+Do not open the old unsigned RIZALBOT.app from the zip. Apple blocked that.

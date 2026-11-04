@@ -63,6 +63,9 @@ struct WebShell: UIViewRepresentable {
                 var st = NativeHeart.shared.status()
                 st["op"] = "status"
                 st["gutBytes"] = NativeVault.gutBytes()
+                st["heartBytes"] = NativeVault.heartBytes()
+                st["documentsBytes"] = NativeVault.documentsBytes()
+                st["vaultBytes"] = NativeVault.documentsBytes()
                 let files = ModelManager.status()
                 if let list = files["files"] { st["files"] = list }
                 if let id = body["id"] as? String { st["id"] = id }

@@ -1,0 +1,185 @@
+{
+  "stamp": "2026-09-24 12:38:04 MDT",
+  "stamp_iso": "2026-09-24T12:38:04-06:00",
+  "timezone": "America/Denver",
+  "crown": "Я",
+  "mint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+  "law": "Clay (device) owns source; GitHub is a mirror. NonNuclear.",
+  "method_notes": [
+    "git -c core.quotepath=off for numstat (Unicode paths e.g. clay/ЯBOT/*.swift)",
+    "numstat rename forms resolved to final path before extension classify",
+    "git fetch origin '+refs/heads/*:refs/remotes/origin/*' before count",
+    "branches = remote heads on origin",
+    "commits/lines = all origin branches except seed-growth-* (deduped, --no-merges); seed-growth excluded to avoid double-counting squashed peer tree copies"
+  ],
+  "trees": [
+    {
+      "key": "RIZALBOT",
+      "repo": "RIZALEON/RIZALBOT",
+      "default_branch": "seat-wallet-landing",
+      "available_local": true,
+      "local_path": "/workspace/seed-growth/RIZALBOT",
+      "branches": 4,
+      "branch_count_note": "remote heads on origin (incl. seed-growth); commit/line tallies exclude seed-growth-* to avoid double-counting squashed peer copies",
+      "commits_last_7_days": 25,
+      "commits_last_14_days": 37,
+      "commits_last_30_days": 37,
+      "head_sha": "27dc2e4132d019dde263f7cbc37a31d9763923fa",
+      "last_commit_denver": "2026-09-22 11:09:39 MDT",
+      "insertions_30d": 72672,
+      "deletions_30d": 620,
+      "lines_30d": {
+        "swift": {
+          "added": 27056,
+          "deleted": 281
+        },
+        "kt": {
+          "added": 755,
+          "deleted": 17
+        },
+        "js": {
+          "added": 0,
+          "deleted": 0
+        },
+        "md": {
+          "added": 29839,
+          "deleted": 309
+        },
+        "other": {
+          "added": 15022,
+          "deleted": 13
+        }
+      },
+      "seeds": [
+        {
+          "folder": ".projectr",
+          "source_repo": "RIZALEON/PROJECTR",
+          "seed_sha": "913a2e61066eeb141640b9fe0ac8e22bcabf3e07",
+          "upstream_sha": "913a2e61066eeb141640b9fe0ac8e22bcabf3e07",
+          "status": "fresh",
+          "stale_commits": 0
+        },
+        {
+          "folder": ".rbot",
+          "source_repo": "rizalward/Rbot",
+          "seed_sha": "e13f81b1141cc6d691c76820402c168bbcbd943e",
+          "upstream_sha": "e13f81b1141cc6d691c76820402c168bbcbd943e",
+          "status": "fresh",
+          "stale_commits": 0
+        }
+      ]
+    },
+    {
+      "key": "PROJECTR",
+      "repo": "RIZALEON/PROJECTR",
+      "default_branch": "main",
+      "available_local": true,
+      "local_path": "/workspace/seed-growth/PROJECTR",
+      "branches": 12,
+      "branch_count_note": "remote heads on origin (incl. seed-growth); commit/line tallies exclude seed-growth-* to avoid double-counting squashed peer copies",
+      "commits_last_7_days": 15,
+      "commits_last_14_days": 55,
+      "commits_last_30_days": 291,
+      "head_sha": "913a2e61066eeb141640b9fe0ac8e22bcabf3e07",
+      "last_commit_denver": "2026-09-21 18:17:10 MDT",
+      "insertions_30d": 80190,
+      "deletions_30d": 9454,
+      "lines_30d": {
+        "swift": {
+          "added": 11632,
+          "deleted": 688
+        },
+        "kt": {
+          "added": 0,
+          "deleted": 0
+        },
+        "js": {
+          "added": 39799,
+          "deleted": 4782
+        },
+        "md": {
+          "added": 12884,
+          "deleted": 987
+        },
+        "other": {
+          "added": 15875,
+          "deleted": 2997
+        }
+      },
+      "seeds": [
+        {
+          "folder": ".rizalbot",
+          "source_repo": "RIZALEON/RIZALBOT",
+          "seed_sha": "27dc2e4132d019dde263f7cbc37a31d9763923fa",
+          "upstream_sha": "27dc2e4132d019dde263f7cbc37a31d9763923fa",
+          "status": "fresh",
+          "stale_commits": 0
+        },
+        {
+          "folder": ".rbot",
+          "source_repo": "rizalward/Rbot",
+          "seed_sha": "e13f81b1141cc6d691c76820402c168bbcbd943e",
+          "upstream_sha": "e13f81b1141cc6d691c76820402c168bbcbd943e",
+          "status": "fresh",
+          "stale_commits": 0
+        }
+      ]
+    },
+    {
+      "key": "Rbot",
+      "repo": "rizalward/Rbot",
+      "default_branch": "main",
+      "available_local": true,
+      "local_path": "/workspace/seed-growth/Rbot",
+      "branches": 2,
+      "branch_count_note": "remote heads on origin (incl. seed-growth); commit/line tallies exclude seed-growth-* to avoid double-counting squashed peer copies",
+      "commits_last_7_days": 3,
+      "commits_last_14_days": 67,
+      "commits_last_30_days": 67,
+      "head_sha": "e13f81b1141cc6d691c76820402c168bbcbd943e",
+      "last_commit_denver": "2026-09-24 11:57:14 MDT",
+      "insertions_30d": 5288,
+      "deletions_30d": 1239,
+      "lines_30d": {
+        "swift": {
+          "added": 686,
+          "deleted": 96
+        },
+        "kt": {
+          "added": 0,
+          "deleted": 0
+        },
+        "js": {
+          "added": 319,
+          "deleted": 253
+        },
+        "md": {
+          "added": 2633,
+          "deleted": 483
+        },
+        "other": {
+          "added": 1650,
+          "deleted": 407
+        }
+      },
+      "seeds": [
+        {
+          "folder": ".projectr",
+          "source_repo": "RIZALEON/PROJECTR",
+          "seed_sha": "913a2e61066eeb141640b9fe0ac8e22bcabf3e07",
+          "upstream_sha": "913a2e61066eeb141640b9fe0ac8e22bcabf3e07",
+          "status": "fresh",
+          "stale_commits": 0
+        },
+        {
+          "folder": ".rizalbot",
+          "source_repo": "RIZALEON/RIZALBOT",
+          "seed_sha": "27dc2e4132d019dde263f7cbc37a31d9763923fa",
+          "upstream_sha": "27dc2e4132d019dde263f7cbc37a31d9763923fa",
+          "status": "fresh",
+          "stale_commits": 0
+        }
+      ]
+    }
+  ]
+}

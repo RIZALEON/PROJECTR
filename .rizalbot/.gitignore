@@ -1,0 +1,16 @@
+# Build / Xcode
+DerivedData/
+dist/*.app/
+dist/test-src/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# Heart GGUF (too large — keep local; see engine/HEART-SEAT.txt)
+**/engine/heart.gguf
+**/hearts-archive/*.gguf
+heart.gguf
+
+# Local scratch
+/tmp/
+*.app/
