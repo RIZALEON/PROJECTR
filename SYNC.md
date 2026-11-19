@@ -21,6 +21,13 @@ Rizal's order: all sites synced and linked with RCRYPTOFORGE.
 - **BOT DOORWAY — ThundR**
   `thundr-botcard/index.html` in this repo, and the same doorway in
   PROJECTR: https://github.com/RIZALEON/PROJECTR/tree/shared
+- **PORTABLE UNIT — RSHELL RENJIN (one file)**
+  `renjin-complete-build/rshell/RSHELL-RENJIN.html` in both repos —
+  shell + trained Core v3 model + corpus + persisted store in a single
+  723 KB file. Open it on any device: it boots the model from the file
+  itself, answers offline, SYNCs its chain seat against RTOR/RTRACKR
+  when online, and EVOLVEs in the device's own store. Built by
+  `renjin-complete-build/renjin/build-rshell-single.js`.
 
 ## Sync law
 
