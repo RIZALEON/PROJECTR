@@ -1,0 +1,34 @@
+patched core -> yaseed-core-v3.js (v2 + generateSampled only)
+corpus lines: 141 bytes: 9079
+boot: {"version":"0.1.11","chain_ok":true,"modules":2}
+grow: grown loss: 27.552
+train 60s: {"steps":2557,"loss_before":27.552,"loss_after":3.232,"held_out":3.217,"entry":8}
+status after train: {"loss":3.2316,"chain_entries":9,"chain_ok":true}
+Q: What is the Ghost Chain?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "ihuesK  ehs ihin a evw v e eaa" { letterShare: 1, words: [ 'ihuesK', 'ehs', 'ihin', 'evw', 'eaa' ] }
+Q: What is offline?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "h pinn  iepTeeh ousnrtv i lcos" { letterShare: 1, words: [ 'pinn', 'iepTeeh', 'ousnrtv', 'lcos' ] }
+Q: Who is ThundR?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "pe b he  aew  ee hres o.rseen " { letterShare: 0.97, words: [ 'aew', 'hres', 'rseen' ] }
+--- 16-question grounded test (ask = embed retrieval, quoted line) ---
+FAIL expected line 1, got line 28 (0.531): "A reply without a valid quote is rejected by check."
+FAIL expected line 2, got line 74 (0.459): "The seed pack is lazy and inflates only the sections asked for."
+PASS expected line 3, got line 3 (0.754): "The transcript is append-only. Never erased, truncated or rewritten."
+PASS expected line 9, got line 9 (0.377): "Weights are ternary: minus one, zero, plus one. Most of them are zero."
+FAIL expected line 20, got line 106 (0.525): "The embedding is trained from the same corpus and nothing else."
+FAIL expected line 24, got line 63 (0.529): "Mind recall returns two hits and a score for each hit."
+PASS expected line 33, got line 33 (0.91): "The device key signs the chain and never leaves the device."
+FAIL expected line 38, got line 126 (0.462): "R TOKEN is a Solana token. Its mint is BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q"
+FAIL expected line 102, got line 103 (0.546): "Loss on the held-out set is the honest score for the day."
+PASS expected line 95, got line 95 (0.799): "Paper trading comes before live trading and backtesting first."
+FAIL expected line 114, got line 93 (0.448): "The wallet is read-only first and signing comes later."
+PASS expected line 115, got line 115 (0.627): "The published export is rzl.rtrackr.export.v1, exported 2026-11-11: height 4, fi"
+PASS expected line 118, got line 118 (0.706): "Block 2 mints the cryptobot ThundR, serial 2, ЯID-0014-KREH, held by @chaserizal"
+FAIL expected line 130, got line 104 (0.502): "A lower held-out loss means the model learned, not memorised."
+PASS expected line 137, got line 137 (0.6): "The GHOSTKEY ring is the device allowlist: six public P-256 keys, no secrets."
+PASS expected line 139, got line 139 (0.572): "Bots never sign. RTOR never writes the chain. The RMINT hybrid on Neo is the onl"
+grounded test: 8/16 passed (10 corpus-v1 questions + 6 RGHOSTCHAIN questions)
+BUILD OK — core v3 trained on corpus-v2 (v1 + RGHOSTCHAIN), pure RZL
