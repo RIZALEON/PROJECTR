@@ -137,22 +137,29 @@ const modelBlock = `        rzlCounterRender();
           var Core = window.YaSeedCore;
           if (!Core) { print('EVOLVE — the engine did not load in this file.'); return; }
           EVOLVING = true;
-          try {
-            var store2;
-            try { store2 = new Core.IDBStore('yaseed-device-0.1'); await store2.get('chain:head'); }
-            catch (e) { store2 = new Core.MemoryStore(); }
-            var fresh = !(await store2.get('chain:head'));
-            var sd2 = new Core.YaSeed({ store: store2, corpus: window.__RZL_EMBED_CORPUS__ });
-            await sd2.boot();
-            if (fresh) {
-              print('EVOLVE — device keys never travel, so the imported build chain is read-only history here. This device mints its OWN chain + key and grows its own model from the seed…');
-              await sd2.grow();
+          for (var attempt = 1; attempt <= 2; attempt++) {
+            try {
+              var store2;
+              try { store2 = new Core.IDBStore('yaseed-device-0.1'); await store2.get('chain:head'); }
+              catch (e) { store2 = new Core.MemoryStore(); }
+              var fresh = !(await store2.get('chain:head'));
+              var sd2 = new Core.YaSeed({ store: store2, corpus: window.__RZL_EMBED_CORPUS__ });
+              await sd2.boot();
+              if (fresh) {
+                print('EVOLVE — device keys never travel, so the imported build chain is read-only history here. This device mints its OWN chain + key and grows its own model from the seed…');
+                await sd2.grow();
+              }
+              print('EVOLVE — training this device\\'s model on the full corpus (20 seconds)…');
+              var tr = await sd2.train(20);
+              var st2 = await sd2.status();
+              print('EVOLVE — done on this device: ' + tr.steps + ' steps · loss ' + (+tr.loss_before.toFixed(3)) + ' → ' + (+tr.loss_after.toFixed(3)) + ' · held-out ' + (+tr.held_out.toFixed(3)) + ' · its own chain: ' + st2.chain_entries + ' entries · chain_ok ' + st2.chain_ok + ' · signed by this device\\'s key, kept in this browser. The imported build model still answers above it; a published build carries evolution to every device.');
+              EVOLVING = false; return;
+            } catch (e) {
+              var closing = /database connection is closing|IDBDatabase/i.test(e.message || '');
+              if (attempt < 2 && closing) { print('EVOLVE — the browser closed the device store mid-run; reopening it and resuming from the last committed snapshot…'); continue; }
+              print('EVOLVE — failed: ' + e.message); EVOLVING = false; return;
             }
-            print('EVOLVE — training this device\\'s model on the full corpus (30 seconds)…');
-            var tr = await sd2.train(30);
-            var st2 = await sd2.status();
-            print('EVOLVE — done on this device: ' + tr.steps + ' steps · loss ' + (+tr.loss_before.toFixed(3)) + ' → ' + (+tr.loss_after.toFixed(3)) + ' · held-out ' + (+tr.held_out.toFixed(3)) + ' · its own chain: ' + st2.chain_entries + ' entries · chain_ok ' + st2.chain_ok + ' · signed by this device\\'s key, kept in this browser. The imported build model still answers above it; a published build carries evolution to every device.');
-          } catch (e) { print('EVOLVE — failed: ' + e.message); }
+          }
           EVOLVING = false;
         }
         modelBoot();
