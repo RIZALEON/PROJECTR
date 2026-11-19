@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 141 lines.
+# v2: 147 lines (141 + the metrics addendum, lessons 142-147, appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -149,3 +149,11 @@ A recorded owner command authorizes exactly one file, by id, name, size and sha2
 Bots never sign. RTOR never writes the chain. The RMINT hybrid on Neo is the only writer.
 The website is the only public seeder. The Neo seeder stays off until Rizal says GO.
 Republish is one command on Neo: read the chain, verify, strip, export. The model learns the chain from the published export.
+
+# --- Metrics addendum — lessons 142-147 ---
+The SIZE command reports the model metrics live: weights, corpus, chain and session.
+RENJIN Core v3 holds 49,152 ternary weights: DIM 64, HID 128, CTX 32.
+Packed at two bits per weight, the ternary core takes 12,288 bytes. As FP32 latents it takes 196,608 bytes.
+Corpus v2 holds 147 lessons. The corpus is the memory the model trains on.
+Metrics are counted, never invented: the shell counts its own knowledge, its chain and its questions.
+A running counter ticks on the shell with every command answered, and the session clock runs while the shell is open.

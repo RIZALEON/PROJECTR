@@ -283,6 +283,7 @@
   <body>
     <main class="shell" id="shell">
       <div class="brand" id="brand" aria-hidden="true"><span class="brand-name">RENJIN</span> .RZL AI CRYPTOBOT MODEL</div>
+      <div id="rzl-counter" style="font:11px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#9dff8a;opacity:.92;padding:0 2px 4px;">RGHOSTCHAIN h<span id="rzl-h">4</span> · <span id="rzl-b">5</span> blocks · 3 assets · corpus-v2 <span id="rzl-c">147</span> lessons · KB <span id="rzl-k">35</span> · weights 49,152 · session <span id="rzl-clock">00:00</span> · answered <span id="rzl-q">0</span></div>
 
       <form class="prompt-line" id="promptForm" autocomplete="off" spellcheck="false">
         <label class="visually-hidden" for="cmd">Type a command after the R:\&gt; prompt and press Enter</label>
@@ -344,6 +345,15 @@
         }
 
         /* ---------- grounded RZL knowledge, from the PROJECT R record ---------- */
+        var RGHOSTCHAIN_TIP = 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147';
+        var RGHOSTCHAIN = [
+          { n: 0, type: 'genesis', ts: '2026-10-29', label: 'Genesis — local ledger: hashes and lineage only, no secrets', hash: '536dc8a00491fae8e2fa15778310c288d7599d8b528100b1fc3176a7da4219ee', prev: '0000000000000000000000000000000000000000000000000000000000000000' },
+          { n: 1, type: 'nft_mint', ts: '2026-10-30', label: 'GAME-MINTED GENESIS — serial 1 · ЯID-0001-3QQS · @chaserizal', hash: '3ce4be265ca605a5f82e1f752090b2123eed18e31549fb5cfd9e56daf210a2bd', prev: '536dc8a00491fae8e2fa15778310c288d7599d8b528100b1fc3176a7da4219ee' },
+          { n: 2, type: 'cryptobot_mint', ts: '2026-10-31', label: 'CRYPTOBOT · ThundR · ЯID-0014-KREH — serial 2', hash: '56e6a940eae08b1cf8415e314c9ae56a8790883f775d01dd4e07ee018b49ddb4', prev: '3ce4be265ca605a5f82e1f752090b2123eed18e31549fb5cfd9e56daf210a2bd' },
+          { n: 3, type: 'cryptobot_mint', ts: '2026-11-01', label: 'TERAFORMR CRYPTOGAME · ЯID-0015-0HJP', hash: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d', prev: '56e6a940eae08b1cf8415e314c9ae56a8790883f775d01dd4e07ee018b49ddb4' },
+          { n: 4, type: 'rghostkey_bind', ts: '2026-11-10', label: 'RGHOSTKEY bind + device approval + basecode v1', hash: 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147', prev: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d' }
+        ];
+        var CORPUS_V2 = { lessons: 147, bytes: 9637 };
         var KB = [
           { keys: ['ghost chain'], text: 'Ghost Chain — the local ledger inside ЯENJIN. Every grow, train and mint step is chained and verifiable on-device. It is a local chain, not a public blockchain: no network, no transfer off-device.' },
           { keys: ['thundr'], text: 'ThundR — the purple thunder imp cryptobot created for TerraformR: red horns, bat wings, a yellow lightning bolt tail.' },
@@ -351,6 +361,7 @@
           { keys: ['tokenizer', 'tok.v1', 'tok '], text: 'Tokenizer — tok.v1. Byte tokens plus Я glyphs, ids 256–312, vocab size 313. tokenizer.js in the egg and Tokenizer.swift now match it exactly.' },
           { keys: ['corpus'], text: 'Corpus v1 — 112 RZL-authored lines: 96 train / 16 held-out. Built, but core v2 still trained on the old 14-line corpus — swapping corpus-v1 in is core v3, the next step.' },
           { keys: ['embedding'], text: 'Embeddings v1 — rzl-embed.js, hash n-gram, DIM 32, with cosine search. Built pure RZL, no outside model.' },
+          { keys: ['size', 'metrics', 'how big', 'model size'], text: 'Model metrics — RENJIN Core v3: DIM 64 / HID 128 / CTX 32, 49,152 ternary weights: 12,288 B packed at two bits each, 196,608 B as FP32 latents. Corpus v2 holds 147 lessons, and the shell knowledge base answers from 35 entries. The chain seat is the published RGHOSTCHAIN export: height 4, 5 blocks, 3 live assets. Type SIZE and the shell counts itself live — weights, corpus, knowledge, chain and this session.' },
           { keys: ['model', 'weights', 'dim'], text: 'Model v2 — DIM 64 / HID 128 / CTX 32, 49,152 ternary weights. Up from v1: DIM 16 / HID 32 / CTX 6, ~9,216 weights. A 5s train ran 691 steps, loss 23.87 → 3.14, held-out 3.15.' },
           { keys: ['mint', 'ledger', 'wallet', 'rwallet'], text: 'ЯMINT — the local ledger in ЯENJIN. Wallet and keys live in GHOSTMACHINE (RWALLET + ROSCRYPTO + ghostkey guard). Keys never leave the device and bots never sign. No real money, no exchange, no public blockchain.' },
           { keys: ['rvm', 'vm', 'virtual machine'], text: 'ЯVM — the bytecode virtual machine inside ЯSEED, with the BATIBABOX bbx-rvm sandbox and rvm-out. Last full test run: 9/9 passed. host.exec is forbidden in the ЯVM.' },
@@ -398,6 +409,7 @@
           '  RZL ................ pure RZL — the model, from the ground up',
           '  CHAIN .............. the published RGHOSTCHAIN blocks',
           '  CHAIN VERIFY ....... verify the Ghost Chain',
+          '  SIZE ............... live size + metrics (running counter)',
           '  VERSION ............ egg + model version',
           '  CLEAR .............. clear the screen',
           '  ASK <question> ..... ask from the PROJECT R record',
@@ -423,6 +435,7 @@
         ];
 
         function respond(raw) {
+          RZL_QUERIES++; rzlCounterRender();
           var cmd = raw.trim();
           var lower = cmd.toLowerCase()
             .replace(/^\/rseed\s+/, '')
@@ -450,14 +463,16 @@
             print('ЯSEED egg 0.1.11 · ЯENJIN 0.1 · model v2 · tok.v1');
             return;
           }
-          var RGHOSTCHAIN_TIP = 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147';
-          var RGHOSTCHAIN = [
-            { n: 0, type: 'genesis', ts: '2026-10-29', label: 'Genesis — local ledger: hashes and lineage only, no secrets', hash: '536dc8a00491fae8e2fa15778310c288d7599d8b528100b1fc3176a7da4219ee', prev: '0000000000000000000000000000000000000000000000000000000000000000' },
-            { n: 1, type: 'nft_mint', ts: '2026-10-30', label: 'GAME-MINTED GENESIS — serial 1 · ЯID-0001-3QQS · @chaserizal', hash: '3ce4be265ca605a5f82e1f752090b2123eed18e31549fb5cfd9e56daf210a2bd', prev: '536dc8a00491fae8e2fa15778310c288d7599d8b528100b1fc3176a7da4219ee' },
-            { n: 2, type: 'cryptobot_mint', ts: '2026-10-31', label: 'CRYPTOBOT · ThundR · ЯID-0014-KREH — serial 2', hash: '56e6a940eae08b1cf8415e314c9ae56a8790883f775d01dd4e07ee018b49ddb4', prev: '3ce4be265ca605a5f82e1f752090b2123eed18e31549fb5cfd9e56daf210a2bd' },
-            { n: 3, type: 'cryptobot_mint', ts: '2026-11-01', label: 'TERAFORMR CRYPTOGAME · ЯID-0015-0HJP', hash: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d', prev: '56e6a940eae08b1cf8415e314c9ae56a8790883f775d01dd4e07ee018b49ddb4' },
-            { n: 4, type: 'rghostkey_bind', ts: '2026-11-10', label: 'RGHOSTKEY bind + device approval + basecode v1', hash: 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147', prev: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d' }
-          ];
+          if (lower === 'size' || lower === 'metrics') {
+            print('RENJIN Core v3 — live metrics, counted by the shell itself:');
+            print('  model ..... DIM 64 · HID 128 · CTX 32 · tok.v1 · egg 0.1.11');
+            print('  weights ... 49,152 ternary · 12,288 B packed (2 bits each) · 196,608 B as FP32 latents');
+            print('  corpus .... v2 · ' + CORPUS_V2.lessons + ' lessons · ' + CORPUS_V2.bytes.toLocaleString('en-US') + ' B of lesson text');
+            print('  knowledge . ' + KB.length + ' shell entries · ask() retrieves over all ' + CORPUS_V2.lessons + ' lessons');
+            print('  chain ..... RGHOSTCHAIN height ' + (RGHOSTCHAIN.length - 1) + ' · ' + RGHOSTCHAIN.length + ' blocks · 3 live assets · tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… · published export 2026-11-11');
+            print('  session ... ' + RZL_QUERIES + ' commands answered · ' + rzlElapsed() + ' elapsed · the counter runs in this page, online or offline');
+            return;
+          }
           if (lower === 'chain') {
             print('RGHOSTCHAIN — the living chain on Neo, as published by RTRACKR (export rzl.rtrackr.export.v1, 2026-11-11, height 4):');
             RGHOSTCHAIN.forEach(function (b) { print('  #' + b.n + ' ' + b.type + ' · ' + b.ts + ' · ' + b.label + ' · hash ' + b.hash.slice(0, 12) + '…'); });
@@ -652,6 +667,27 @@
         });
 
         focusInput();
+
+        /* Running counter + live metrics (added 2026-11-19 on Rizal's order). */
+        var RZL_T0 = Date.now();
+        var RZL_QUERIES = 0;
+        function rzlElapsed() {
+          var s = Math.floor((Date.now() - RZL_T0) / 1000);
+          var m = Math.floor(s / 60); s = s % 60;
+          return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        function rzlCounterRender() {
+          var el;
+          el = document.getElementById('rzl-q'); if (el) el.textContent = RZL_QUERIES;
+          el = document.getElementById('rzl-clock'); if (el) el.textContent = rzlElapsed();
+          el = document.getElementById('rzl-h'); if (el) el.textContent = RGHOSTCHAIN.length - 1;
+          el = document.getElementById('rzl-b'); if (el) el.textContent = RGHOSTCHAIN.length;
+          el = document.getElementById('rzl-c'); if (el) el.textContent = CORPUS_V2.lessons;
+          el = document.getElementById('rzl-k'); if (el) el.textContent = KB.length;
+        }
+        setInterval(rzlCounterRender, 1000);
+        rzlCounterRender();
+
       })();
     </script>
   </body>

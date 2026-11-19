@@ -7,7 +7,7 @@
 //  2. Patch a v3 core from yaseed-core-v2.js: add generateSampled()
 //     (temperature sampling; the stock generate() is greedy argmax only).
 //     No other core change — corpus override already exists in YaSeed(opts).
-//  3. Boot with corpus = full corpus-v2.txt (141 RZL lines) via opts.corpus.
+//  3. Boot with corpus = full corpus-v2.txt (147 RZL lines) via opts.corpus.
 //     The core's own held-out split (positions p % 7 == 3) is the eval.
 //  4. Grow, train 60s, report loss before/after + held-out loss, chain verify.
 //  5. Generation check: greedy + sampled for the 3 questions that
