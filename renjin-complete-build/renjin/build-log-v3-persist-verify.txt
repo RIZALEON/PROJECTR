@@ -1,8 +1,6 @@
-boot from disk: {"version":"0.1.11","loss":2.9435,"chain_entries":9,"chain_ok":true,"model_loaded":true}
-generateSampled after reload: "K Erohr ro or aad n wroo"
+boot from disk: {"version":"0.1.11","loss":2.9788,"chain_entries":9,"chain_ok":true,"model_loaded":true}
+generateSampled after reload: "9SP3S 5TueeIc Af  hEgeil"
 ask: "Which block mints ThundR?" -> lesson 118: "Block 2 mints the cryptobot ThundR, serial 2, ЯID-0014-KREH, held by @ch"
 ask: "What is the GHOSTKEY ring?" -> lesson 137: "The GHOSTKEY ring is the device allowlist: six public P-256 keys, no sec"
 ask: "Does RTOR write the chain?" -> lesson 139: "Bots never sign. RTOR never writes the chain. The RMINT hybrid on Neo is"
 VERIFY OK — learned state reloaded from disk and verified against the chain (state hash matched)
-
-Tamper test (same day): one base64 char flipped inside a copy of the store -> VERIFY FAILED: snapshot tampered: state_hash c05257cb5115 != chain f251af99fa57 (exit 1, refused as designed).

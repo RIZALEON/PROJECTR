@@ -1,4 +1,7 @@
 // build-rshell-single.js — assemble RSHELL-RENJIN.html (2026-11-19).
+// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific
+// Systems) TECH Series, Aetaneo Rizal. Chase Rizal. (see CITATION.md)
 // The portable unit Rizal ordered: ONE file — double-click or open it on any
 // device and the shell + the trained RENJIN Core v3 model load together.
 // Contents: the R:> Shell page (starfield, KB, counter, CHAIN, SIZE) +
@@ -128,13 +131,29 @@ const modelBlock = `        rzlCounterRender();
             print('  NEWER export applied to this shell: height ' + data.height + ' (export ' + data.exported_at + '). Corpus + weights refresh on the next published build.');
           } catch (e) { print('  SYNC — unreachable (' + e.message + '). Running on the embedded seat: export ' + RGHOSTCHAIN_EXPORTED + ', height ' + (RGHOSTCHAIN.length - 1) + '. Nothing needed from the network.'); }
         }
-        function evolveNow() {
-          if (!MODEL.ready) { print('EVOLVE — the model is not booted in this browser; the shell knowledge still answers.'); return; }
-          print('EVOLVE — training on the full corpus in this browser (15 seconds)…');
-          MODEL.seed.train(15).then(function (tr) {
-            MODEL.loss = tr.loss_after;
-            print('EVOLVE — done: ' + tr.steps + ' steps · loss ' + (+tr.loss_before.toFixed(3)) + ' → ' + (+tr.loss_after.toFixed(3)) + ' · held-out ' + (+tr.held_out.toFixed(3)) + ' · committed to this device store — its chain grew here. The file itself is unchanged; a published build carries evolution to every device.');
-          }).catch(function (e) { print('EVOLVE — failed: ' + e.message); });
+        var EVOLVING = false;
+        async function evolveNow() {
+          if (EVOLVING) { print('EVOLVE — already running.'); return; }
+          var Core = window.YaSeedCore;
+          if (!Core) { print('EVOLVE — the engine did not load in this file.'); return; }
+          EVOLVING = true;
+          try {
+            var store2;
+            try { store2 = new Core.IDBStore('yaseed-device-0.1'); await store2.get('chain:head'); }
+            catch (e) { store2 = new Core.MemoryStore(); }
+            var fresh = !(await store2.get('chain:head'));
+            var sd2 = new Core.YaSeed({ store: store2, corpus: window.__RZL_EMBED_CORPUS__ });
+            await sd2.boot();
+            if (fresh) {
+              print('EVOLVE — device keys never travel, so the imported build chain is read-only history here. This device mints its OWN chain + key and grows its own model from the seed…');
+              await sd2.grow();
+            }
+            print('EVOLVE — training this device\\'s model on the full corpus (30 seconds)…');
+            var tr = await sd2.train(30);
+            var st2 = await sd2.status();
+            print('EVOLVE — done on this device: ' + tr.steps + ' steps · loss ' + (+tr.loss_before.toFixed(3)) + ' → ' + (+tr.loss_after.toFixed(3)) + ' · held-out ' + (+tr.held_out.toFixed(3)) + ' · its own chain: ' + st2.chain_entries + ' entries · chain_ok ' + st2.chain_ok + ' · signed by this device\\'s key, kept in this browser. The imported build model still answers above it; a published build carries evolution to every device.');
+          } catch (e) { print('EVOLVE — failed: ' + e.message); }
+          EVOLVING = false;
         }
         modelBoot();
 

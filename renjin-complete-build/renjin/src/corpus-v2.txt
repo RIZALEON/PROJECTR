@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 148 lines (141 + metrics addendum 142-147 + freshness lesson 148, appended 2026-11-19).
+# v2: 149 lines (141 + metrics addendum 142-147 + freshness 148 + citation 149, appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -158,3 +158,4 @@ Corpus v2 holds 147 lessons. The corpus is the memory the model trains on.
 Metrics are counted, never invented: the shell counts its own knowledge, its chain and its questions.
 A running counter ticks on the shell with every command answered, and the session clock runs while the shell is open.
 The shell reports the age of its chain export. A stale export is named, never hidden.
+Providence and provenance: the RZL citation for this work is Prof. Marcum, C.A., III (26, Nov 19), .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (Master of American Asia Pacific Systems) Tech Series, Aetaneo Rizal, Chase Rizal.
