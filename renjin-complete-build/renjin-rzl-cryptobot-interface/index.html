@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>R:\&gt; Shell</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        /* Mockup palette — kept exactly:
+           black starfield, electric green border + cursor,
+           indigo purple RENJIN, white text. */
+        --green: #2bff62;
+        --green-bright: #39ff6e;
+        --green-dim: #17c845;
+        --green-faint: rgba(43, 255, 98, 0.62);
+        --indigo: #7c4dff;
+        --pale: #d9f6ec;
+        --white: #eaffef;
+        --ink: #000000;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        height: 100dvh;
+        width: 100%;
+        min-height: 0;
+        min-width: 0;
+      }
+      body {
+        margin: 0;
+        position: relative;
+        background: var(--ink);
+        overflow: hidden;
+        font-family: ui-monospace, "Cascadia Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ---- the shell window: a floating, draggable window ----
+         Electric green glowing rounded border over the black
+         starfield, exactly as the mockup. It starts near-full-size,
+         then can be dragged anywhere and resized from any corner
+         (or edge). Only the transcript scrolls, internally. */
+      .shell {
+        position: absolute;
+        inset:
+          max(clamp(8px, 2vmin, 20px), env(safe-area-inset-top, 0px))
+          max(clamp(8px, 2vmin, 20px), env(safe-area-inset-right, 0px))
+          max(clamp(8px, 2vmin, 20px), env(safe-area-inset-bottom, 0px))
+          max(clamp(8px, 2vmin, 20px), env(safe-area-inset-left, 0px));
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: clamp(12px, 3.5vmin, 36px) clamp(12px, 4vmin, 40px);
+        overflow: hidden;
+        border: 2px solid var(--green);
+        border-radius: clamp(16px, 3vmin, 26px);
+        background:
+          linear-gradient(rgba(1, 14, 11, 0.72), rgba(0, 8, 7, 0.82)),
+          #010a08 url("assets/starfield.jpg") center center / cover no-repeat;
+        box-shadow:
+          0 0 18px rgba(43, 255, 98, 0.55),
+          0 0 42px rgba(43, 255, 98, 0.22),
+          inset 0 0 14px rgba(43, 255, 98, 0.28);
+      }
+      .shell.is-moving { user-select: none; -webkit-user-select: none; }
+      .shell.is-moving * { pointer-events: none; }
+      .shell.is-moving .handle { pointer-events: auto; }
+      /* CRT scanlines + vignette over the starfield */
+      .shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: repeating-linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0) 0px,
+          rgba(0, 0, 0, 0) 2px,
+          rgba(0, 0, 0, 0.28) 3px,
+          rgba(0, 0, 0, 0) 4px
+        );
+        pointer-events: none;
+        z-index: 3;
+      }
+      .shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.5) 100%);
+        pointer-events: none;
+        z-index: 3;
+      }
+
+      /* ---- RENJIN header — also the drag bar ----
+         RENJIN in indigo purple, the rest in white, as the mockup. */
+      .brand {
+        position: relative;
+        z-index: 4;
+        flex: 0 0 auto;
+        min-width: 0;
+        padding: 0 6px 10px 2px;
+        font-size: clamp(16px, 3.4vmin, 24px);
+        line-height: 1.3;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: grab;
+        touch-action: none;
+        color: var(--white);
+        text-shadow: 0 0 8px rgba(234, 255, 239, 0.35);
+      }
+      .brand:active { cursor: grabbing; }
+      .brand-name {
+        color: var(--indigo);
+        font-weight: 700;
+        text-shadow: 0 0 10px rgba(124, 77, 255, 0.65);
+      }
+
+      .transcript {
+        position: relative;
+        z-index: 1;
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(43,255,98,.45) transparent;
+        padding: 10px 0 6px;
+        cursor: text;
+      }
+      .transcript::-webkit-scrollbar { width: 6px; }
+      .transcript::-webkit-scrollbar-thumb { background: rgba(43,255,98,.4); }
+      .transcript::-webkit-scrollbar-track { background: transparent; }
+
+      .line {
+        color: var(--white);
+        font-size: clamp(13px, 2.6vmin, 17px);
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        text-shadow: 0 0 6px rgba(43, 255, 98, 0.3);
+        margin: 0;
+      }
+      .line.dim { color: rgba(217, 246, 236, 0.62); text-shadow: none; }
+      .line.echo .sigil { color: var(--white); }
+
+      .sigil {
+        color: var(--white);
+        font-weight: 400;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        text-shadow: 0 0 8px rgba(234, 255, 239, 0.4);
+      }
+
+      /* ---- the prompt — under the header, top-left ---- */
+      .prompt-line {
+        position: relative;
+        z-index: 1;
+        flex: 0 1 auto;
+        min-width: 0;
+        display: flex;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 0.3ch 0.55ch;
+        min-height: 44px;
+        padding: 2px 2px 6px;
+        cursor: text;
+      }
+      .prompt-line .sigil {
+        flex: 0 0 auto;
+        font-size: clamp(17px, 3.6vmin, 23px);
+        line-height: 1.4;
+      }
+      .typed {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        color: var(--white);
+        font-size: clamp(17px, 3.6vmin, 23px);
+        line-height: 1.4;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        text-shadow: 0 0 6px rgba(43, 255, 98, 0.3);
+      }
+      /* Blinking green block cursor */
+      .cursor {
+        flex: 0 0 auto;
+        align-self: center;
+        width: clamp(9px, 1.8vmin, 12px);
+        height: 1.3em;
+        max-height: 30px;
+        background: var(--green-bright);
+        box-shadow: 0 0 12px rgba(43, 255, 98, 0.9), 0 0 3px rgba(43, 255, 98, 1);
+        animation: blink 1.06s steps(1, end) infinite;
+      }
+      @keyframes blink {
+        0%, 54% { opacity: 1; }
+        55%, 100% { opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cursor { animation: none; }
+      }
+
+      /* Real input, invisible, stretched over the prompt line so taps
+         anywhere on the line (and anywhere in the shell) open the keyboard. */
+      #cmd {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 48px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: transparent;
+        caret-color: transparent;
+        font: inherit;
+        font-size: 16px; /* keeps iOS from zooming on focus */
+        -webkit-tap-highlight-color: transparent;
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      /* ---- resize handles: every corner, plus every edge ----
+         Generous invisible hit areas; a small electric-green corner
+         bracket shows where each corner grip lives. */
+      .handle {
+        position: absolute;
+        z-index: 20;
+        touch-action: none;
+        background: transparent;
+      }
+      .handle[data-dir="nw"] { top: -5px; left: -5px; width: 32px; height: 32px; cursor: nwse-resize; }
+      .handle[data-dir="ne"] { top: -5px; right: -5px; width: 32px; height: 32px; cursor: nesw-resize; }
+      .handle[data-dir="sw"] { bottom: -5px; left: -5px; width: 32px; height: 32px; cursor: nesw-resize; }
+      .handle[data-dir="se"] { bottom: -5px; right: -5px; width: 32px; height: 32px; cursor: nwse-resize; }
+      .handle[data-dir="n"] { top: -6px; left: 38px; right: 38px; height: 12px; cursor: ns-resize; }
+      .handle[data-dir="s"] { bottom: -6px; left: 38px; right: 38px; height: 12px; cursor: ns-resize; }
+      .handle[data-dir="w"] { left: -6px; top: 38px; bottom: 38px; width: 12px; cursor: ew-resize; }
+      .handle[data-dir="e"] { right: -6px; top: 38px; bottom: 38px; width: 12px; cursor: ew-resize; }
+      .handle::after {
+        content: "";
+        position: absolute;
+        width: 13px; height: 13px;
+        border: 0 solid var(--green-bright);
+        opacity: 0.85;
+        filter: drop-shadow(0 0 4px rgba(43, 255, 98, 0.8));
+      }
+      .handle[data-dir="nw"]::after { top: 9px; left: 9px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 10px; }
+      .handle[data-dir="ne"]::after { top: 9px; right: 9px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 10px; }
+      .handle[data-dir="sw"]::after { bottom: 9px; left: 9px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 10px; }
+      .handle[data-dir="se"]::after { bottom: 9px; right: 9px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 10px; }
+      .handle[data-dir="n"]::after, .handle[data-dir="s"]::after,
+      .handle[data-dir="w"]::after, .handle[data-dir="e"]::after { display: none; }
+
+      /* ---- any dimension: the frame, type and padding all scale down
+         with the window instead of overflowing it ---- */
+      @media (max-width: 360px), (max-height: 420px) {
+        .shell { padding: 10px 12px; }
+        .prompt-line { min-height: 38px; }
+        .brand { padding-bottom: 6px; }
+      }
+      @media (max-height: 300px) {
+        .shell { padding-top: 8px; padding-bottom: 8px; }
+        .transcript { padding-top: 4px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell" id="shell">
+      <div class="brand" id="brand" aria-hidden="true"><span class="brand-name">RENJIN</span> .RZL AI CRYPTOBOT MODEL</div>
+
+      <form class="prompt-line" id="promptForm" autocomplete="off" spellcheck="false">
+        <label class="visually-hidden" for="cmd">Type a command after the R:\&gt; prompt and press Enter</label>
+        <span class="sigil" aria-hidden="true">R:\&gt;</span>
+        <span class="typed" id="typed" aria-hidden="true"></span>
+        <span class="cursor" aria-hidden="true"></span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="none" autocorrect="off"
+               spellcheck="false" enterkeyhint="go" aria-label="Command input" />
+      </form>
+
+      <div class="transcript" id="transcript" aria-live="polite" aria-label="Shell output"></div>
+
+      <div class="handle" data-dir="n" aria-hidden="true"></div>
+      <div class="handle" data-dir="s" aria-hidden="true"></div>
+      <div class="handle" data-dir="w" aria-hidden="true"></div>
+      <div class="handle" data-dir="e" aria-hidden="true"></div>
+      <div class="handle" data-dir="nw" aria-hidden="true"></div>
+      <div class="handle" data-dir="ne" aria-hidden="true"></div>
+      <div class="handle" data-dir="sw" aria-hidden="true"></div>
+      <div class="handle" data-dir="se" aria-hidden="true"></div>
+    </main>
+
+    <script>
+      (function () {
+        var transcript = document.getElementById('transcript');
+        var form = document.getElementById('promptForm');
+        var input = document.getElementById('cmd');
+        var typed = document.getElementById('typed');
+        var shell = document.getElementById('shell');
+        var brand = document.getElementById('brand');
+
+        var history = [];
+        var histIdx = -1;
+        var draft = '';
+
+        function scrollDown() {
+          transcript.scrollTop = transcript.scrollHeight;
+        }
+        function print(text, cls) {
+          var p = document.createElement('p');
+          p.className = 'line' + (cls ? ' ' + cls : '');
+          p.textContent = text;
+          transcript.appendChild(p);
+          scrollDown();
+        }
+        function echo(cmd) {
+          var p = document.createElement('p');
+          p.className = 'line echo';
+          var s = document.createElement('span');
+          s.className = 'sigil';
+          s.textContent = 'R:\\> ';
+          p.appendChild(s);
+          p.appendChild(document.createTextNode(cmd));
+          transcript.appendChild(p);
+          scrollDown();
+        }
+        function focusInput() {
+          try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+        }
+
+        /* ---------- grounded RZL knowledge, from the PROJECT R record ---------- */
+        var KB = [
+          { keys: ['ghost chain'], text: 'Ghost Chain — the local ledger inside ЯENJIN. Every grow, train and mint step is chained and verifiable on-device. It is a local chain, not a public blockchain: no network, no transfer off-device.' },
+          { keys: ['thundr'], text: 'ThundR — the purple thunder imp cryptobot created for TerraformR: red horns, bat wings, a yellow lightning bolt tail.' },
+          { keys: ['offline'], text: 'Offline-first. ЯENJIN runs with no network at all — no LLM weights, no cloud, no price feed. The model, the chain and the ledger all live on the device.' },
+          { keys: ['tokenizer', 'tok.v1', 'tok '], text: 'Tokenizer — tok.v1. Byte tokens plus Я glyphs, ids 256–312, vocab size 313. tokenizer.js in the egg and Tokenizer.swift now match it exactly.' },
+          { keys: ['corpus'], text: 'Corpus v1 — 112 RZL-authored lines: 96 train / 16 held-out. Built, but core v2 still trained on the old 14-line corpus — swapping corpus-v1 in is core v3, the next step.' },
+          { keys: ['embedding'], text: 'Embeddings v1 — rzl-embed.js, hash n-gram, DIM 32, with cosine search. Built pure RZL, no outside model.' },
+          { keys: ['model', 'weights', 'dim'], text: 'Model v2 — DIM 64 / HID 128 / CTX 32, 49,152 ternary weights. Up from v1: DIM 16 / HID 32 / CTX 6, ~9,216 weights. A 5s train ran 691 steps, loss 23.87 → 3.14, held-out 3.15.' },
+          { keys: ['mint', 'ledger', 'wallet', 'rwallet'], text: 'ЯMINT — the local ledger in ЯENJIN. Wallet and keys live in GHOSTMACHINE (RWALLET + ROSCRYPTO + ghostkey guard). Keys never leave the device and bots never sign. No real money, no exchange, no public blockchain.' },
+          { keys: ['rvm', 'vm', 'virtual machine'], text: 'ЯVM — the bytecode virtual machine inside ЯSEED, with the BATIBABOX bbx-rvm sandbox and rvm-out. Last full test run: 9/9 passed. host.exec is forbidden in the ЯVM.' },
+          { keys: ['linux', 'busybox'], text: 'Linux — a BusyBox guest console that runs inside the ЯVM. It is the guest, not a shell on your Mac or phone: there is no bash, no Terminal and no host shell here.' },
+          { keys: ['link', 'ylink', 'bridge', 'botbridge', 'connect'], text: 'ЯLINK — hardline / courier / LAN lanes for sending ЯENJIN a signed bundle. A live ask channel needs a paired botbridge on 127.0.0.1:4873 with Decider approval. This page is not paired to a device.' },
+          { keys: ['hub', 'mesh', 'rklowd', 'ghostroot'], text: 'RKLOWD — the hub / mesh layer: GHOSTROOT and RNET-MESH, store-and-forward nodes for 17e / Neo / moto.' },
+          { keys: ['yaseed', 'rseed', 'seed', 'egg', 'yenjin', 'enjin'], text: 'ЯSEED / ЯENJIN 0.1 — a pure offline JS bot engine: ЯVM bytecode, Ghost Chain, ЯMINT local ledger, no LLM weights. Two unsigned eggs are held in RSEED: RSEED-0.1.10.rzl and ЯSEED-0.1.6.rzl, SHA256 verified. egg-version is now 0.1.11.' },
+          { keys: ['pure rzl', 'rzl'], text: 'Pure RZL — the AI model built from scratch, ground up, with no other AI company\u2019s name or model on it. RCODE / RTHUNDR\u2019s old bought-in brain is the piece being replaced, not reused.' },
+          { keys: ['loop', 'mind', 'heart', 'spine', 'mouth'], text: 'The loop — ЯACCESS → tokenizer → MIND (BM25 + RZL embeddings) → HEART → SPINE (tools) → MOUTH. That is the path a question takes inside ЯENJIN on-device.' },
+          { keys: ['panel', 'shell window', 'interface'], text: 'The panel — yaseed-panel.js + index.html in the egg: an output box, a /rseed input line and the command buttons. Opened with /eggs open yaseed or rzl://yaseed, inside rbowzr / ybot.' },
+          { keys: ['gameplan', 'plan', 'phases', 'next'], text: 'Gameplan, phases 0–5 — 0 clean the base · 1 scale the founding model, pure RZL · 2 own embeddings / tokenizer · 3 tools · 4 wallet read-only · 5 background running. Next piece: core v3 — train on corpus-v1 for 60s and fix the one-byte-repeat generation.' },
+          { keys: ['ask', 'question'], text: 'To ask a free question it still needs: core v3 trained on corpus-v1, fixed generation (no one-byte repeat), retrieval wired into the answer, an /rseed ask command, and a 10-question grounded pass test. Tool questions — status, chain, balance — it can already answer on-device.' },
+          { keys: ['who are you', 'your name', 'what are you'], text: 'RENJIN — the .RZL AI cryptobot model, reached through this R:\\> shell. I answer from the PROJECT R record held in this shell. Type HELP for commands.' },
+          { keys: ['chase', 'rizal'], text: 'Chase Rizal — creator of PROJECT R, TerraformR and ThundR. GitHub: RIZALEON.' },
+          { keys: ['project r', 'projectr'], text: 'PROJECT R — PROJECT Я / Я AI\u1d0d. Offline-first. Creator-minted Essence. Repos: PROJECTR, RSEED, TERAFORMR, RTHUNDR.' }
+        ];
+
+        function kbLookup(q) {
+          var s = ' ' + q.toLowerCase() + ' ';
+          for (var i = 0; i < KB.length; i++) {
+            for (var j = 0; j < KB[i].keys.length; j++) {
+              if (s.indexOf(KB[i].keys[j]) !== -1) return KB[i].text;
+            }
+          }
+          return null;
+        }
+
+        var HELP = [
+          'COMMANDS',
+          '  HELP ............... this list',
+          '  STATUS ............. ЯENJIN / model v2 status',
+          '  RZL ................ pure RZL — the model, from the ground up',
+          '  CHAIN VERIFY ....... verify the Ghost Chain',
+          '  VERSION ............ egg + model version',
+          '  CLEAR .............. clear the screen',
+          '  ASK <question> ..... ask from the PROJECT R record',
+          '  or just type the question — e.g.  what is the ghost chain?'
+        ];
+
+        var STATUS = [
+          'ЯENJIN 0.1 · egg 0.1.11 · offline',
+          'MODEL  v2 · DIM 64 / HID 128 / CTX 32 · 49,152 ternary weights',
+          'TOKENIZER  tok.v1 · vocab 313 · ids 256–312',
+          'CORPUS  v1 · 112 lines (96 train / 16 held-out) — not yet trained in',
+          'EMBEDDINGS  v1 · hash n-gram · DIM 32',
+          'TESTS  12 passed, 0 failed · ЯVM 9/9',
+          'BRIDGE  not paired — no live link to a device from this page'
+        ];
+
+        var RZL = [
+          'RZL — pure RZL, built from scratch, ground up.',
+          'No other AI company\u2019s name or model on it.',
+          'MODEL  v2 · DIM 64 / HID 128 / CTX 32 · 49,152 ternary weights',
+          'TOKENIZER  tok.v1 · vocab 313 · EMBEDDINGS  v1 · DIM 32',
+          'CORPUS  v1 · 112 RZL-authored lines — core v3 trains on it next.'
+        ];
+
+        function respond(raw) {
+          var cmd = raw.trim();
+          var lower = cmd.toLowerCase()
+            .replace(/^\/rseed\s+/, '')
+            .replace(/^\/rvm\s+/, '')
+            .replace(/^r:\\>\s*/, '')
+            .replace(/^r:\>\s*/, '');
+
+          if (lower === 'help' || lower === '?' || lower === 'commands') {
+            HELP.forEach(function (l) { print(l, 'dim'); });
+            return;
+          }
+          if (lower === 'clear' || lower === 'cls') {
+            transcript.innerHTML = '';
+            return;
+          }
+          if (lower === 'status' || lower === 'status.' || lower === '/rseed status') {
+            STATUS.forEach(function (l) { print(l); });
+            return;
+          }
+          if (lower === 'rzl' || lower === '.rzl' || lower === 'pure rzl') {
+            RZL.forEach(function (l) { print(l); });
+            return;
+          }
+          if (lower === 'version' || lower === 'ver') {
+            print('ЯSEED egg 0.1.11 · ЯENJIN 0.1 · model v2 · tok.v1');
+            return;
+          }
+          if (lower === 'chain verify' || lower === 'verify' || lower === 'chain') {
+            print('Ghost Chain — verified in the last Node test run: chain OK, 9 entries. This page holds no live chain; it reports the recorded result.');
+            return;
+          }
+          if (lower === 'train' || lower.indexOf('train') === 0 || lower === 'grow' || lower === 'evolve') {
+            print('Not from here. Training runs on-device / in the egg, not from this interface — this shell is not paired to a live ЯENJIN. Last recorded run: 5s, 691 steps, loss 23.87 → 3.14.');
+            return;
+          }
+          if (lower === 'hi' || lower === 'hello' || lower === 'hey') {
+            print('RENJIN listening. Type HELP, or ask — what is the ghost chain?');
+            return;
+          }
+          var q = lower.replace(/^ask\s+/, '').replace(/\?+$/, '');
+          var hit = kbLookup(q);
+          if (hit) { print(hit); return; }
+          if (lower.indexOf('ask ') === 0 || /^(what|who|how|why|when|where|is|does|can)\b/.test(lower)) {
+            print('No grounded answer for that in the PROJECT R record I hold. Try: ghost chain, tokenizer, corpus, model, mint, ЯVM, ЯLINK, gameplan.');
+            return;
+          }
+          print('Unknown command: ' + cmd + '  — type HELP');
+        }
+
+        /* ---------- prompt behaviour ---------- */
+        input.addEventListener('input', function () {
+          typed.textContent = input.value;
+          histIdx = -1;
+        });
+
+        input.addEventListener('keydown', function (ev) {
+          if (ev.key === 'ArrowUp') {
+            ev.preventDefault();
+            if (!history.length) return;
+            if (histIdx === -1) { draft = input.value; histIdx = history.length; }
+            if (histIdx > 0) histIdx--;
+            input.value = history[histIdx] || '';
+            typed.textContent = input.value;
+          } else if (ev.key === 'ArrowDown') {
+            ev.preventDefault();
+            if (histIdx === -1) return;
+            histIdx++;
+            if (histIdx >= history.length) { histIdx = -1; input.value = draft; }
+            else input.value = history[histIdx];
+            typed.textContent = input.value;
+          }
+        });
+
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          var cmd = input.value;
+          echo(cmd);
+          if (cmd.trim()) {
+            history.push(cmd);
+            respond(cmd);
+          }
+          input.value = '';
+          typed.textContent = '';
+          histIdx = -1; draft = '';
+          scrollDown();
+          focusInput();
+        });
+
+        document.addEventListener('keydown', function (ev) {
+          if (document.activeElement !== input && !ev.metaKey && !ev.ctrlKey && !ev.altKey) focusInput();
+        });
+
+        /* ---------- draggable window + resize from any corner / edge ---------- */
+        var MIN_W = 240, MIN_H = 170, KEEP = 56;
+        var rect = null;      /* {x, y, w, h} in px, once placed */
+        var gesture = null;   /* active drag / resize */
+        var savedRect = null; /* rect before a double-click maximise */
+        var maximised = false;
+
+        function viewport() {
+          return { w: window.innerWidth || document.documentElement.clientWidth,
+                   h: window.innerHeight || document.documentElement.clientHeight };
+        }
+        function applyRect(r) {
+          rect = r;
+          shell.style.inset = 'auto';
+          shell.style.left = r.x + 'px';
+          shell.style.top = r.y + 'px';
+          shell.style.width = r.w + 'px';
+          shell.style.height = r.h + 'px';
+        }
+        function currentRect() {
+          var b = shell.getBoundingClientRect();
+          return { x: b.left, y: b.top, w: b.width, h: b.height };
+        }
+        function clampRect(r) {
+          var vp = viewport();
+          r.w = Math.min(Math.max(r.w, MIN_W), Math.max(MIN_W, vp.w));
+          r.h = Math.min(Math.max(r.h, MIN_H), Math.max(MIN_H, vp.h));
+          r.x = Math.min(Math.max(r.x, KEEP - r.w), vp.w - KEEP);
+          r.y = Math.min(Math.max(r.y, 0), vp.h - KEEP);
+          return r;
+        }
+        /* Place the window explicitly (it starts as a CSS inset fill). */
+        applyRect(currentRect());
+
+        function startGesture(ev, type, dir) {
+          gesture = { type: type, dir: dir || '', id: ev.pointerId,
+                      sx: ev.clientX, sy: ev.clientY, r: currentRect() };
+          maximised = false; savedRect = null;
+          shell.classList.add('is-moving');
+          try { shell.setPointerCapture(ev.pointerId); } catch (e) {}
+          ev.preventDefault();
+        }
+
+        shell.addEventListener('pointerdown', function (ev) {
+          if (ev.button !== undefined && ev.button !== 0) return;
+          var handle = ev.target && ev.target.classList && ev.target.classList.contains('handle')
+            ? ev.target : null;
+          if (handle) { startGesture(ev, 'resize', handle.getAttribute('data-dir')); return; }
+          if (ev.target === brand || brand.contains(ev.target)) {
+            startGesture(ev, 'drag', '');
+            return;
+          }
+          if (ev.target === shell || ev.target === transcript) {
+            /* Empty window background: a drag moves the window; a plain
+               click (no real movement) still just focuses the prompt,
+               because the move handler below only acts past 4px. */
+            startGesture(ev, 'maybe-drag', '');
+            return;
+          }
+          focusInput();
+        });
+
+        shell.addEventListener('pointermove', function (ev) {
+          if (!gesture || ev.pointerId !== gesture.id) return;
+          var dx = ev.clientX - gesture.sx;
+          var dy = ev.clientY - gesture.sy;
+          if (gesture.type === 'maybe-drag') {
+            if (Math.abs(dx) + Math.abs(dy) < 4) return;
+            gesture.type = 'drag';
+          }
+          var r = { x: gesture.r.x, y: gesture.r.y, w: gesture.r.w, h: gesture.r.h };
+          if (gesture.type === 'drag') {
+            r.x += dx; r.y += dy;
+          } else {
+            var d = gesture.dir;
+            if (d.indexOf('e') !== -1) r.w = gesture.r.w + dx;
+            if (d.indexOf('s') !== -1) r.h = gesture.r.h + dy;
+            if (d.indexOf('w') !== -1) {
+              var nw = Math.max(MIN_W, gesture.r.w - dx);
+              r.x = gesture.r.x + (gesture.r.w - nw); r.w = nw;
+            }
+            if (d.indexOf('n') !== -1) {
+              var nh = Math.max(MIN_H, gesture.r.h - dy);
+              r.y = gesture.r.y + (gesture.r.h - nh); r.h = nh;
+            }
+          }
+          applyRect(clampRect(r));
+        });
+
+        function endGesture(ev) {
+          if (!gesture || (ev && ev.pointerId !== gesture.id)) return;
+          var wasTap = gesture.type === 'maybe-drag';
+          gesture = null;
+          shell.classList.remove('is-moving');
+          if (wasTap || !ev || ev.type !== 'pointercancel') focusInput();
+        }
+        shell.addEventListener('pointerup', endGesture);
+        shell.addEventListener('pointercancel', endGesture);
+
+        /* Double-click / double-tap the header: fill the screen, again to restore. */
+        brand.addEventListener('dblclick', function () {
+          var vp = viewport();
+          if (maximised && savedRect) {
+            applyRect(clampRect(savedRect));
+            maximised = false; savedRect = null;
+          } else {
+            savedRect = currentRect();
+            var m = Math.max(6, Math.min(18, vp.w * 0.02));
+            applyRect({ x: m, y: m, w: vp.w - m * 2, h: vp.h - m * 2 });
+            maximised = true;
+          }
+          focusInput();
+        });
+
+        /* Keep the window reachable when the screen itself changes size. */
+        window.addEventListener('resize', function () {
+          if (rect) applyRect(clampRect({ x: rect.x, y: rect.y, w: rect.w, h: rect.h }));
+        });
+
+        focusInput();
+      })();
+    </script>
+  </body>
+</html>

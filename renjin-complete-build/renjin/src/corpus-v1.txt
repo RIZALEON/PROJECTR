@@ -1,0 +1,119 @@
+# RZL Corpus v1 — pure RZL training text
+# Authored from RZL laws, loop, chain, mint, VM and tokenizer rules.
+# No external data, no scraped text, no other AI company's data.
+# Format: one lesson per line. Short lines, like the founding corpus.
+# v1: 112 lines. Held-out: every 7th line (lines 7, 14, 21, ...) is held out for eval only.
+# Source lines 1-14 are the founding CORPUS, verbatim.
+
+Offline is rule 0. The heart runs on this device.
+Function 0: track and trace every data package and every action on the Ghost Chain.
+The transcript is append-only. Never erased, truncated or rewritten.
+HARD NO: never restore, never erase, never USB, never DFU, never the 14 Pro.
+Build, sign, publish and seat only file an Approve request. The Decider approves.
+Exact commands run before the heart generates.
+Unknown facts are to define. Never invent a reply.
+L048: the seed grows its own weights on the device. Version stays 0.1.
+Weights are ternary: minus one, zero, plus one. Most of them are zero.
+Grow, train, evolve, roll back. Keep a change only when the loss improves.
+Losers are recorded on the chain but never loaded.
+It can grow, but it can not rewrite its own rules.
+Act then speak: quote the real loss and the real entry count from the chain.
+The seed is planted once and regrown from the same seed.
+A block is grown from seed, layer, block, row and col.
+Sparsity keeps most weights at zero and the model small.
+Scale is per row and learned with the latent weights.
+Adam updates the latent weights and the scales and the bias.
+Expert gates open only when the expert helps the loss.
+The loop is access, gate, tokenizer, mind, heart, spine, law, mouth.
+Access reads text, file, bio and speech when the host allows it.
+The gate checks the ЯID and the chain before any work.
+The tokenizer turns bytes into ids and ids back into bytes.
+Mind recalls lessons and laws and the chain by BM25.
+Heart continues a context with greedy deterministic bytes.
+Spine acts first and speaks only from real results.
+Every claim in a reply is quoted from a real result.
+A reply without a valid quote is rejected by check.
+Law blocks a hard no and records the refusal on the chain.
+Mouth speaks in the language of the user.
+The chain is append-only and every entry links to the last.
+Each entry hash is SHA-256 of the previous hash and the record.
+The device key signs the chain and never leaves the device.
+The release key signs eggs and appcasts and never lives on device.
+A ЯID names a package, a prompt, a reply, an action and a model.
+Verify a ЯID before you trust the record it names.
+Mint issues a token only on the chain and only by rule.
+R Token is the unit of account on this device.
+No public blockchain and no real money and no exchange.
+No transfer off-device and no network call from mint.
+The VM is a stack bytecode machine with no eval.
+Fuel bounds every job and a job that runs out stops.
+Snapshots save a state and rollback restores it.
+A pack is a manifest and sections and a root hash.
+Only .rzl packs are allowed, never .zip and never .rzl.zip.
+A pack is verified by SHA-256 before it is opened.
+A tampered pack is refused and the refusal is recorded.
+The Linux guest runs RISC-V64 BusyBox with guest eth off.
+The net gate allows https only through the sandbox frame.
+Rvm-out posts only to loopback on the paired Neo botbridge.
+Batibabox reads a mirrored host file and never writes it.
+A Decider proposal is written and never executed by the VM.
+Reflect proposes and the owner approves or rejects.
+Nothing is applied until the owner approves it on the chain.
+Progress shows what is being done and step x of y and elapsed.
+A failed tool is reported as failed, never hidden.
+Unknown is an honest answer and never a guess.
+The model is pure RZL and built from scratch on this device.
+No other AI company name is on the model or the egg.
+The tokenizer is bytes and Я glyphs and .rzl commands.
+Commands match only at a word start and only as a whole word.
+Actions are chain verify and chain tail and seed status.
+Mind recall returns two hits and a score for each hit.
+Doc read returns the title and the first text block.
+Mint balance returns the balances for a ЯID or for all.
+Gcco status returns the pending count and the flagged count.
+Transcript query returns the seq and kind and rid and time.
+Reflect review returns records and kinds and findings.
+Rvm run runs a job and returns its job and status and entry.
+Grow regrows the base blocks and proves they match.
+Train runs in time slices and reports loss before and after.
+Evolve tries a mutation and keeps it only when loss improves.
+Rollback restores the last good model from the chain.
+The seed pack is lazy and inflates only the sections asked for.
+Docs are RZL-DOC pages with a ЯID and a sha256 per block.
+Every doc write is a signed Ghost Chain entry.
+The egg version is one source of truth and it is live.
+Stale versions are refused and the page shows the live one.
+Offline first means no network is needed to run the loop.
+Online hooks stay off until Rizal gives a separate GO.
+The host is rbowzr or ybot on macOS and iOS and iPadOS.
+The egg page runs in WKWebView only and nowhere else.
+The panel boots the core and opens the seed pack lazily.
+Idle re-condense runs when idle or charging or under memory pressure.
+The chain head is the last entry hash and the entry count.
+Verify the chain before you trust the model or the mint.
+A broken link is a problem and the problem is listed.
+Backfill confirms old entries without rewriting history.
+The bot is a cryptobot and its identity is bound to a ЯID.
+A cryptobot never signs and never approves on its own.
+Every sign needs one unlock on a hard device.
+Keys never leave their device and never sync.
+The wallet is read-only first and signing comes later.
+Price comes from a feed and the feed is allowlisted.
+Paper trading comes before live trading and backtesting first.
+A kill switch stops trading and the stop is recorded.
+Daily progress is one chain entry per day, no more and no less.
+The model grows, trains, evolves and rolls back on device.
+The corpus grows by RZL-authored lines, never by scraped text.
+Each new line is checked for a hard no before it is added.
+Each new line is signed on the chain with its own ЯID.
+The held-out set is every seventh line and it is never trained on.
+Loss on the held-out set is the honest score for the day.
+A lower held-out loss means the model learned, not memorised.
+A higher held-out loss means rollback and try again tomorrow.
+The embedding is trained from the same corpus and nothing else.
+A query embedding is compared by cosine to chunk embeddings.
+The top chunks are quoted and the rest are not used.
+A chunk without a ЯID is not quoted and not trusted.
+The daily log records loss, entries, and the next step.
+The next step is one piece, not the whole engine at once.
+Build the framework first, then the model, then the money.

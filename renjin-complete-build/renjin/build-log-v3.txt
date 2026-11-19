@@ -1,0 +1,31 @@
+patched core -> yaseed-core-v3.js (v2 + generateSampled only)
+corpus lines: 112 bytes: 6502
+boot: {"version":"0.1.11","chain_ok":true,"modules":2}
+grow: grown loss: 27.61
+train 60s: {"steps":4762,"loss_before":27.61,"loss_after":3.118,"held_out":3.138,"entry":8}
+status after train: {"loss":3.1178,"chain_entries":9,"chain_ok":true}
+Q: What is the Ghost Chain?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "er teeen yhee  csadto eetrs sa" { letterShare: 1, words: [ 'teeen', 'yhee', 'csadto', 'eetrs' ] }
+Q: What is offline?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "sat  c hodp setse iwabhes.oar." {
+  letterShare: 0.93,
+  words: [ 'sat', 'hodp', 'setse', 'iwabhes', 'oar' ]
+}
+Q: Who is ThundR?
+  greedy : "                              " { letterShare: 1, words: [] }
+  sampled: "ein s  eolt s  dgcgae stsrb nm" { letterShare: 1, words: [ 'ein', 'eolt', 'dgcgae', 'stsrb' ] }
+--- 10-question grounded test (ask = embed retrieval, quoted line) ---
+FAIL expected line 1, got line 28 (0.531): "A reply without a valid quote is rejected by check."
+FAIL expected line 2, got line 74 (0.459): "The seed pack is lazy and inflates only the sections asked for."
+PASS expected line 3, got line 3 (0.754): "The transcript is append-only. Never erased, truncated or rewritten."
+PASS expected line 9, got line 9 (0.377): "Weights are ternary: minus one, zero, plus one. Most of them are zero."
+FAIL expected line 20, got line 106 (0.525): "The embedding is trained from the same corpus and nothing else."
+FAIL expected line 24, got line 63 (0.529): "Mind recall returns two hits and a score for each hit."
+PASS expected line 33, got line 33 (0.91): "The device key signs the chain and never leaves the device."
+FAIL expected line 38, got line 93 (0.295): "The wallet is read-only first and signing comes later."
+FAIL expected line 102, got line 103 (0.546): "Loss on the held-out set is the honest score for the day."
+PASS expected line 95, got line 95 (0.799): "Paper trading comes before live trading and backtesting first."
+10-question test: 4/10 passed
+BUILD OK — core v3 trained on corpus-v1, pure RZL

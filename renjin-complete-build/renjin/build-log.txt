@@ -1,0 +1,11 @@
+patched core -> yaseed-core-v2.js, DIM 64 HID 128 CTX 32 params 49152
+boot: {"version":"0.1.8","chain_ok":true,"modules":2}
+corpus lines: 112 train: 96 held-out: 16
+grow: grown regrown_match: undefined
+train 5s: {"steps":691,"loss_before":23.87377709493982,"loss_after":3.1352663501046663,"held_out":3.1501160334598253,"entry":8}
+generate sample: {"ok":true,"text":"                                        ","bytes":40}
+status after train: {"loss":3.1353,"chain_entries":9,"chain_ok":true}
+tokenizer size: 313 encode: 260,32,286,32,104,101,108,108,111 round-trip: OK
+embed search "Ghost Chain append-only": 31:0.506:The chain is append-only and every entry links to  | 97:0.393:Daily progress is one chain entry per day, no more | 36:0.379:Verify a ЯID before you trust the record it names.
+version file contains 0.1.11: OK
+BUILD OK — pure RZL v2 framework built and tested in Node

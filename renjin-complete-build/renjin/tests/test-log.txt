@@ -1,0 +1,14 @@
+PASS tokenizer size 313 — size=313
+PASS tokenizer round-trip
+PASS embeddings search finds chain — top=1
+PASS corpus v1 has 112 lines — lines=112
+PASS corpus held-out 16
+PASS model v2 params 49152
+PASS model v2 DIM/HID/CTX
+PASS egg-version 0.1.11
+PASS patched core v2 exists
+PASS patched core DIM 64
+PASS Tokenizer.swift exists
+PASS Tokenizer.swift has 313 size logic
+
+12 passed, 0 failed
