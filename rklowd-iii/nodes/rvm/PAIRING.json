@@ -1,0 +1,17 @@
+{
+  "seat": "rvm",
+  "paired_as": "computer",
+  "computer": "RVM \u2014 ThundR (this VM) + the sites, one seat",
+  "components": [
+    "ThundR on the Muse VM",
+    "https://rizaleon.github.io/RENJIN-CRYPTOBOT-AI/",
+    "RIZALEON/RENJIN-CRYPTOBOT-AI",
+    "RIZALEON/PROJECTR (shared)",
+    "https://rizal.pw (ASSM reference seat)"
+  ],
+  "paired_with": "iPhone 17e (seat 17e)",
+  "paired_by": "owner command, 2026-11-19 22:15 MST, sent from the 17e",
+  "channel": "Muse device bridge (live: 17e online, 65 commands) + GitHub/Pages mesh",
+  "apple_xcode_pairing": "NOT an Xcode paired computer: Settings > Developer > Paired Computers lists Macs only (Neo is paired there, last session 4 days before 2026-11-19). A Linux VM cannot enter that list; this Rnetwork pairing is the operative one.",
+  "harden1": "Enrolled under RNETWORK-HARDEN-1 by the owner himself from an allowlisted device \u2014 satisfies the enrollment rule (owner + one trusted-device seat, the 17e)."
+}

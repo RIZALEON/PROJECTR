@@ -38,6 +38,13 @@
       "platform": "Android",
       "verified": "ASSM login + Muse paired; confirmed existing device in block 4 rghostkey_bind",
       "status": "allow"
+    },
+    {
+      "seat": "rvm",
+      "device": "RVM \u2014 ThundR's VM + the sites (RENJIN Pages \u00b7 PROJECTR \u00b7 rizal.pw), seated as ONE computer",
+      "platform": "Linux VM (Muse) + GitHub Pages mesh",
+      "verified": "Paired by owner command from the 17e (an allowlisted seat) 2026-11-19 22:15 MST; live channel = Muse device bridge, 17e online",
+      "status": "allow"
     }
   ],
   "deny": "ALL other devices, seats, and nodes \u2014 removed from the Rnetwork, RTOR/RKLOWD III packets refused, no exceptions without a new owner command."
