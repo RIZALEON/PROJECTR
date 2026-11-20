@@ -16,8 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 const ROOT = __dirname;
-const SHELL = path.join(ROOT, '..', 'rshell', 'index.html');
-const OUT = path.join(ROOT, '..', 'rshell', 'RSHELL-RENJIN.html');
+const SHELL = process.argv[2] ? path.resolve(process.argv[2]) : path.join(ROOT, '..', 'rshell', 'index.html');
+const OUT = process.argv[3] ? path.resolve(process.argv[3]) : path.join(ROOT, '..', 'rshell', 'RSHELL-RENJIN.html');
+const TITLE = process.argv[4] || 'RSHELL RENJIN · one-file shell + model';
 const EXPORT_SHA = '72fdf4a69a784e22124eabe9ae8b41a60972a83834280947311fff1196732e70'; // sha256 of the published rghostchain.json seat
 
 function must(s, anchor, label) { if (!s.includes(anchor)) throw new Error('anchor not found: ' + label); }
@@ -33,7 +34,7 @@ for (const [name, src] of [['core', core], ['embed', embed], ['egg', egg], ['sto
 }
 
 // title
-html = html.replace(/<title>[\s\S]*?<\/title>/, '<title>RSHELL RENJIN · one-file shell + model</title>');
+html = html.replace(/<title>[\s\S]*?<\/title>/, '<title>' + TITLE + '</title>');
 
 // libraries + data, injected before the shell's own script
 const libs =

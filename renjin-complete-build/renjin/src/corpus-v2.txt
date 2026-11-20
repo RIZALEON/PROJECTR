@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 149 lines (141 + metrics addendum 142-147 + freshness 148 + citation 149, appended 2026-11-19).
+# v2: 150 lines (141 + metrics addendum 142-147 + freshness 148 + citation 149 + purity 150, appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -159,3 +159,4 @@ Metrics are counted, never invented: the shell counts its own knowledge, its cha
 A running counter ticks on the shell with every command answered, and the session clock runs while the shell is open.
 The shell reports the age of its chain export. A stale export is named, never hidden.
 Providence and provenance: the RZL citation for this work is Prof. Marcum, C.A., III (26, Nov 19), .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (Master of American Asia Pacific Systems) Tech Series, Aetaneo Rizal, Chase Rizal.
+The RENJIN model stays pure .RZL file format, always. Pure means no GGUF, no safetensors, no ONNX, no foreign weights inside: the heart is .RZL or it is not RENJIN. Per the owner, .RZL is a registered file type on every operating system.
