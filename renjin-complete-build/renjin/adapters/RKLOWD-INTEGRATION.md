@@ -60,3 +60,13 @@ mesh and the Neo hub takes it — the browser page holds no hub keys and
 delivers nothing by itself, and says so. Starting `rscale-moto`,
 running the hub, and the Reticulum landings are Neo/device-side acts,
 each under the owner's GO, unchanged by this integration.
+
+Queue seat note (learned live, 2026-11-19): the first build held the
+queue in the model's IndexedDB store — post-boot writes silently
+never landed in the test browser (the same connection-lifecycle
+failure EVOLVE hit), and a fresh-connection variant hung instead. The
+browser queue therefore sits in localStorage (synchronous, no
+connection lifecycle), in the identical manifest format; the flow is
+proven in Node (hash-chained records, content-addressed objects) and
+on the live page. On native hosts the same records ride the host
+store through the RCODE adapter.

@@ -6,6 +6,22 @@ what's blocked. Read the newest entry before beginning work.
 
 ---
 
+## 2026-11-19 19:15 MST — Newest-first transcript + the OUTBOX seat fix (ThundR)
+- Rizal's structure law applied to the shells: output no longer
+  appends at the bottom — each command's block (echo + responses)
+  now lands at the TOP of the transcript, newest above older, lines
+  in order inside the block (both shell pages + both one-file
+  builds; boot block sits below the first command, as the oldest).
+- OUTBOX post-mortem: the IDB-held queue failed live twice (silent
+  no-write on the boot connection; hang on a fresh one). The queue
+  moved to localStorage in the identical MANIFEST.jsonl format —
+  proven in Node (2 records, hash chain linked, object stored
+  content-addressed) and re-verified live after this push. The
+  model's own store stays in IndexedDB; the seat note is recorded in
+  RKLOWD-INTEGRATION.md.
+
+---
+
 ## 2026-11-19 18:20 MST — RKLOWD ability integrated: store-and-forward outbox in the shells (ThundR)
 - Found on Rizal's direction ("find those"): RKLOWD = the offline
   under cryptocloud (repo README/ARCHITECTURE: Neo hub, node queues

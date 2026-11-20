@@ -120,43 +120,35 @@ const modelBlock = `        rzlCounterRender();
           print('  bones ..... full pack magnetized in this one file — nothing missing, no PLAN ONLY. Assembly: beacon → boot (MODEL) → sync (SYNC) → evolve (EVOLVE).');
         }
         async function rkSha(text) { var d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)); return Array.from(new Uint8Array(d)).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
-        async function rkManifest(store) { var raw = await store.get('rklowd:manifest'); return raw ? raw.split('\\n').filter(Boolean).map(function (l) { return JSON.parse(l); }) : []; }
-        function rkStore() {
-          // A FRESH store connection per queue operation: the boot store's
-          // cached IndexedDB connection can be closed by the browser
-          // between boot and a later command (the EVOLVE lesson). The
-          // queue lives in the same database the model booted with.
-          if (!MODEL.seed || !MODEL.seed.store) return null;
-          var boot = MODEL.seed.store;
-          if (boot.kind === 'indexeddb' && window.YaSeedCore && window.YaSeedCore.IDBStore) return new window.YaSeedCore.IDBStore(boot.name || 'yaseed-0.1');
-          return boot;
-        }
+        /* The RKLOWD queue seat in a browser is localStorage: synchronous
+           and free of the IndexedDB connection lifecycle that silently
+           ate post-boot writes in testing (the model's own store stays
+           in IndexedDB). Same manifest format as the hub's
+           MANIFEST.jsonl — on a native host the same records ride the
+           host store through the adapter. */
+        function rkLoad() { try { var raw = localStorage.getItem('rklowd:manifest'); return raw ? raw.split('\\n').filter(Boolean).map(function (l) { return JSON.parse(l); }) : []; } catch (e) { return []; } }
+        function rkSave(man) { localStorage.setItem('rklowd:manifest', man.map(function (r) { return JSON.stringify(r); }).join('\\n')); }
         async function outboxAdd(text) {
-          var store = rkStore();
-          if (!store) { print('OUTBOX — the model did not boot in this browser, so there is no device store to hold the queue. Nothing queued.'); return; }
           try {
-          var sha = await rkSha(text);
-          var man = await rkManifest(store);
-          var prev = man.length ? man[man.length - 1].entry_sha : 'GENESIS';
-          var rec = { seq: man.length + 1, kind: 'queue', sha: sha, prev: prev, bytes: text.length, ts: new Date().toISOString() };
-          rec.entry_sha = await rkSha(JSON.stringify(rec));
-          if (!(await store.get('rklowd:obj:' + sha))) await store.set('rklowd:obj:' + sha, text);
-          man.push(rec);
-          await store.set('rklowd:manifest', man.map(function (r) { return JSON.stringify(r); }).join('\\n'));
-          print('OUTBOX — queued #' + rec.seq + ' · sha ' + sha.slice(0, 12) + '… · ' + rec.bytes + ' B · manifest chain head ' + rec.entry_sha.slice(0, 12) + '… · held in this device\\'s RKLOWD queue: content-addressed, never executed, never overwritten. It forwards when this device joins the mesh (Neo hub) — QUEUE shows the state.');
+            var sha = await rkSha(text);
+            var man = rkLoad();
+            var prev = man.length ? man[man.length - 1].entry_sha : 'GENESIS';
+            var rec = { seq: man.length + 1, kind: 'queue', sha: sha, prev: prev, bytes: text.length, ts: new Date().toISOString() };
+            rec.entry_sha = await rkSha(JSON.stringify(rec));
+            if (!localStorage.getItem('rklowd:obj:' + sha)) localStorage.setItem('rklowd:obj:' + sha, text);
+            man.push(rec); rkSave(man);
+            print('OUTBOX — queued #' + rec.seq + ' · sha ' + sha.slice(0, 12) + '… · ' + rec.bytes + ' B · manifest chain head ' + rec.entry_sha.slice(0, 12) + '… · held in this device\\'s RKLOWD queue: content-addressed, never executed, never overwritten. It forwards when this device joins the mesh (Neo hub) — QUEUE shows the state.');
           } catch (e) { print('OUTBOX — the queue write failed in this browser: ' + e.message + '. Nothing was queued; the record of truth is unchanged.'); }
         }
         async function queueNow() {
-          var store = rkStore();
-          if (!store) { print('QUEUE — no device store in this browser (the model did not boot).'); return; }
-          var man = await rkManifest(store);
-          if (!man.length) { print('QUEUE — this device\\'s RKLOWD queue is empty. OUTBOX <text> queues a message; the queue is a hash-chained manifest (seq / prev / sha), objects stored once by SHA-256 — the RKLOWD record of truth in miniature.'); return; }
-          print('QUEUE — ' + man.length + ' record(s) in this device\\'s RKLOWD manifest · head ' + man[man.length - 1].entry_sha.slice(0, 12) + '… · all held for forward to the hub (Neo) when a path exists. Nothing here is executed or overwritten; a withdrawal would be a later record, never a delete.');
+          try {
+            var man = rkLoad();
+            if (!man.length) { print('QUEUE — this device\\'s RKLOWD queue is empty. OUTBOX <text> queues a message; the queue is a hash-chained manifest (seq / prev / sha), objects stored once by SHA-256 — the RKLOWD record of truth in miniature.'); return; }
+            print('QUEUE — ' + man.length + ' record(s) in this device\\'s RKLOWD manifest · head ' + man[man.length - 1].entry_sha.slice(0, 12) + '… · all held for forward to the hub (Neo) when a path exists. Nothing here is executed or overwritten; a withdrawal would be a later record, never a delete.');
+          } catch (e) { print('QUEUE — the queue read failed in this browser: ' + e.message); }
         }
         async function netNow() {
-          var queued = 0;
-          var qstore = rkStore();
-          if (qstore) { try { queued = (await rkManifest(qstore)).length; } catch (e) {} }
+          var queued = rkLoad().length;
           print('NET — the mesh under this shell:');
           print('  RSCALE .. the mesh map layer (failover, ts.net / Funnel zones). Owner record: NOT running — the Moto job rscale-moto is installed but stopped; starting it is the owner\\'s word on the device.');
           print('  RTOR .... signed-update feed at rizal.pw/rtor (version 20261118-5, 28 entries, owner signatures PENDING, fail-closed). SYNC checks this device\\'s chain seat against it by hash-pin.');

@@ -319,17 +319,27 @@
         var histIdx = -1;
         var draft = '';
 
+        /* Newest first — the owner's structure law: each command's block
+           sits at the TOP of the transcript, newest above older; lines
+           read in order inside their block. */
+        var currentBlock = null;
+        function beginBlock() {
+          currentBlock = document.createElement('div');
+          transcript.insertBefore(currentBlock, transcript.firstChild);
+          return currentBlock;
+        }
         function scrollDown() {
-          transcript.scrollTop = transcript.scrollHeight;
+          transcript.scrollTop = 0;
         }
         function print(text, cls) {
           var p = document.createElement('p');
           p.className = 'line' + (cls ? ' ' + cls : '');
           p.textContent = text;
-          transcript.appendChild(p);
+          (currentBlock || beginBlock()).appendChild(p);
           scrollDown();
         }
         function echo(cmd) {
+          beginBlock();
           var p = document.createElement('p');
           p.className = 'line echo';
           var s = document.createElement('span');
@@ -337,7 +347,7 @@
           s.textContent = 'R:\\> ';
           p.appendChild(s);
           p.appendChild(document.createTextNode(cmd));
-          transcript.appendChild(p);
+          currentBlock.appendChild(p);
           scrollDown();
         }
         function focusInput() {
