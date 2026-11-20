@@ -19,7 +19,7 @@ const ROOT = __dirname;
 const SHELL = process.argv[2] ? path.resolve(process.argv[2]) : path.join(ROOT, '..', 'rshell', 'index.html');
 const OUT = process.argv[3] ? path.resolve(process.argv[3]) : path.join(ROOT, '..', 'rshell', 'RSHELL-RENJIN.html');
 const TITLE = process.argv[4] || 'RSHELL RENJIN · one-file shell + model';
-const EXPORT_SHA = '72fdf4a69a784e22124eabe9ae8b41a60972a83834280947311fff1196732e70'; // sha256 of the published rghostchain.json seat
+const EXPORT_SHA = 'd55fcd36b299726b8558be49dcf9d690e4f71de9accedfac66d6092826b63d1d'; // sha256 of the published rghostchain.json seat
 
 function must(s, anchor, label) { if (!s.includes(anchor)) throw new Error('anchor not found: ' + label); }
 
