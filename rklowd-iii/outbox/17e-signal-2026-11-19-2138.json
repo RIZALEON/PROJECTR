@@ -1,0 +1,40 @@
+{
+  "seq": 1,
+  "type": "RTOR-SIGNAL-17E",
+  "ts": "2026-11-19T21:38:39-07:00",
+  "device": "iPhone 17e (iPhone18,5)",
+  "connection_state": "online",
+  "is_request_origin": true,
+  "signals": {
+    "presence": "online heartbeat, last_seen 2026-11-20T04:34:35Z",
+    "bluetooth_scan": {
+      "devices_seen": 42,
+      "scanned_ms": 5014,
+      "strongest_dbm": -66,
+      "strongest_signal": "good",
+      "named_count": 6,
+      "identified": [
+        "Samsung"
+      ]
+    },
+    "music_status": "authorization not_determined",
+    "timers": "none running",
+    "location": "prompt closed undecided \u2014 not granted, not declined",
+    "permissions_granted": [
+      "homekit",
+      "notifications_post",
+      "photos",
+      "bluetooth"
+    ],
+    "permissions_pending": [
+      "location",
+      "calendar",
+      "contacts",
+      "health",
+      "reminders",
+      "apple_music"
+    ]
+  },
+  "prev": "dedc071d6310a432b147f1e145bdefe003e2e3e17295a6a019f5967ce15fdc08",
+  "sha256": "2ccfeab6495c6b9b15aa018612b2a4c573eceae08682b15b3195a906867bf6c4"
+}

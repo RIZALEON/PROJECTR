@@ -1,0 +1,1 @@
+RKLOWD III folder seat — drop/ inbox/ sent/ outbox/ queue/ nodes/ (git carries files, not empty dirs; structure is defined in README.md)
