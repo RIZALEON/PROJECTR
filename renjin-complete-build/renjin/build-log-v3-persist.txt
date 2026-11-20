@@ -1,5 +1,5 @@
-grow: grown loss: 26.882
-train 60s: {"steps":2244,"loss_before":26.882,"loss_after":3.081,"held_out":3.078}
-status: {"version":"0.1.11","loss":3.0805,"chain_entries":9,"chain_ok":true}
-persisted: store file /home/hatch/workspace/projects/renjin-push/renjin-complete-build/renjin/src/store-v3.json 549223 bytes; state:current = e5c6c2cfa6dbd77c62c955eed85318a22579a92dc213df5178f29f4eda72385b
+grow: grown loss: 27.631
+train 60s: {"steps":3590,"loss_before":27.631,"loss_after":3.279,"held_out":3.273}
+status: {"version":"0.1.11","loss":3.2794,"chain_entries":9,"chain_ok":true}
+persisted: store file /home/hatch/workspace/projects/renjin-push/renjin-complete-build/renjin/src/store-v3.json 549218 bytes; state:current = 08c7c77bc4618e4a79d6a93600cb44de8c73655bab9ac95e6de2e96e82470387
 PERSIST TRAIN OK — the learned state is on disk, keyed and hashed on the model chain

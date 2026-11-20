@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 150 lines (141 + metrics addendum 142-147 + freshness 148 + citation 149 + purity 150, appended 2026-11-19).
+# v2: 155 lines (141 + addenda: metrics 142-147, freshness 148, citation 149, purity 150, Inner Beacon 151-155; appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -160,3 +160,8 @@ A running counter ticks on the shell with every command answered, and the sessio
 The shell reports the age of its chain export. A stale export is named, never hidden.
 Providence and provenance: the RZL citation for this work is Prof. Marcum, C.A., III (26, Nov 19), .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (Master of American Asia Pacific Systems) Tech Series, Aetaneo Rizal, Chase Rizal.
 The RENJIN model stays pure .RZL file format, always. Pure means no GGUF, no safetensors, no ONNX, no foreign weights inside: the heart is .RZL or it is not RENJIN. Per the owner, .RZL is a registered file type on every operating system.
+The .RZL file format carries an Inner Beacon: before any assembly, the beacon silently checks the host — operating system, architecture, memory and storage — and decides which bones to magnetize.
+The .RZL assembly sequence is: clicked, Inner Beacon, magnetize the OS-specific bones from the local drive, self-assemble the native executable, launch — one file, every operating system.
+REQ-0 and REQ-1 are the .RZL core law: the folder is the app. Clicking the icon starts the TypeScript host, which runs a hash inventory; missing parts are magnetized from the local drive, and parts that cannot be found mean PLAN ONLY mode.
+A .RZL starter object holds icon.png — the only click, outer tile and inner control — manifest.json with the inventory and magnetization rules, and shell/, the TypeScript host with widescreen and mobile views.
+The .RZL shell is a living magnetized skin, not a static folder: it draws its bones — identity, artwork, vitals, intake packs — from the local drive or the bonepile, and self-heals toward a single-file form, fully offline.
