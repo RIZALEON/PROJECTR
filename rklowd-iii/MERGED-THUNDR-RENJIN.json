@@ -1,0 +1,91 @@
+{
+  "record": "MERGED-THUNDR-RENJIN",
+  "issued": "2026-11-19T22:26:51-07:00",
+  "by": "owner command (Rizal)",
+  "merges_into_one": [
+    "17e RBOT sign-ins + wallets",
+    "RWALLET (rizal.pw)",
+    "TERAFORMR wallet",
+    "RDRAGON wallets",
+    "RMail"
+  ],
+  "under": "the merged ThundR + RENJIN",
+  "function_law": "EVERY merged seat keeps EVERY function the old versions had \u2014 nothing removed (ONE RULE) \u2014 with the functions seated behind commands and conversation: you talk or command, the function runs underneath. (Owner, 2026-11-19 22:27 MST.)",
+  "sign_ins": {
+    "17e_rbot_rcode": "RCODE build 13 RUNNING on the 17e (owner screenshots 2026-11-19 22:23 MST): profile Rizal, ASSM: this device is approved, ASSM sync, RSOL KARD v2026-11-18.11 Verified, RTOR updates up to date signed by GHOSTKEY root e5833fdfbbfe, offline model Qwen3 1.7B (llama.cpp) 22.2 tok/s, Mint (Approve) = Face ID in app, seal in RWALLET, sent over RTOR, RCODE never signs; ThundR signed commands present.",
+    "assm": "ASSM login is the network-wide sign-in (rizal.pw pattern); HARDEN-1 allowlist seats only.",
+    "correction": "RCODE is ALIVE on the 17e \u2014 earlier 'dead apps' framing is corrected: only RDRAGON 55 is confirmed expired ('No Longer Available')."
+  },
+  "wallets_public_only": {
+    "note": "Public addresses + public key ids ONLY. Private keys stay sealed where they live (Secure Enclave / Keychain / Neo). Nothing in this merge moves a key. Bots never sign.",
+    "mobile_this_device": {
+      "address": "E611TFJh9y2eipt984hhBjhUQ1EsrUDodbLsrpN9Zmhn",
+      "SOL": 0.003,
+      "R": 2
+    },
+    "desktop": {
+      "address": "3gLUfDdw1etDGeJ2PnqUtitam5TwZAsC3BhXCQYx2Gfk",
+      "SOL": 0.009995,
+      "R": 9
+    },
+    "boomerang": {
+      "address": "2E4eAKWUU5akXTUfP7ZrgjebE3TPUhzZZfaRkQUpwyaj",
+      "SOL": 0,
+      "note": "seat key pairing pending in the twin (KEY_NEEDED, owner pastes sibling PUBLIC key)"
+    },
+    "crown": {
+      "address": "BwpVNk1Rtncpv5HMTLwxB4YfjKfv6mFaBQUTpjneH1F9",
+      "role": "mint + freeze authority; crown key sealed on the 17e only (\u042fCASKET, Secure Enclave)"
+    },
+    "pool_R_SOL": {
+      "address_truncated_as_shown": "HSroUxVkVKv...rkuuRfAGxs9s"
+    },
+    "R_mint": "BB9uA5BuacDnWyDf5Npc9nMb9yFbyThsNrQPBYJ5Q1Lv",
+    "R_supply": "1000000 (decimals 9); mint tx finalized slot 448281123",
+    "rwallet_rizal_pw": "RWALLET seat at rizal.pw + Neo read-only mirror (127.0.0.1:8741 per Neo notes); the clay \u042fWALLET twin on the 17e mirrors the same seats explorer-verified.",
+    "terraformr_wallet": "Terraform\u042f's wallet seat (Gizmo's package) folds into this same map; game mints ride DECISION #2 (player-command mints write the real chain via RMINT).",
+    "rdragon_wallets": "RDRAGON's wallet seats fold into this same map under the merged ThundR."
+  },
+  "sealed_keys_public_ids": [
+    {
+      "name": "\u042fLAB release / egg root key",
+      "keyId": "e5833fdfbbfe",
+      "type": "ed25519",
+      "state": "sealed on 17e, public key pinned"
+    },
+    {
+      "name": "rbotpack.sh local pack signer",
+      "keyId": "288dc60eaefc",
+      "type": "ed25519",
+      "state": "sealed on 17e"
+    },
+    {
+      "name": "GhostChain key",
+      "keyId": "06d54dac14d9",
+      "type": "ed25519",
+      "state": "sealed on 17e, public key pinned"
+    },
+    {
+      "name": "RKRYPT wallet entry 0",
+      "id": "4b3a72c6dcdce35d09",
+      "state": "locked, pinned, sealed on 17e; Ghost Chain rkey seq 0"
+    },
+    {
+      "name": "Android 2.1.9 APK signer keystore",
+      "sha256": "40556f5f31162fb5733f65232f2c5cc53d983d42dfc1daf3fafbc67a1c865789",
+      "state": "sealed, header verified"
+    },
+    {
+      "name": "Android old debug keystore",
+      "sha256": "a4f1b53ff5b942484336b4ce893cb15f3c27d1da064ac16df1ac6d25c4108e13",
+      "state": "sealed, header verified"
+    },
+    {
+      "name": "DRAGON SKULL Android release key (.p12)",
+      "sha256": "538b003669dcb0cc16c2f6b472fea68a0b57de73cde6688a2744e30ac5611b29",
+      "state": "sealed, header verified"
+    }
+  ],
+  "rmail": "RMail folds in as the merged seat's mail: Neo hub :8797 + RKLOWD store-and-forward queues (drop/inbox/sent) as transport.",
+  "relay_state_as_shown": "RELAY AUTO-SIGN: OFF (24h 0/3 \u042f, caps 1 \u042f/leg, own seats only); POTLATCH_RELAY off, relay not paired (devicectl still works)."
+}
