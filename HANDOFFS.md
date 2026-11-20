@@ -6,6 +6,29 @@ what's blocked. Read the newest entry before beginning work.
 
 ---
 
+## 2026-11-19 18:20 MST — RKLOWD ability integrated: store-and-forward outbox in the shells (ThundR)
+- Found on Rizal's direction ("find those"): RKLOWD = the offline
+  under cryptocloud (repo README/ARCHITECTURE: Neo hub, node queues
+  drop/inbox/sent, hash-chained MANIFEST.jsonl record of truth,
+  RPIPE contract, Reticulum mesh landings, no outside tunnels);
+  RSCALE = the mesh map layer, owner record says NOT running (Moto
+  job rscale-moto installed but stopped); RTOR rides the path.
+  Full account: `renjin/adapters/RKLOWD-INTEGRATION.md`.
+- Integrated the ability into both one-file shells (736,769 /
+  736,772 B): OUTBOX <text> queues a message content-addressed by
+  SHA-256 with an append-only hash-chained manifest in the device
+  store (never executed, never overwritten, no deletes — RKLOWD's own
+  rules); QUEUE reports the manifest; NET reports the mesh honestly
+  (RSCALE stopped, RTOR fail-closed, RKLOWD hub on Neo). Corpus
+  lessons 156–158, KB 41. Retrain on 158: loss 3.260 / held-out 3.246,
+  state:current 16f9dd00…, embedded stores re-verified.
+- Live-verified this round (Pages): BEACON runs on load before the
+  boot line and on command; counter reads corpus 155 · KB 39 on the
+  prior build; "is the model pure .rzl" now answers the Purity law
+  verbatim (the KB routing fix confirmed live).
+
+---
+
 ## 2026-11-19 17:45 MST — Inner Beacon live in the shells + RCODE/Xcode plugin & adapter (ThundR)
 - Rizal seated the .RZL FILE FORMAT spec (Inner Beacon, assembly
   sequence, REQ-0+1 folder-is-the-app, starter object, ЯSCOUT anatomy):

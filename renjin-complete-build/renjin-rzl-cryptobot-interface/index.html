@@ -283,7 +283,7 @@
   <body>
     <main class="shell" id="shell">
       <div class="brand" id="brand" aria-hidden="true"><span class="brand-name">RENJIN</span> .RZL AI CRYPTOBOT MODEL</div>
-      <div id="rzl-counter" style="font:11px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#9dff8a;opacity:.92;padding:0 2px 4px;">RGHOSTCHAIN h<span id="rzl-h">4</span> · <span id="rzl-b">5</span> blocks · 3 assets · corpus-v2 <span id="rzl-c">155</span> lessons · KB <span id="rzl-k">39</span> · weights 49,152 · session <span id="rzl-clock">00:00</span> · answered <span id="rzl-q">0</span></div>
+      <div id="rzl-counter" style="font:11px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#9dff8a;opacity:.92;padding:0 2px 4px;">RGHOSTCHAIN h<span id="rzl-h">4</span> · <span id="rzl-b">5</span> blocks · 3 assets · corpus-v2 <span id="rzl-c">158</span> lessons · KB <span id="rzl-k">41</span> · weights 49,152 · session <span id="rzl-clock">00:00</span> · answered <span id="rzl-q">0</span></div>
 
       <form class="prompt-line" id="promptForm" autocomplete="off" spellcheck="false">
         <label class="visually-hidden" for="cmd">Type a command after the R:\&gt; prompt and press Enter</label>
@@ -354,7 +354,7 @@
           { n: 3, type: 'cryptobot_mint', ts: '2026-11-01', label: 'TERAFORMR CRYPTOGAME · ЯID-0015-0HJP', hash: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d', prev: '56e6a940eae08b1cf8415e314c9ae56a8790883f775d01dd4e07ee018b49ddb4' },
           { n: 4, type: 'rghostkey_bind', ts: '2026-11-10', label: 'RGHOSTKEY bind + device approval + basecode v1', hash: 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147', prev: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d' }
         ];
-        var CORPUS_V2 = { lessons: 155, bytes: 11261 };
+        var CORPUS_V2 = { lessons: 158, bytes: 12030 };
         var KB = [
           { keys: ['ghost chain'], text: 'Ghost Chain — the local ledger inside ЯENJIN. Every grow, train and mint step is chained and verifiable on-device. It is a local chain, not a public blockchain: no network, no transfer off-device.' },
           { keys: ['thundr'], text: 'ThundR — the purple thunder imp cryptobot created for TerraformR: red horns, bat wings, a yellow lightning bolt tail.' },
@@ -362,6 +362,8 @@
           { keys: ['tokenizer', 'tok.v1', 'tok '], text: 'Tokenizer — tok.v1. Byte tokens plus Я glyphs, ids 256–312, vocab size 313. tokenizer.js in the egg and Tokenizer.swift now match it exactly.' },
           { keys: ['corpus'], text: 'Corpus v1 — 112 RZL-authored lines: 96 train / 16 held-out. Built, but core v2 still trained on the old 14-line corpus — swapping corpus-v1 in is core v3, the next step.' },
           { keys: ['embedding'], text: 'Embeddings v1 — rzl-embed.js, hash n-gram, DIM 32, with cosine search. Built pure RZL, no outside model.' },
+          { keys: ['rklowd', 'undercloud', 'store-and-forward', 'store and forward', 'outbox'], text: 'RKLOWD — the offline under cryptocloud: a store-and-forward hub. Neo is the hub; every device keeps node queues (drop, inbox, sent) and syncs when a path exists — no rented host, no public tunnel. Queue law: a file lands under a unique name, never executed, never overwritten; no deletes in the record of truth. The one-file shells carry a local RKLOWD queue: OUTBOX <text> queues, QUEUE shows the hash-chained manifest.' },
+          { keys: ['rscale', 'mesh'], text: 'RSCALE — the mesh map layer: failover and zones over the device mesh (ts.net / Funnel zones). Per the owner record RSCALE is NOT running — its Moto job rscale-moto (LaunchAgent info.rizal.rscale-moto) is installed but stopped; starting it is the owner word on the device. RTOR rides the mesh for signed updates; RPIPE is the hub contract RKLOWD devices speak.' },
           { keys: ['inner beacon', 'beacon', 'rzl file', 'self-assembling', 'magnetize'], text: 'Inner Beacon — the first layer of the .RZL format: before any assembly it silently checks the host (OS, architecture, memory, storage) and decides which bones to magnetize. Sequence: clicked → Inner Beacon → magnetize OS-specific bones from the local drive → self-assemble → launch. REQ-0+1: the folder is the app; the TypeScript host runs a hash inventory, missing parts are magnetized, unfound parts mean PLAN ONLY. Type BEACON in the one-file shell to run it here.' },
           { keys: ['pure', 'purity', 'file format'], text: 'Purity law (Rizal, 2026-11-19): the RENJIN model stays pure .RZL file format, always — no GGUF, no safetensors, no ONNX, no foreign weights inside; the heart is .RZL or it is not RENJIN. Per the owner, .RZL is a registered file type on every operating system. The build tree is scanned clean by check-purity.js.' },
           { keys: ['size', 'metrics', 'how big', 'model size'], text: 'Model metrics — RENJIN Core v3: DIM 64 / HID 128 / CTX 32, 49,152 ternary weights: 12,288 B packed at two bits each, 196,608 B as FP32 latents. Corpus v2 holds 148 lessons, and the shell knowledge base answers from its entries. The chain seat is the published RGHOSTCHAIN export: height 4, 5 blocks, 3 live assets. Type SIZE and the shell counts itself live — weights, corpus, knowledge, chain and this session.' },

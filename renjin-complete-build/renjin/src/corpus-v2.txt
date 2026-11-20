@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 155 lines (141 + addenda: metrics 142-147, freshness 148, citation 149, purity 150, Inner Beacon 151-155; appended 2026-11-19).
+# v2: 158 lines (141 + addenda: metrics 142-147, freshness 148, citation 149, purity 150, Inner Beacon 151-155, RKLOWD/RSCALE 156-158; appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -165,3 +165,6 @@ The .RZL assembly sequence is: clicked, Inner Beacon, magnetize the OS-specific 
 REQ-0 and REQ-1 are the .RZL core law: the folder is the app. Clicking the icon starts the TypeScript host, which runs a hash inventory; missing parts are magnetized from the local drive, and parts that cannot be found mean PLAN ONLY mode.
 A .RZL starter object holds icon.png — the only click, outer tile and inner control — manifest.json with the inventory and magnetization rules, and shell/, the TypeScript host with widescreen and mobile views.
 The .RZL shell is a living magnetized skin, not a static folder: it draws its bones — identity, artwork, vitals, intake packs — from the local drive or the bonepile, and self-heals toward a single-file form, fully offline.
+RKLOWD is the offline under cryptocloud: a store-and-forward hub under the cryptocloud. Neo is the hub; each device keeps node queues — drop, inbox, sent — and syncs when a path exists. No rented host, no public tunnel.
+The RKLOWD queue law: a file lands in an inbox under a unique name, never executed and never overwritten; there are no deletes in the record of truth — a withdrawal is a later record. The record itself is an append-only hash chain, MANIFEST.jsonl, objects addressed by SHA-256.
+RSCALE is the mesh map layer — failover and zones over the device mesh. Per the owner's record RSCALE is not running: its Moto job, rscale-moto, is installed but stopped. RTOR rides the mesh to move signed updates; RPIPE is the hub contract RKLOWD devices speak.

@@ -61,7 +61,7 @@ html = html.replace(scriptTag, libs + scriptTag);
 // HELP lines
 const helpAnchor = "          '  SIZE ............... live size + metrics (running counter)',";
 must(html, helpAnchor, 'HELP SIZE line');
-html = html.replace(helpAnchor, helpAnchor + "\n          '  MODEL .............. the trained model, alive in this file',\n          '  SYNC ............... check RTOR + RTRACKR, apply a newer chain seat',\n          '  EVOLVE ............. train on the full corpus, here in this device',\n          '  BEACON ............. inner beacon: host detect + parts inventory (REQ-0)',", 1);
+html = html.replace(helpAnchor, helpAnchor + "\n          '  MODEL .............. the trained model, alive in this file',\n          '  SYNC ............... check RTOR + RTRACKR, apply a newer chain seat',\n          '  EVOLVE ............. train on the full corpus, here in this device',\n          '  BEACON ............. inner beacon: host detect + parts inventory (REQ-0)',\n          '  OUTBOX <text> ...... queue a message in this device\\'s RKLOWD store-and-forward outbox',\n          '  QUEUE .............. the RKLOWD queue state on this device',\n          '  NET ................ RSCALE / RTOR / RKLOWD mesh state',", 1);
 
 // MODEL / SYNC / EVOLVE handlers, before the SIZE handler
 const sizeAnchor = "          if (lower === 'size' || lower === 'metrics') {";
@@ -74,6 +74,10 @@ const handlers = `          if (lower === 'model') {
           if (lower === 'sync') { syncNow(); return; }
           if (lower === 'evolve') { evolveNow(); return; }
           if (lower === 'beacon') { beaconNow(); return; }
+          if (lower === 'net') { netNow(); return; }
+          if (lower === 'queue') { queueNow(); return; }
+          if (lower === 'outbox') { print('OUTBOX — usage: OUTBOX <text> queues a message in this device\\'s RKLOWD store-and-forward queue (hash-chained, never executed, never overwritten).'); return; }
+          if (lower.indexOf('outbox ') === 0) { outboxAdd(q.slice(7)); return; }
 `;
 html = html.replace(sizeAnchor, handlers + sizeAnchor, 1);
 
@@ -114,6 +118,35 @@ const modelBlock = `        rzlCounterRender();
           var M = window.__RZL_MANIFEST__ || [];
           print('  inventory . ' + M.map(function (p) { return p.part + ' ' + p.bytes + ' B'; }).join(' · '));
           print('  bones ..... full pack magnetized in this one file — nothing missing, no PLAN ONLY. Assembly: beacon → boot (MODEL) → sync (SYNC) → evolve (EVOLVE).');
+        }
+        async function rkSha(text) { var d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)); return Array.from(new Uint8Array(d)).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+        async function rkManifest(store) { var raw = await store.get('rklowd:manifest'); return raw ? raw.split('\\n').filter(Boolean).map(function (l) { return JSON.parse(l); }) : []; }
+        async function outboxAdd(text) {
+          if (!MODEL.seed || !MODEL.seed.store) { print('OUTBOX — the model did not boot in this browser, so there is no device store to hold the queue. Nothing queued.'); return; }
+          var store = MODEL.seed.store;
+          var sha = await rkSha(text);
+          var man = await rkManifest(store);
+          var prev = man.length ? man[man.length - 1].entry_sha : 'GENESIS';
+          var rec = { seq: man.length + 1, kind: 'queue', sha: sha, prev: prev, bytes: text.length, ts: new Date().toISOString() };
+          rec.entry_sha = await rkSha(JSON.stringify(rec));
+          if (!(await store.get('rklowd:obj:' + sha))) await store.set('rklowd:obj:' + sha, text);
+          man.push(rec);
+          await store.set('rklowd:manifest', man.map(function (r) { return JSON.stringify(r); }).join('\\n'));
+          print('OUTBOX — queued #' + rec.seq + ' · sha ' + sha.slice(0, 12) + '… · ' + rec.bytes + ' B · manifest chain head ' + rec.entry_sha.slice(0, 12) + '… · held in this device\\'s RKLOWD queue: content-addressed, never executed, never overwritten. It forwards when this device joins the mesh (Neo hub) — QUEUE shows the state.');
+        }
+        async function queueNow() {
+          if (!MODEL.seed || !MODEL.seed.store) { print('QUEUE — no device store in this browser (the model did not boot).'); return; }
+          var man = await rkManifest(MODEL.seed.store);
+          if (!man.length) { print('QUEUE — this device\\'s RKLOWD queue is empty. OUTBOX <text> queues a message; the queue is a hash-chained manifest (seq / prev / sha), objects stored once by SHA-256 — the RKLOWD record of truth in miniature.'); return; }
+          print('QUEUE — ' + man.length + ' record(s) in this device\\'s RKLOWD manifest · head ' + man[man.length - 1].entry_sha.slice(0, 12) + '… · all held for forward to the hub (Neo) when a path exists. Nothing here is executed or overwritten; a withdrawal would be a later record, never a delete.');
+        }
+        async function netNow() {
+          var queued = 0;
+          if (MODEL.seed && MODEL.seed.store) { try { queued = (await rkManifest(MODEL.seed.store)).length; } catch (e) {} }
+          print('NET — the mesh under this shell:');
+          print('  RSCALE .. the mesh map layer (failover, ts.net / Funnel zones). Owner record: NOT running — the Moto job rscale-moto is installed but stopped; starting it is the owner\\'s word on the device.');
+          print('  RTOR .... signed-update feed at rizal.pw/rtor (version 20261118-5, 28 entries, owner signatures PENDING, fail-closed). SYNC checks this device\\'s chain seat against it by hash-pin.');
+          print('  RKLOWD .. the offline store-and-forward undercloud: Neo is the hub, devices keep drop / inbox / sent queues and sync when a path exists — no rented host, no public tunnel. This device\\'s local queue: ' + queued + ' record(s). RPIPE is the hub contract; RMAIL rides the same queues.');
         }
         async function modelBoot() {
           try {
