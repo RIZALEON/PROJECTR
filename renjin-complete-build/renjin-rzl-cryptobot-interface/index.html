@@ -283,7 +283,7 @@
   <body>
     <main class="shell" id="shell">
       <div class="brand" id="brand" aria-hidden="true"><span class="brand-name">RENJIN</span> .RZL AI CRYPTOBOT MODEL</div>
-      <div id="rzl-counter" style="font:11px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#9dff8a;opacity:.92;padding:0 2px 4px;">RGHOSTCHAIN h<span id="rzl-h">5</span> · <span id="rzl-b">6</span> blocks · 7 assets · corpus-v2 <span id="rzl-c">162</span> lessons · KB <span id="rzl-k">43</span> · weights 49,152 · session <span id="rzl-clock">00:00</span> · answered <span id="rzl-q">0</span></div>
+      <div id="rzl-counter" style="font:11px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#9dff8a;opacity:.92;padding:0 2px 4px;">RGHOSTCHAIN h<span id="rzl-h">5</span> · <span id="rzl-b">6</span> blocks · 7 assets · corpus-v2 <span id="rzl-c">162</span> lessons · KB <span id="rzl-k">44</span> · weights 49,152 · session <span id="rzl-clock">00:00</span> · answered <span id="rzl-q">0</span></div>
 
       <form class="prompt-line" id="promptForm" autocomplete="off" spellcheck="false">
         <label class="visually-hidden" for="cmd">Type a command after the R:\&gt; prompt and press Enter</label>
@@ -377,6 +377,7 @@
           { keys: ['rscale', 'mesh'], text: 'RSCALE — the mesh map layer: failover and zones over the device mesh (ts.net / Funnel zones). Per the owner record RSCALE is NOT running — its Moto job rscale-moto (LaunchAgent info.rizal.rscale-moto) is installed but stopped; starting it is the owner word on the device. RTOR rides the mesh for signed updates; RPIPE is the hub contract RKLOWD devices speak.' },
           { keys: ['live stats', 'live board', ' live '], text: 'LIVE — type LIVE in the shell: ThundR displays the live board, read at call time — RGHOSTCHAIN (height, blocks, live assets, linkage, tip) from the RTRACKR export, the RTOR feed (version, entries, signature status — PENDING is named, never hidden), the R TOKEN section (supply, watched holder, the CRYPTOGAME pair, the Orca pool — each figure labelled with its snapshot date), and the ENJIN stats of the shell itself (loss, model chain, corpus, RKLOWD queue). Read-only: nothing is signed or written. Authorization is the owner command — the Face ID necessity was removed by the owner ruling.' },
           { keys: ['ghostchain monitor', 'chain monitor', 'monitor', 'chain watch'], text: 'MONITOR — type MONITOR in the shell: the live GHOSTCHAIN watch starts. Every 60 seconds it reads the RTOR feed hash-first, compares the chain pin against the shell seat, and pulls the chain file only when the pin moves. It reports the RTOR send and receive systematics: feed size, total payload moved per full sync, bytes received per check and per session, and the RKLOWD outbox records and bytes waiting to send. MONITOR OFF stops the watch; MONITOR STATUS reports it. The monitor rides in every RENJIN shell, model, app, device and site seat. Read-only: it signs nothing and writes nothing.' },
+          { keys: ['rauth', 'cryptoauthenticator', 'cryptoauth', 'authenticator', 'vault', 'ghostkey cert', 'ghostkey certificate'], text: 'RAUTH — the RENJIN cryptoauthenticator (0.1.2, unsigned staging on Neo, 127.0.0.1 / file://, no network). A locked on-device vault: items encrypted at rest with WebCrypto AES-GCM, the key derived by PBKDF2-SHA-256 on the device only; unlock by passphrase or ASSM-session unlock (empty passphrase). It receives the ghostkey certificate (ghostkey-cert.pem) and checks it first: CN=Renjin Ghostkey, O=ROS, OU=RGHOSTCHAIN, UID ЯID-0001-3QQS, serialNumber RZL111682, SHA-256 fingerprint 6d8a57309d3f56299e4fb5dd0d354c2e3a684a0efce8dfc832058e4fddda16c3 — UID and serial checks passed, received 2026-11-20. RAUTH never generates, signs, or seals keys; seals stay with Rizal. Type RAUTH in the shell for the full record.' },
           { keys: ['inner beacon', 'beacon', 'rzl file', 'self-assembling', 'magnetize'], text: 'Inner Beacon — the first layer of the .RZL format: before any assembly it silently checks the host (OS, architecture, memory, storage) and decides which bones to magnetize. Sequence: clicked → Inner Beacon → magnetize OS-specific bones from the local drive → self-assemble → launch. REQ-0+1: the folder is the app; the TypeScript host runs a hash inventory, missing parts are magnetized, unfound parts mean PLAN ONLY. Type BEACON in the one-file shell to run it here.' },
           { keys: ['pure', 'purity', 'file format'], text: 'Purity law (Rizal, 2026-11-19): the RENJIN model stays pure .RZL file format, always — no GGUF, no safetensors, no ONNX, no foreign weights inside; the heart is .RZL or it is not RENJIN. Per the owner, .RZL is a registered file type on every operating system. The build tree is scanned clean by check-purity.js.' },
           { keys: ['size', 'metrics', 'how big', 'model size'], text: 'Model metrics — RENJIN Core v3: DIM 64 / HID 128 / CTX 32, 49,152 ternary weights: 12,288 B packed at two bits each, 196,608 B as FP32 latents. Corpus v2 holds 162 lessons, and the shell knowledge base answers from its entries. The chain seat is the published RGHOSTCHAIN export: height 5, 6 blocks, 7 live assets. Type SIZE and the shell counts itself live — weights, corpus, knowledge, chain and this session.' },
@@ -431,6 +432,7 @@
           '  CHAIN VERIFY ....... verify the Ghost Chain',
           '  SIZE ............... live size + metrics (running counter)',
           '  CITATION ........... the RZL citation for this work',
+          '  RAUTH .............. RENJIN cryptoauthenticator — vault + ghostkey record',
           '  VERSION ............ egg + model version',
           '  CLEAR .............. clear the screen',
           '  ASK <question> ..... ask from the PROJECT R record',
@@ -453,6 +455,18 @@
           'MODEL  v2 · DIM 64 / HID 128 / CTX 32 · 49,152 ternary weights',
           'TOKENIZER  tok.v1 · vocab 313 · EMBEDDINGS  v1 · DIM 32',
           'CORPUS  v1 · 112 RZL-authored lines — core v3 trains on it next.'
+        ];
+
+
+        var RAUTH = [
+          'RAUTH — RENJIN cryptoauthenticator · 0.1.2 · ROS device (unsigned staging) · 127.0.0.1 / file:// · no network',
+          'VAULT  locked. Items are encrypted at rest with WebCrypto AES-GCM; the key is derived by PBKDF2-SHA-256 on this device only. Unlock by passphrase, or ASSM-session unlock (empty passphrase) — only as strong as this device / ASSM login. Create new vault · Import encrypted bundle.',
+          'RECEIVE GHOSTKEY  drop ghostkey-cert.pem here, or paste it with type "receive ghostkey" — RAUTH reads the certificate and checks it before it is received.',
+          'GHOSTKEY CERT  CN=Renjin Ghostkey · O=ROS · OU=RGHOSTCHAIN · UID ЯID-0001-3QQS · serialNumber RZL111682 · @chaserizal · title CHIEF (Decider) · OU=RZL DEVICES AND COMPONENTS · signature RZL111682 · owner-command · 2026-11-20',
+          '  SHA-256 fingerprint 6d8a57309d3f56299e4fb5dd0d354c2e3a684a0efce8dfc832058e4fddda16c3',
+          '  checks: UID matches ЯID-0001-3QQS · serialNumber matches RZL111682 · received 2026-11-20T20:43:47Z',
+          'LAW  this app never generates, signs, or seals keys. Seals stay with Rizal. Nothing is signed or sealed by this device.',
+          'SEAT  RAUTH lives on Neo at RCRYPTOFORGE/RENJIN/cryptoauth (RAUTH-0.1.2.html). This shell carries the record only — the vault itself never enters the shell.'
         ];
 
         function respond(raw) {
@@ -490,19 +504,23 @@
             print('.RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.');
             return;
           }
+          if (lower === 'rauth' || lower === 'cryptoauth' || lower === 'cryptoauthenticator') {
+            RAUTH.forEach(function (l) { print(l); });
+            return;
+          }
           if (lower === 'size' || lower === 'metrics') {
             print('RENJIN Core v3 — live metrics, counted by the shell itself:');
             print('  model ..... DIM 64 · HID 128 · CTX 32 · tok.v1 · egg 0.1.11');
             print('  weights ... 49,152 ternary · 12,288 B packed (2 bits each) · 196,608 B as FP32 latents');
             print('  corpus .... v2 · ' + CORPUS_V2.lessons + ' lessons · ' + CORPUS_V2.bytes.toLocaleString('en-US') + ' B of lesson text');
             print('  knowledge . ' + KB.length + ' shell entries · ask() retrieves over all ' + CORPUS_V2.lessons + ' lessons');
-            print('  chain ..... RGHOSTCHAIN height ' + (RGHOSTCHAIN.length - 1) + ' · ' + RGHOSTCHAIN.length + ' blocks · 3 live assets · tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… · published export 2026-11-11');
+            print('  chain ..... RGHOSTCHAIN height ' + (RGHOSTCHAIN.length - 1) + ' · ' + RGHOSTCHAIN.length + ' blocks · 7 live assets · tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… · published export 2026-11-20');
             print('  freshness . chain export ' + Math.floor((Date.now() - new Date(RGHOSTCHAIN_EXPORTED).getTime()) / 86400000) + ' days old · a republish from Neo refreshes it');
             print('  session ... ' + RZL_QUERIES + ' commands answered · ' + rzlElapsed() + ' elapsed · the counter runs in this page, online or offline');
             return;
           }
           if (lower === 'chain') {
-            print('RGHOSTCHAIN — the living chain on Neo, as published by RTRACKR (export rzl.rtrackr.export.v1, 2026-11-11, height 4):');
+            print('RGHOSTCHAIN — the living chain on Neo, as published by RTRACKR (export rzl.rtrackr.export.v1, 2026-11-20, height ' + (RGHOSTCHAIN.length - 1) + '):');
             RGHOSTCHAIN.forEach(function (b) { print('  #' + b.n + ' ' + b.type + ' · ' + b.ts + ' · ' + b.label + ' · hash ' + b.hash.slice(0, 12) + '…'); });
             print('This page carries the latest published export of the chain. CHAIN VERIFY checks its linkage.');
             return;
@@ -511,7 +529,7 @@
             var chainOk = RGHOSTCHAIN.length === 5 && RGHOSTCHAIN[0].prev.slice(0, 16) === '0000000000000000';
             for (var ci = 1; ci < RGHOSTCHAIN.length; ci++) { if (RGHOSTCHAIN[ci].prev !== RGHOSTCHAIN[ci - 1].hash) chainOk = false; }
             var tipOk = RGHOSTCHAIN[RGHOSTCHAIN.length - 1].hash === RGHOSTCHAIN_TIP;
-            print('RGHOSTCHAIN published export — linkage ' + (chainOk ? 'OK' : 'BROKEN') + ', 5 blocks, height 4, tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… ' + (tipOk ? 'matches the export tip' : 'TIP MISMATCH') + '. The block hashes are as published; rghostchain.py verified them on Neo. This page verifies the prev-hash linkage of the embedded export — the living chain itself sits on Neo.');
+            print('RGHOSTCHAIN published export — linkage ' + (chainOk ? 'OK' : 'BROKEN') + ', ' + RGHOSTCHAIN.length + ' blocks, height ' + (RGHOSTCHAIN.length - 1) + ', tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… ' + (tipOk ? 'matches the export tip' : 'TIP MISMATCH') + '. The block hashes are as published; rghostchain.py verified them on Neo. This page verifies the prev-hash linkage of the embedded export — the living chain itself sits on Neo.');
             return;
           }
           if (lower === 'train' || lower.indexOf('train') === 0 || lower === 'grow' || lower === 'evolve') {
