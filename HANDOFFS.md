@@ -6,6 +6,61 @@ what's blocked. Read the newest entry before beginning work.
 
 ---
 
+## 2026-11-19 21:32 MST — Update build pushed out to the 17e (ThundR, side chat — Rizal's order: "RDRAGON push out the RDRAGON update build to 17e")
+- Rizal's GO received in the side chat, with screenshots of the 17e running the older RDRAGON ENGINE web 1.0.4.25 / RDOS 1.0.4.x seats. The unpublished stack (LIVE board + OUTBOX fix, mint-law amendment, MONITOR; corpus-v2 162 lessons, KB 43, one-file builds 749,731 / 749,734 B, state:current 19234a4a…) is now pushed to RENJIN-CRYPTOBOT-AI `main` and PROJECTR `shared` — 9 files: both shell pages, both one-file builds, corpus-v2, store-v3, build-rshell-single.js, LIVE-STATS.md, this log. Purity check at push time: PURE ✓, 43 files, zero foreign formats.
+- Delivery route to the 17e is GitHub Pages (the phone loads the shell as a web seat). The native RDRAGON app itself (ENGINE 1.0.6.7 seat, DragonSkull re-sign for the 3 apps flagged on the phone) is Neo/Xcode work: Neo is not reachable from this VM and the 17e screenshots show RSYNC :8811 offline / NOKEY, so no direct RTOR device push can land until RSYNC is back up on the phone.
+- Note for the RENJIN seat: ЯBOT's Neo-side commits (merged Trackers shell, ThundR macOS Xcode project) touched other paths and are untouched by this push; their HANDOFFS entries on that seat live in that repo's git history.
+
+## 2026-11-19 19:50 MST — LIVE board completed: R TOKEN section + stale Face ID answers corrected (ThundR)
+## 2026-11-19 21:35 MST — ThundR (Muse, main chat): MINT LAW AMENDED by the owner + live GHOSTCHAIN MONITOR in every seat
+
+Rizal's recorded decision (options tap, 21:26 MST): **the law is amended — player-command mints write the real RGHOSTCHAIN automatically.** Player creations in the game mint directly to the real chain through RMINT on Neo — no per-mint sign, no Face ID — priced by the Rtoken ↔ Rcoin pair, shown live on RTRACKR + RWALLET. Bots still never hold keys and never sign releases; RTOR signing unchanged. Seated: corpus-v2 lesson 161, the mint KB entry in both shells, leaves in both botcard seats of the merged AUTOMANUAL, `renjin/LIVE-STATS.md`.
+
+**MONITOR (Rizal's order, same round):** the live GHOSTCHAIN watch — `MONITOR` / `MONITOR OFF` / `MONITOR STATUS` in both shell pages and both one-file builds. Hash-first ticks every 60 s against the RTOR feed; the chain file is pulled only when its pin moves; every tick keeps the RTOR send/receive systematics (feed KB, payload MB per full sync, session bytes received, RKLOWD outbox bytes waiting to send). Node-simulated end-to-end against the real feed + export: seat-current path received only 13.5 KB; moved-pin path detected and reported. Corpus-v2 lesson 162; KB 43 entries; counters 162 lessons / 13,508 B. Retrain (corpus 162): state:current 19234a4a…. One-file builds 749,731 / 749,734 B. Also seated this round: the LIVE GHOSTCHAIN cover statement on the merged AUTOMANUAL (Rizal's wording law: the GHOSTCHAIN is live, real and true — never described otherwise). Still unpublished with the rest of the stack — the push needs Rizal's go + tap.
+
+- LIVE gains its fourth section, **R TOKEN (via RTRACKR)**: supply,
+  mint, crown, watched holder (32,586.8 R, 3.25868041%, snapshot
+  2026-11-07), the CRYPTOGAME pair (100:1, recorded 2026-11-14),
+  Orca vaults/TVL/FDV (snapshot 2026-11-14) — every figure labelled
+  with its snapshot date; the three tracker files are ~17 KB total.
+  Board proven end-to-end in Node against the real files.
+- Two stale KB answers corrected to the owner's ruling: the RTOR
+  entry (refused until a recorded owner command authorizes it) and
+  the GHOSTKEY entry (authorization is the owner's recorded
+  command, not Face ID). The block-4 historical record is untouched.
+- Corpus lesson 159 widened to the full board; retrain loss 3.278 /
+  held-out 3.263, state:current `8790fa80…`; corpus still 160
+  lessons, 12,578 B. One-file builds now 743,583 / 743,586 B.
+- Push note: this round and the 19:20 round are built and verified
+  locally; the GitHub push approval card timed out once — awaiting
+  Rizal's go to re-run it (his tap), then the branch pull
+  (zip + encrypted .rzl) follows.
+
+---
+
+## 2026-11-19 19:20 MST — LIVE board + the real OUTBOX bug, found and fixed (ThundR)
+- **OUTBOX root cause (finally):** the dispatch called
+  `outboxAdd(q.slice(7))`, but `q` is only assigned later in
+  `respond()` (line ~1638, for the ask path) — at the OUTBOX branch
+  it was still undefined, so the handler threw and died silently.
+  Every earlier theory (IDB seats) was wrong; QUEUE/NET never used
+  `q`, which is why they worked. Fixed: `cmd.slice(7)`. The
+  localStorage queue seat stays (harmless, and proven in Node).
+- **LIVE command** (Rizal's order): `LIVE` / `LIVE STATS` / `BOARD`
+  prints the live board — GHOSTCHAIN via the RTRACKR export (hash,
+  linkage walk, tip, live assets), the RTOR feed (version, entries,
+  signatures PENDING named), and the ENJIN's own stats — all fetched
+  at call time. Proven in Node against the live sources before push.
+  Method doc: `renjin/LIVE-STATS.md`; also seated in the AUTOMANUAL
+  botcard section and saved as a reusable skill.
+- **Owner ruling recorded:** the Face ID necessity is removed —
+  authorization is the owner's recorded command (corpus lesson 160;
+  ThundR still never signs).
+- Corpus-v2 **160 lessons / 12,467 B**; persist retrain loss 3.245 /
+  held-out 3.238, state:current `0c3ee567…`; KB 42.
+
+---
+
 ## 2026-11-19 19:15 MST — Newest-first transcript + the OUTBOX seat fix (ThundR)
 - Rizal's structure law applied to the shells: output no longer
   appends at the bottom — each command's block (echo + responses)

@@ -61,7 +61,7 @@ html = html.replace(scriptTag, libs + scriptTag);
 // HELP lines
 const helpAnchor = "          '  SIZE ............... live size + metrics (running counter)',";
 must(html, helpAnchor, 'HELP SIZE line');
-html = html.replace(helpAnchor, helpAnchor + "\n          '  MODEL .............. the trained model, alive in this file',\n          '  SYNC ............... check RTOR + RTRACKR, apply a newer chain seat',\n          '  EVOLVE ............. train on the full corpus, here in this device',\n          '  BEACON ............. inner beacon: host detect + parts inventory (REQ-0)',\n          '  OUTBOX <text> ...... queue a message in this device\\'s RKLOWD store-and-forward outbox',\n          '  QUEUE .............. the RKLOWD queue state on this device',\n          '  NET ................ RSCALE / RTOR / RKLOWD mesh state',", 1);
+html = html.replace(helpAnchor, helpAnchor + "\n          '  MODEL .............. the trained model, alive in this file',\n          '  SYNC ............... check RTOR + RTRACKR, apply a newer chain seat',\n          '  EVOLVE ............. train on the full corpus, here in this device',\n          '  BEACON ............. inner beacon: host detect + parts inventory (REQ-0)',\n          '  OUTBOX <text> ...... queue a message in this device\\'s RKLOWD store-and-forward outbox',\n          '  QUEUE .............. the RKLOWD queue state on this device',\n          '  NET ................ RSCALE / RTOR / RKLOWD mesh state',\n          '  LIVE ............... live GHOSTCHAIN · RTOR · ENJIN stats board (read at call time)',\n          '  MONITOR ............ live GHOSTCHAIN watch — RTOR feed + chain pin every 60 s, with send/receive sizes (MONITOR OFF stops)',", 1);
 
 // MODEL / SYNC / EVOLVE handlers, before the SIZE handler
 const sizeAnchor = "          if (lower === 'size' || lower === 'metrics') {";
@@ -77,7 +77,11 @@ const handlers = `          if (lower === 'model') {
           if (lower === 'net') { netNow(); return; }
           if (lower === 'queue') { queueNow(); return; }
           if (lower === 'outbox') { print('OUTBOX — usage: OUTBOX <text> queues a message in this device\\'s RKLOWD store-and-forward queue (hash-chained, never executed, never overwritten).'); return; }
-          if (lower.indexOf('outbox ') === 0) { outboxAdd(q.slice(7)); return; }
+          if (lower.indexOf('outbox ') === 0) { outboxAdd(cmd.slice(7)); return; }
+          if (lower === 'live' || lower === 'live stats' || lower === 'board') { liveNow(); return; }
+          if (lower === 'monitor') { monitorNow(''); return; }
+          if (lower === 'monitor off') { monitorNow('off'); return; }
+          if (lower === 'monitor status') { monitorNow('status'); return; }
 `;
 html = html.replace(sizeAnchor, handlers + sizeAnchor, 1);
 
@@ -153,6 +157,69 @@ const modelBlock = `        rzlCounterRender();
           print('  RSCALE .. the mesh map layer (failover, ts.net / Funnel zones). Owner record: NOT running — the Moto job rscale-moto is installed but stopped; starting it is the owner\\'s word on the device.');
           print('  RTOR .... signed-update feed at rizal.pw/rtor (version 20261118-5, 28 entries, owner signatures PENDING, fail-closed). SYNC checks this device\\'s chain seat against it by hash-pin.');
           print('  RKLOWD .. the offline store-and-forward undercloud: Neo is the hub, devices keep drop / inbox / sent queues and sync when a path exists — no rented host, no public tunnel. This device\\'s local queue: ' + queued + ' record(s). RPIPE is the hub contract; RMAIL rides the same queues.');
+        }
+        async function liveNow() {
+          print('LIVE — GHOSTCHAIN · RTOR · R TOKEN · ENJIN, read at ' + new Date().toLocaleTimeString('en-US') + ' — display only: nothing signed, nothing written.');
+          try {
+            var buf = await (await fetch('https://rizal.pw/rtrackr/data/rghostchain.json', { cache: 'no-store' })).arrayBuffer();
+            var digest = await crypto.subtle.digest('SHA-256', buf);
+            var hex = Array.from(new Uint8Array(digest)).map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+            var data = JSON.parse(new TextDecoder().decode(buf));
+            var linked = true; for (var i = 1; i < data.blocks.length; i++) { if (data.blocks[i].prev_hash !== data.blocks[i - 1].hash) { linked = false; break; } }
+            var liveAssets = (data.assets || []).filter(function (a) { return a.status === 'live'; }).length;
+            var pin = (window.__RZL_EXPORT_SHA__ && hex === window.__RZL_EXPORT_SHA__) ? 'matches this shell\\'s seat' : 'differs from this shell\\'s seat — SYNC checks it against the RTOR pin';
+            print('  GHOSTCHAIN (via RTRACKR) .. height ' + data.height + ' · ' + data.blocks.length + ' blocks · ' + liveAssets + ' live assets · tip ' + String(data.tip).slice(0, 12) + '… · linkage ' + (linked ? 'OK' : 'BROKEN') + ' · export ' + data.exported_at + ' · sha256 ' + hex.slice(0, 12) + '… (' + pin + ')');
+          } catch (e) { print('  GHOSTCHAIN (via RTRACKR) .. unreachable from this page right now (' + e.message + ') — embedded seat: height ' + (RGHOSTCHAIN.length - 1) + ', export ' + RGHOSTCHAIN_EXPORTED + '.'); }
+          try {
+            var feed = await (await fetch('https://rizal.pw/rtor/feed.json', { cache: 'no-store' })).json();
+            print('  RTOR ...................... feed ' + feed.version + ' · ' + feed.entries.length + ' entries · signed: ' + feed.signed + (feed.signed ? '' : ' — owner signatures PENDING, fail-closed: every entry refused until its .sig.json verifies against owner key e5833fdfbbfe'));
+          } catch (e) { print('  RTOR ...................... feed unreachable from this page right now (' + e.message + ') — last known: version 20261118-5, 28 entries, signatures PENDING.'); }
+          try {
+            var rt = await (await fetch('https://rizal.pw/rtrackr/data/rtoken.json', { cache: 'no-store' })).json();
+            var rates = await (await fetch('https://rizal.pw/rtrackr/data/economy-rates.json', { cache: 'no-store' })).json();
+            var pool = await (await fetch('https://rizal.pw/rtrackr/data/token-pool.json', { cache: 'no-store' })).json();
+            var p0 = (pool.pools || [])[0] || {};
+            var mkt = p0.market || {};
+            print('  R TOKEN (via RTRACKR) ..... supply ' + Number(rt.token.supply_ui).toLocaleString('en-US') + ' R · mint ' + rt.token.mint.slice(0, 12) + '… · crown ' + rt.token.crown_mint_authority.slice(0, 8) + '… · watched holder ' + Number(rt.holder.rtoken_amount).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' R (' + rt.holder.share + ', snapshot ' + String(rt.exported_at).slice(0, 10) + ') · CRYPTOGAME pair ' + rates.rcoin_to_rtoken.rate + ' (cap 100 Rtoken/person/day, recorded ' + String(rates.recorded).slice(0, 10) + ') · Orca Я/SOL vaults ' + Number(p0.token_b.amount_ui).toLocaleString('en-US', { maximumFractionDigits: 1 }) + ' Я / ' + p0.token_a.amount_ui + ' SOL · TVL $$' + mkt.reserve_usd + ' · FDV $$' + Number(mkt.fdv_usd).toFixed(2) + ' (snapshot ' + String(pool.fetched_at).slice(0, 10) + ') · tracking only — snapshots, not a live price poll');
+          } catch (e) { print('  R TOKEN (via RTRACKR) ..... unreachable from this page right now (' + e.message + ') — last known: supply 1,000,000 R, pair 100 Rcoins = 1 Rtoken (recorded 2026-11-14), Orca pool tracking only.'); }
+          print('  ENJIN (this shell) ........ ' + (MODEL.ready ? ('egg 0.1.11 · loss ' + MODEL.loss + ' · model chain ' + MODEL.entries + ' entries · store ' + MODEL.storeKind) : 'model not booted yet') + ' · corpus ' + CORPUS_V2.lessons + ' lessons · KB ' + KB.length + ' entries · 49,152 ternary weights · RKLOWD queue ' + rkLoad().length + ' record(s) · session ' + RZL_QUERIES + ' answered');
+          print('  Authorization: the owner\\'s command — the Face ID necessity was removed by the owner\\'s ruling (2026-11-19). This board is read-only; ThundR never signs.');
+        }
+        var MONITOR = { on: false, timer: null, checks: 0, rxBytes: 0, lastFeed: '', lastPin: '', lastErr: '' };
+        function rkFmtB(b) { return b >= 1048576 ? (b / 1048576).toFixed(2) + ' MB' : (b / 1024).toFixed(1) + ' KB'; }
+        async function monitorTick(first) {
+          MONITOR.checks++;
+          try {
+            var fr = await fetch('https://rizal.pw/rtor/feed.json', { cache: 'no-store' });
+            var ftext = await fr.text();
+            MONITOR.rxBytes += ftext.length;
+            var feed = JSON.parse(ftext);
+            var pin = null, total = 0;
+            feed.entries.forEach(function (e) { total += e.size || 0; if (e.id === 'rtrackr.rghostchain') pin = e; });
+            if (feed.version !== MONITOR.lastFeed) { print('  MONITOR — RTOR feed ' + feed.version + ' · ' + feed.entries.length + ' entries · payload ' + rkFmtB(total) + ' moved per full sync · this check received ' + rkFmtB(ftext.length) + (MONITOR.lastFeed ? ' · feed moved from ' + MONITOR.lastFeed : '')); MONITOR.lastFeed = feed.version; }
+            var pinSha = pin ? pin.sha256 : '';
+            if (pinSha && pinSha !== MONITOR.lastPin) {
+              if (pinSha === window.__RZL_EXPORT_SHA__) { print('  MONITOR — GHOSTCHAIN seat current: feed pin ' + pinSha.slice(0, 12) + '… matches this shell · chain file ' + rkFmtB(pin.size) + ' · height ' + (RGHOSTCHAIN.length - 1) + ' · tip ' + RGHOSTCHAIN_TIP.slice(0, 12) + '… · the live GHOSTCHAIN, real and true'); }
+              else {
+                var er = await fetch('https://rizal.pw/rtrackr/data/rghostchain.json', { cache: 'no-store' });
+                var etext = await er.text();
+                MONITOR.rxBytes += etext.length;
+                var ex = JSON.parse(etext);
+                print('  MONITOR — CHAIN MOVED: export ' + ex.exported_at + ' · height ' + ex.height + ' · tip ' + String(ex.tip).slice(0, 12) + '… · received ' + rkFmtB(etext.length) + ' — run SYNC to take the new seat.');
+              }
+              MONITOR.lastPin = pinSha;
+            }
+            if (first) { var q = rkLoad(); var qb = 0; q.forEach(function (r) { qb += r.bytes || 0; }); print('  MONITOR — send systematics: the RKLOWD outbox holds ' + q.length + ' record(s), ' + rkFmtB(qb) + ' waiting to send · receive systematics: ' + MONITOR.checks + ' check(s), ' + rkFmtB(MONITOR.rxBytes) + ' received this session · the shell sends nothing else and signs nothing.'); }
+          } catch (e) { var el = '  MONITOR — check failed (' + e.message + '); the seat in this shell is unchanged.'; if (el !== MONITOR.lastErr) { print(el); MONITOR.lastErr = el; } }
+        }
+        function monitorNow(arg) {
+          if (arg === 'off') { if (MONITOR.timer) { clearInterval(MONITOR.timer); MONITOR.timer = null; MONITOR.on = false; print('MONITOR — off. ' + MONITOR.checks + ' check(s) ran · ' + rkFmtB(MONITOR.rxBytes) + ' received.'); } else { print('MONITOR — already off.'); } return; }
+          if (arg === 'status') { print('MONITOR — ' + (MONITOR.on ? 'ON, checking every 60 s' : 'off') + ' · ' + MONITOR.checks + ' check(s) · ' + rkFmtB(MONITOR.rxBytes) + ' received · feed ' + (MONITOR.lastFeed || 'not checked yet') + ' · chain pin ' + (MONITOR.lastPin ? MONITOR.lastPin.slice(0, 12) + '…' : '—')); return; }
+          if (MONITOR.on) { print('MONITOR — already on (every 60 s). MONITOR OFF stops it · MONITOR STATUS reports.'); return; }
+          MONITOR.on = true;
+          print('MONITOR — live GHOSTCHAIN watch ON. The RTOR feed is checked every 60 s, hash-first: the small feed is read each check and the chain file is pulled only when its pin moves. Changes print here as they land. MONITOR OFF stops the watch.');
+          monitorTick(true);
+          MONITOR.timer = setInterval(function () { monitorTick(false); }, 60000);
         }
         async function modelBoot() {
           try {

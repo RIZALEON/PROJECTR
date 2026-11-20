@@ -4,7 +4,7 @@
 # Chain source: the published export rzl.rtrackr.export.v1 (2026-11-11, rizal.pw/rtrackr),
 # SHA-256 verified against the published sums before a single line was written.
 # Format: one lesson per line. Held-out: the trainer's split (positions p % 7 == 3).
-# v2: 158 lines (141 + addenda: metrics 142-147, freshness 148, citation 149, purity 150, Inner Beacon 151-155, RKLOWD/RSCALE 156-158; appended 2026-11-19).
+# v2: 160 lines (141 + addenda: metrics 142-147, freshness 148, citation 149, purity 150, Inner Beacon 151-155, RKLOWD/RSCALE 156-158, LIVE board + command authorization 159-160; appended 2026-11-19).
 
 Offline is rule 0. The heart runs on this device.
 Function 0: track and trace every data package and every action on the Ghost Chain.
@@ -168,3 +168,7 @@ The .RZL shell is a living magnetized skin, not a static folder: it draws its bo
 RKLOWD is the offline under cryptocloud: a store-and-forward hub under the cryptocloud. Neo is the hub; each device keeps node queues — drop, inbox, sent — and syncs when a path exists. No rented host, no public tunnel.
 The RKLOWD queue law: a file lands in an inbox under a unique name, never executed and never overwritten; there are no deletes in the record of truth — a withdrawal is a later record. The record itself is an append-only hash chain, MANIFEST.jsonl, objects addressed by SHA-256.
 RSCALE is the mesh map layer — failover and zones over the device mesh. Per the owner's record RSCALE is not running: its Moto job, rscale-moto, is installed but stopped. RTOR rides the mesh to move signed updates; RPIPE is the hub contract RKLOWD devices speak.
+The LIVE command displays the live board in the shell window: RGHOSTCHAIN height, blocks, live assets, linkage and tip from the RTRACKR export, the RTOR feed version and signature status, the R TOKEN supply, holder, CRYPTOGAME pair and Orca pool from the RTRACKR trackers with their snapshot dates, and the ENJIN stats of the shell itself — all read live at call time.
+Authorization in RZL SYSTEMS is the owner's recorded command: the Face ID necessity was removed by the owner's ruling, ThundR acts on the command, and ThundR still never signs.
+Law amended by the owner's recorded command on 2026-11-19: player-command mints write the real chain automatically. When a player creates an artifact or element in the game, the in-game bots mint it directly to RGHOSTCHAIN through RMINT on Neo — no per-mint sign and no Face ID — priced by the Rtoken to Rcoin pair, shown live on RTRACKR and in RWALLET. Bots still never hold keys and never sign releases; RMINT remains the only writer.
+The MONITOR command starts the live GHOSTCHAIN watch in the shell: every 60 seconds it reads the RTOR feed hash-first, compares the chain pin against the shell seat, pulls the chain file only when the pin moves, and reports the RTOR send and receive systematics — feed size, payload per full sync, bytes received, and the RKLOWD outbox waiting to send. MONITOR OFF stops the watch and MONITOR STATUS reports it. The monitor rides in every RENJIN shell, model, app, device and site seat.
