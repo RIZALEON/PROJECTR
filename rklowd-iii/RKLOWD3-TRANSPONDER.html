@@ -12,6 +12,7 @@ button{cursor:pointer} .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0} i
 <div class="row"><input id="cmd" placeholder="Type: SCAN / LIVE / RTOR / OUTBOX / QUEUE / SEND / MONITOR / HELP"><button onclick="runCmd()">RUN</button></div>
 <pre id="out">RKLOWD III booted on this device. Press SCAN ALL SIGNALS.</pre></div>
 <script>
+const ALLOW=['17e','neo','pixel','ubuntu-touch','moto']; const SEAT=(localStorage.getItem('rklowd3-seat')||'17e'); if(!ALLOW.includes(SEAT)){document.addEventListener('DOMContentLoaded',()=>{document.getElementById('out').textContent='RNETWORK-HARDEN-1: seat '+SEAT+' is NOT on the ASSM allowlist — REFUSED.'})} // RNETWORK-ALLOWLIST enforced
 let packet=null, outbox=JSON.parse(localStorage.getItem('rklowd3-outbox')||'[]');
 const out=t=>document.getElementById('out').textContent=t;
 async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}

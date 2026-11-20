@@ -1,0 +1,44 @@
+{
+  "policy": "RNETWORK-HARDEN-1",
+  "issued": "2026-11-19T21:49:37-07:00",
+  "issuer": "owner command (Rizal)",
+  "rule": "Default DENY. Only the devices below \u2014 verified behind an ASSM login, like rizal.pw \u2014 are on the Rnetwork. Every other device is removed / refused. New enrollment requires owner ASSM login + ONE existing trusted-device approval (RGHOSTCHAIN block 4 rule). Bots never sign.",
+  "allow": [
+    {
+      "seat": "17e",
+      "device": "iPhone 17e",
+      "platform": "iOS (iPhone18,5)",
+      "verified": "ASSM login + Muse paired, online, live signals pulled 2026-11-19",
+      "status": "allow"
+    },
+    {
+      "seat": "neo",
+      "device": "MacBook Neo",
+      "platform": "macOS",
+      "verified": "ASSM login; approver device neo-rdragon, Secure Enclave P-256 (block 4 rghostkey_bind)",
+      "status": "allow"
+    },
+    {
+      "seat": "pixel",
+      "device": "Pixel mobile",
+      "platform": "Android",
+      "verified": "ASSM login (owner-declared 2026-11-19)",
+      "status": "allow"
+    },
+    {
+      "seat": "ubuntu-touch",
+      "device": "Touch Ubuntu",
+      "platform": "Ubuntu Touch",
+      "verified": "ASSM login (owner-declared 2026-11-19)",
+      "status": "allow"
+    },
+    {
+      "seat": "moto",
+      "device": "Moto Android \u2014 moto g 5G - 2024",
+      "platform": "Android",
+      "verified": "ASSM login + Muse paired; confirmed existing device in block 4 rghostkey_bind",
+      "status": "allow"
+    }
+  ],
+  "deny": "ALL other devices, seats, and nodes \u2014 removed from the Rnetwork, RTOR/RKLOWD III packets refused, no exceptions without a new owner command."
+}
