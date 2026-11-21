@@ -1,6 +1,4 @@
 // check-purity.js — enforce the PURE .RZL LAW (Rizal, 2026-11-19).
-// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
-// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS TECH Series, Aetaneo Rizal. Chase Rizal.
 // The RENJIN model stays pure .RZL file format, always: no foreign model
 // formats in the build tree — no GGUF, safetensors, ONNX, .bin, .pt/.pth,
 // checkpoints or foreign weights. Usage: node check-purity.js [dir]
@@ -18,3 +16,7 @@ let bad = [], files = 0;
 })(ROOT);
 if (bad.length) { console.error('PURITY FAILED — foreign model formats in the tree:\n' + bad.join('\n')); process.exit(1); }
 console.log('PURE ✓ — ' + files + ' files scanned in ' + ROOT + ', zero foreign model formats. The heart stays .RZL.');
+// ────────────────────────────────────────────────────────────────
+// 🫈 Providence & Provenance 🦇
+// RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.

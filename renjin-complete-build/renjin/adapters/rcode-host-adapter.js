@@ -1,7 +1,5 @@
 // rcode-host-adapter.js — the direct adapter between the RENJIN core
 // (YaSeed / yaseed-core-v3) and the RCODE host app (Xcode-built, iOS/macOS).
-// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
-// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS TECH Series, Aetaneo Rizal. Chase Rizal.
 //
 // The core's detectHost() prefers an injected globalThis.YASEED_HOST over
 // its safe stub (see yaseed-core-v3.js, "Host-adapter contract"). This
@@ -78,3 +76,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.RCodeHostAdapter = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
+// ────────────────────────────────────────────────────────────────
+// 🫈 Providence & Provenance 🦇
+// RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.

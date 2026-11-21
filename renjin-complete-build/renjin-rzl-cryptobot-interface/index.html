@@ -365,6 +365,12 @@
           { n: 4, type: 'rghostkey_bind', ts: '2026-11-10', label: 'RGHOSTKEY bind + device approval + basecode v1', hash: 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147', prev: '5bb1d6f0cb9d5b0d53839cfe9669a59037161aefbee5795c0a944d12f2b7eb0d' },
           { n: 5, type: 'nft_mint', ts: '2026-11-19', label: 'ITEM · krog-test-mint-001 — serial 3 · player mint by @krog (bot) · 100 RCOIN → 1 RTOKEN · @chaserizal · ЯID-3003-1RCQ', hash: '4006b570883c31aff44891971dd1935a3a58a822293f919ace27e59d8cf0bb5b', prev: 'e34dc66a8e4bcdd39b3d42df7ea280c5ef4567206f39dcbf575fe6945311e147' }
         ];
+        /* ---------- RZL CITATION — one seat at the bottom of the unified RGHOSTCHAIN code (Rizal, 2026-11-20: bottom, not top) ---------- */
+        var RZL_CITATION = [
+          '🫈 Providence & Provenance 🦇',
+          'RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)',
+          '.RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.'
+        ];
         var CORPUS_V2 = { lessons: 162, bytes: 13508 };
         var KB = [
           { keys: ['ghost chain'], text: 'Ghost Chain — the local ledger inside ЯENJIN. Every grow, train and mint step is chained and verifiable on-device. It is a local chain, not a public blockchain: no network, no transfer off-device.' },
@@ -500,9 +506,7 @@
             return;
           }
           if (lower === 'citation' || lower === 'cite') {
-            print('🫈 Providence & Provenance 🦇');
-            print('RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)');
-            print('.RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.');
+            RZL_CITATION.forEach(function (l) { print(l); });
             return;
           }
           if (lower === 'rauth' || lower === 'cryptoauth' || lower === 'cryptoauthenticator') {

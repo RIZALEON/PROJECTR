@@ -17,8 +17,6 @@
 //             seat boots from the FileStore (src/store-v3.json), the same
 //             persistent store the persist build already proved.
 //
-// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
-// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS TECH Series, Aetaneo Rizal. Chase Rizal.
 //
 // Standing law on this bridge (same as the iOS/macOS adapter):
 // - Keys never cross the bridge. No key material, no signatures on the
@@ -124,3 +122,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.RCodeLinuxHost = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
+// ────────────────────────────────────────────────────────────────
+// 🫈 Providence & Provenance 🦇
+// RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.

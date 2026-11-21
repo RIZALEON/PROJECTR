@@ -5,8 +5,6 @@
 // the same admission path as the founding plugin. Bots never sign for
 // the owner; the device signature here is the model's own plugin scope
 // ('yaseed.model-plugin'), exactly as the core defines it.
-// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
-// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS TECH Series, Aetaneo Rizal. Chase Rizal.
 (function (global) {
   'use strict';
 
@@ -48,3 +46,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = RCodeBridgePlugin;
   global.RCodeBridgePlugin = RCodeBridgePlugin;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
+// ────────────────────────────────────────────────────────────────
+// 🫈 Providence & Provenance 🦇
+// RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.

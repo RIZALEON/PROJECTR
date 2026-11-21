@@ -6,6 +6,12 @@ what's blocked. Read the newest entry before beginning work.
 
 ---
 
+## 2026-11-20 17:20 MST — Citation to the bottom + integrated into the unified RGHOSTCHAIN code (ThundR, main chat — Rizal's order)
+- Rizal's ruling: the operating system's citation goes **at the bottom instead of the top**, integrated into the unified RGHOSTKEY code. Executed in every code seat held here:
+  - The 2-line citation header was removed from the TOP of `renjin/build-rshell-single.js`, `renjin/adapters/rcode-host-adapter.js`, `renjin/adapters/rcode-bridge-plugin.js`, `renjin/adapters/linux/rcode-linux-host.js` and `renjin/check-purity.js`; each file now closes with the full citation block as its last element.
+  - In both shell pages the citation now has ONE seat in the code: `RZL_CITATION`, defined at the bottom of the unified RGHOSTCHAIN code section (directly under the seated chain records); the `CITATION` command prints from that seat — output byte-identical to before (sim-verified). The visible citation block remains the last element at the bottom of both pages, per the standing placement rule; the KB citation entry is unchanged.
+- Rebuilt one-file builds (753,708 / 753,711 B) parse-checked; regression battery green after the move: RCODE adapter test ALL PASS · Linux seat test ALL PASS · purity PURE ✓ (48 files).
+
 ## 2026-11-20 17:05 MST — RBOTLoadR base designated: the R Shell (ThundR, main chat — Rizal's ruling)
 - Rizal designated the R Shell space (the original simple shell — MODEL v2, 49,152 ternary weights, tok.v1, corpus v1, HELP · STATUS · RZL · CHAIN VERIFY · VERSION · CLEAR · ASK; https://muse.ai/s/r-shell-xjxn6dxbxskxa5xyxp/kkOmaDGgjjCjTlH90iROQIDKXoHChxAg8QmB3lc8S6Y) as **"our base RBOTLoadR build for a pure RZL OPERATING SYSTEM."** RBOTLoadR was the RZL parts index's one MISSING component (0 packed pieces — loader service code + launchd plists only); the base is now named, the packing follows on that base. RVM direct-boot covers the gap meanwhile.
 - Seated as a KB entry in both shell pages (keys rbotloadr / botloadr / loadr / loader / operating system / rzl os, before the greedy model entry). KB now **45**. One-file builds rebuilt (753,489 / 753,492 B), parse-checked, KB sim-tested (loader / operating-system questions land on the RBOTLoadR entry; RAUTH and model lookups unaffected). The Core v3 build diagram's LOADER line updated to match.

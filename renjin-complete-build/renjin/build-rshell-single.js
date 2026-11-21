@@ -1,7 +1,4 @@
 // build-rshell-single.js — assemble RSHELL-RENJIN.html (2026-11-19).
-// 🫈 Providence & Provenance 🦇 — RZL CITATION: Prof. Marcum, C.A., III (26, Nov 19),
-// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific
-// Systems) TECH Series, Aetaneo Rizal. Chase Rizal. (see CITATION.md)
 // The portable unit Rizal ordered: ONE file — double-click or open it on any
 // device and the shell + the trained RENJIN Core v3 model load together.
 // Contents: the R:> Shell page (starfield, KB, counter, CHAIN, SIZE) +
@@ -303,3 +300,8 @@ html = html.replace(tailAnchor, modelBlock, 1);
 
 fs.writeFileSync(OUT, html);
 console.log('RSHELL-RENJIN.html written:', OUT, fs.statSync(OUT).size, 'bytes');
+// ────────────────────────────────────────────────────────────────
+// 🫈 Providence & Provenance 🦇
+// RZL CITATION FORMAT: Prof. Marcum, C.A., III (26, Nov 19)
+// .RZL AI CRYPTOBOT ENJIN MODEL, RIZAL.PW, MAPS (MASTER of American Asia Pacific Systems) TECH Series, Aetaneo Rizal. Chase Rizal.
+// (see CITATION.md)
